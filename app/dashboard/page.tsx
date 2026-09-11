@@ -28,25 +28,63 @@ import {
   UserPlus,
   Maximize2,
   Minimize2,
-  X
+  X,
+  Cpu
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { AIContextProvider } from "@/lib/context/ai-context";
+
+// =============================================================================
+// IMPORTACIÓN DE VISTAS (ACTIVAS Y FUTURAS)
+// =============================================================================
+// --- MATEMÁTICAS I: BÁSICAS Y CÁLCULO ---
 import ArithmeticView from "@/components/modules/basic-math/arithmetic-view";
 import AlgebraView from "@/components/modules/basic-math/algebra-view";
 import GeometryView from "@/components/modules/basic-math/geometry-view";
+import FunctionsView from "@/components/modules/basic-math/functions-view";
+import LimitsView from "@/components/modules/basic-math/limits-view";
+// import DerivativesView from "@/components/modules/basic-math/derivatives-view";
+// import IntegralsView from "@/components/modules/basic-math/integrals-view";
+
+// --- MATEMÁTICAS II: LÓGICA COMPUTACIONAL (FUTURAS) ---
+// import PropositionsView from "@/components/modules/logic/propositions-view";
+// import EquivalencesView from "@/components/modules/logic/equivalences-view";
+// import InferencesView from "@/components/modules/logic/inferences-view";
+// import PredicatesView from "@/components/modules/logic/predicates-view";
+// import LogicTranslatorView from "@/components/modules/logic/translator-view";
+
+// --- MATEMÁTICAS III: MATEMÁTICAS FINANCIERAS (FUTURAS) ---
+// import SimpleInterestView from "@/components/modules/finance/simple-interest-view";
+// import CompoundInterestView from "@/components/modules/finance/compound-interest-view";
+// import AnnuitiesView from "@/components/modules/finance/annuities-view";
+// import AmortizationView from "@/components/modules/finance/amortization-view";
+
+// --- MATEMÁTICAS IV: MATEMÁTICAS COMPUTACIONALES (FUTURAS) ---
+// import MatricesView from "@/components/modules/computational/matrices-view";
+// import DeterminantsView from "@/components/modules/computational/determinants-view";
+// import GaussJordanView from "@/components/modules/computational/gauss-jordan-view";
+// import NumericalRootsView from "@/components/modules/computational/numerical-roots-view";
+// import InterpolationView from "@/components/modules/computational/interpolation-view";
+// import ErrorTheoryView from "@/components/modules/computational/error-theory-view";
+
+// --- MATEMÁTICAS V: PROBABILIDAD Y ESTADÍSTICA (FUTURAS) ---
+// import DescriptiveStatsView from "@/components/modules/statistics/descriptive-stats-view";
+// import FrequencyTableView from "@/components/modules/statistics/frequency-table-view";
+// import ProbabilityView from "@/components/modules/statistics/probability-view";
+// import DistributionsView from "@/components/modules/statistics/distributions-view";
+// import RegressionView from "@/components/modules/statistics/regression-view";
+
+// --- MATEMÁTICAS VI: INVESTIGACIÓN DE OPERACIONES (FUTURAS) ---
+// import LinearProgrammingView from "@/components/modules/optimization/linear-programming-view";
+// import SimplexView from "@/components/modules/optimization/simplex-view";
+// import TransportationView from "@/components/modules/optimization/transportation-view";
+// import AssignmentView from "@/components/modules/optimization/assignment-view";
+// import QueueingTheoryView from "@/components/modules/optimization/queueing-theory-view";
+
 import AIAssistant from "@/components/ai/ai-assistant";
 
 export type ModuleId = "mat1" | "mat2" | "mat3" | "mat4" | "mat5" | "mat6";
-export type SubTopic =
-  | "aritmetica"
-  | "algebra"
-  | "geometria"
-  | "funciones"
-  | "limites"
-  | "derivadas"
-  | "integrales";
 export type ViewMode = "calc" | "steps" | "theory";
 
 interface ModuleConfig {
@@ -65,15 +103,53 @@ const MODULES: ModuleConfig[] = [
   { id: "mat6", label: "Optimización", desc: "Simplex y Colas", icon: Network },
 ];
 
-const SUBTOPICS_MAT1: { id: SubTopic; label: string }[] = [
-  { id: "aritmetica", label: "Aritmética" },
-  { id: "algebra", label: "Álgebra" },
-  { id: "geometria", label: "Geometría" },
-  { id: "funciones", label: "Funciones" },
-  { id: "limites", label: "Límites" },
-  { id: "derivadas", label: "Derivadas" },
-  { id: "integrales", label: "Integrales" },
-];
+// Catálogo Completo de Subtemas para las 6 materias
+const SUBTOPICS_BY_MODULE: Record<ModuleId, { id: string; label: string; desc: string }[]> = {
+  mat1: [
+    { id: "aritmetica", label: "Aritmética", desc: "Jerarquía, Fracciones y Operaciones Básicas" },
+    { id: "algebra", label: "Álgebra", desc: "Ecuaciones Cuadráticas, Factores y Polinomios" },
+    { id: "geometria", label: "Geometría", desc: "Analítica 2D, Planimetría y Cuerpos 3D" },
+    { id: "funciones", label: "Funciones", desc: "Graficador Interactivo, Análisis y Tangentes" },
+    { id: "limites", label: "Límites", desc: "Indeterminaciones, Racionalización y L'Hôpital" },
+    { id: "derivadas", label: "Derivadas", desc: "Reglas de Derivación, Cadena y Optimización" },
+    { id: "integrales", label: "Integrales", desc: "Definidas, Indefinidas y Área bajo la Curva" },
+  ],
+  mat2: [
+    { id: "proposiciones", label: "Proposiciones", desc: "Tablas de Verdad, Tautologías y Conectores" },
+    { id: "equivalencias", label: "Equivalencias", desc: "Leyes de De Morgan y Simplificación Lógica" },
+    { id: "inferencias", label: "Inferencias", desc: "Modus Ponens, Tollens y Silogismos Válidos" },
+    { id: "predicados", label: "Predicados", desc: "Cuantificadores Universales ∀ y Existenciales ∃" },
+    { id: "traductor", label: "Traductor a Código", desc: "Conversión de Proposiciones a C++/Python" },
+  ],
+  mat3: [
+    { id: "interes-simple", label: "Interés Simple", desc: "Capital, Tasa, Tiempo y Despeje de Variables" },
+    { id: "interes-compuesto", label: "Interés Compuesto", desc: "Capitalización, Tasa Efectiva y Valor Futuro" },
+    { id: "anualidades", label: "Anualidades", desc: "Ordinarias, Anticipadas y Valor Presente" },
+    { id: "amortizacion", label: "Amortización", desc: "Tablas de Pago, Capital, Interés y Saldos" },
+  ],
+  mat4: [
+    { id: "matrices", label: "Matrices", desc: "Operaciones Básicas, Multiplicación e Inversa" },
+    { id: "determinantes", label: "Determinantes", desc: "Cofactores, Sarrus y Regla de Cramer" },
+    { id: "sistemas-gauss", label: "Sistemas Lineales", desc: "Eliminación Gaussiana y Gauss-Jordan" },
+    { id: "raices-metodos", label: "Raíces Numéricas", desc: "Bisección, Newton-Raphson y Secante" },
+    { id: "interpolacion", label: "Interpolación", desc: "Polinomios de Lagrange y Newton" },
+    { id: "errores", label: "Teoría de Errores", desc: "Error Absoluto, Relativo y Truncamiento" },
+  ],
+  mat5: [
+    { id: "descriptiva", label: "Estadística Descriptiva", desc: "Media, Mediana, Moda, Varianza y Desviación" },
+    { id: "tablas-frecuencia", label: "Tablas de Frecuencia", desc: "Frecuencia Absoluta, Relativa y Acumulada" },
+    { id: "probabilidad", label: "Probabilidad", desc: "Combinatoria, Permutaciones y Teorema de Bayes" },
+    { id: "distribuciones", label: "Distribuciones", desc: "Binomial, Poisson y Normal Estándar" },
+    { id: "regresion", label: "Regresión Lineal", desc: "Ajuste por Mínimos Cuadrados y Correlación" },
+  ],
+  mat6: [
+    { id: "prog-lineal", label: "Programación Lineal", desc: "Método Gráfico y Regiones Factibles" },
+    { id: "simplex", label: "Método Simplex", desc: "Tablas Simplex, Variables Holgura y Gran M" },
+    { id: "transporte", label: "Problemas de Transporte", desc: "Esquina Noroeste, Costo Mínimo y Vogel" },
+    { id: "asignacion", label: "Asignación", desc: "Método Húngaro de Minimización y Maximización" },
+    { id: "teoria-colas", label: "Teoría de Colas", desc: "Modelos M/M/1, Tasas de Llegada y Espera" },
+  ],
+};
 
 const VIEW_MODES: { id: ViewMode; label: string; icon: React.ElementType }[] = [
   { id: "calc", label: "Calcular", icon: Equal },
@@ -87,7 +163,7 @@ function DashboardContent() {
   const initialExpr = searchParams.get("expr") || "";
 
   const [activeModule, setActiveModule] = useState<ModuleId>("mat1");
-  const [subTopic, setSubTopic] = useState<SubTopic>("aritmetica");
+  const [subTopic, setSubTopic] = useState<string>("aritmetica");
   const [viewMode, setViewMode] = useState<ViewMode>("calc");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -97,7 +173,6 @@ function DashboardContent() {
   const [isAiMaximized, setIsAiMaximized] = useState<boolean>(false);
   const isDraggingRef = useRef<boolean>(false);
 
-  // Lógica para arrastrar el borde izquierdo y cambiar el ancho
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     isDraggingRef.current = true;
@@ -124,7 +199,6 @@ function DashboardContent() {
     window.addEventListener("mouseup", onMouseUp);
   };
 
-  // Tecla Escape para salir del modo pantalla completa
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isAiMaximized) {
@@ -139,17 +213,10 @@ function DashboardContent() {
 
   useEffect(() => {
     const supabase = createClient();
-
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -160,11 +227,37 @@ function DashboardContent() {
     router.refresh();
   };
 
-  const currentModule = MODULES.find((m) => m.id === activeModule);
+  // Cambio de módulo con reseteo al primer subtema correspondiente
+  const handleSelectModule = (id: ModuleId) => {
+    setActiveModule(id);
+    const subList = SUBTOPICS_BY_MODULE[id];
+    if (subList && subList.length > 0) {
+      setSubTopic(subList[0].id);
+    }
+  };
+
+  const currentModule = MODULES.find((m) => m.id === activeModule) || MODULES[0];
+  const currentSubtopics = SUBTOPICS_BY_MODULE[activeModule] || SUBTOPICS_BY_MODULE.mat1;
+  const currentSubtopicConfig = currentSubtopics.find((s) => s.id === subTopic) || currentSubtopics[0];
 
   const userInitials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name.substring(0, 2).toUpperCase()
     : user?.email?.substring(0, 2).toUpperCase() || "U";
+
+  // Función auxiliar para renderizar placeholders de módulos en preparación
+  const renderPlaceholder = (title: string, desc: string) => (
+    <div className="h-full min-h-[400px] border border-dashed border-zinc-800/80 rounded-3xl flex flex-col items-center justify-center p-10 text-center bg-zinc-900/20 backdrop-blur-sm max-w-2xl mx-auto my-auto">
+      <div className="w-14 h-14 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-center mb-4 text-zinc-400 shadow-inner">
+        <currentModule.icon size={26} />
+      </div>
+      <h3 className="text-xl font-serif font-bold text-zinc-200 mb-1">{title}</h3>
+      <p className="text-xs text-zinc-400 max-w-md mt-1 leading-relaxed">{desc}</p>
+      <div className="mt-5 flex items-center gap-2 text-[11px] font-mono text-zinc-500 bg-zinc-950/60 border border-zinc-800/80 px-3.5 py-1.5 rounded-xl">
+        <Cpu size={13} className="text-amber-400" />
+        <span>Módulo en preparación · Conexión ReSolve AI activa</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="relative flex h-screen w-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans select-none">
@@ -218,10 +311,10 @@ function DashboardContent() {
               return (
                 <button
                   key={mod.id}
-                  onClick={() => setActiveModule(mod.id)}
-                  className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+                  onClick={() => handleSelectModule(mod.id)}
+                  className={`group relative w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-all ${
                     isActive
-                      ? "bg-zinc-100 text-zinc-950 shadow-lg shadow-zinc-100/5"
+                      ? "bg-zinc-100 text-zinc-950 shadow-lg shadow-zinc-100/5 font-semibold"
                       : "text-zinc-400 hover:bg-zinc-900/70 hover:text-zinc-100"
                   }`}
                 >
@@ -235,12 +328,12 @@ function DashboardContent() {
                     <Icon size={15} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium leading-tight truncate">
+                    <span className="block text-[13px] leading-tight truncate">
                       {mod.label}
                     </span>
                     <span
                       className={`block text-[10px] truncate ${
-                        isActive ? "text-zinc-600" : "text-zinc-500"
+                        isActive ? "text-zinc-600 font-normal" : "text-zinc-500"
                       }`}
                     >
                       {mod.desc}
@@ -341,12 +434,12 @@ function DashboardContent() {
                 <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-mono uppercase tracking-wider mb-1">
                   <span>{currentModule?.label}</span>
                   <ChevronRight size={11} />
-                  <span className="text-zinc-400 capitalize">{subTopic}</span>
+                  <span className="text-zinc-400">{currentSubtopicConfig?.label}</span>
                 </div>
                 <h2 className="text-2xl md:text-3xl font-serif font-bold tracking-tight text-zinc-100 truncate leading-tight">
-                  {currentModule?.label}{" "}
-                  <span className="text-zinc-500 italic font-normal">
-                    · {currentModule?.desc}
+                  {currentSubtopicConfig?.label}{" "}
+                  <span className="text-zinc-500 italic font-normal text-lg md:text-xl">
+                    · {currentSubtopicConfig?.desc}
                   </span>
                 </h2>
               </div>
@@ -361,9 +454,7 @@ function DashboardContent() {
                     key={vm.id}
                     onClick={() => setViewMode(vm.id)}
                     className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-colors ${
-                      isActive
-                        ? "text-zinc-950"
-                        : "text-zinc-400 hover:text-zinc-100"
+                      isActive ? "text-zinc-950 font-semibold" : "text-zinc-400 hover:text-zinc-100"
                     }`}
                   >
                     {isActive && (
@@ -383,35 +474,35 @@ function DashboardContent() {
             </div>
           </div>
 
-          {activeModule === "mat1" && (
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
-              {SUBTOPICS_MAT1.map((item) => {
-                const isActive = subTopic === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setSubTopic(item.id)}
-                    className={`relative px-3.5 py-1.5 rounded-full whitespace-nowrap text-xs transition-colors ${
-                      isActive
-                        ? "text-zinc-100"
-                        : "text-zinc-500 hover:text-zinc-200"
-                    }`}
-                  >
-                    {isActive && (
-                      <motion.span
-                        layoutId="subtopicPill"
-                        className="absolute inset-0 bg-zinc-800/80 border border-zinc-700/80 rounded-full"
-                        transition={{ type: "spring", stiffness: 450, damping: 30 }}
-                      />
-                    )}
-                    <span className="relative">{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {/* Barra de Subtemas Dinámica (Cambia según la materia activa) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+            {currentSubtopics.map((item) => {
+              const isActive = subTopic === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setSubTopic(item.id)}
+                  className={`relative px-3.5 py-1.5 rounded-full whitespace-nowrap text-xs transition-colors ${
+                    isActive ? "text-zinc-100 font-medium" : "text-zinc-500 hover:text-zinc-200"
+                  }`}
+                >
+                  {isActive && (
+                    <motion.span
+                      layoutId="subtopicPill"
+                      className="absolute inset-0 bg-zinc-800/80 border border-zinc-700/80 rounded-full"
+                      transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </header>
 
+        {/* =====================================================================
+            CONTENEDOR DE VISTAS (ACTIVAS Y PREPARADAS PARA EL FUTURO)
+        ====================================================================== */}
         <div className="flex-1 min-h-0 p-6 lg:p-8 overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div
@@ -422,34 +513,122 @@ function DashboardContent() {
               transition={{ duration: 0.25, ease: "easeOut" }}
               className="h-full"
             >
+              {/* ===============================================================
+                  RAMA 1: MATEMÁTICAS I (BÁSICAS Y CÁLCULO)
+              ================================================================ */}
               {activeModule === "mat1" && subTopic === "aritmetica" ? (
-                <ArithmeticView
-                  viewMode={viewMode}
-                  initialExpression={initialExpr}
-                />
+                <ArithmeticView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat1" && subTopic === "algebra" ? (
-                <AlgebraView
-                  viewMode={viewMode}
-                  initialExpression={initialExpr}
-                />
+                <AlgebraView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat1" && subTopic === "geometria" ? (
-                <GeometryView
-                  viewMode={viewMode}
-                  initialExpression={initialExpr}
-                />
+                <GeometryView viewMode={viewMode} initialExpression={initialExpr} />
+              ) : activeModule === "mat1" && subTopic === "funciones" ? (
+                <FunctionsView viewMode={viewMode} initialExpression={initialExpr} />
+              ) : activeModule === "mat1" && subTopic === "limites" ? (
+                <LimitsView viewMode={viewMode} initialExpression={initialExpr} /> 
+              ) : activeModule === "mat1" && subTopic === "derivadas" ? (
+                /* <DerivativesView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Derivadas y Aplicaciones", "Regla de la potencia, cadena, producto, cociente, máximos y mínimos")
+              ) : activeModule === "mat1" && subTopic === "integrales" ? (
+                /* <IntegralsView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Cálculo Integral", "Integrales inmediatas, integración por partes, sustitución y área bajo la curva")
+
+              /* ===============================================================
+                  RAMA 2: MATEMÁTICAS II (LÓGICA COMPUTACIONAL)
+              ================================================================ */
+              ) : activeModule === "mat2" && subTopic === "proposiciones" ? (
+                /* <PropositionsView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Tablas de Verdad y Proposiciones", "Generador interactivo de tablas de verdad, tautologías, contradicciones y contingencias")
+              ) : activeModule === "mat2" && subTopic === "equivalencias" ? (
+                /* <EquivalencesView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Equivalencias Lógicas", "Leyes de De Morgan, simplificación booleana y compuertas lógicas")
+              ) : activeModule === "mat2" && subTopic === "inferencias" ? (
+                /* <InferencesView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Reglas de Inferencia", "Modus Ponens, Modus Tollens, Silogismos y validación formal de argumentos")
+              ) : activeModule === "mat2" && subTopic === "predicados" ? (
+                /* <PredicatesView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Lógica de Predicados", "Cuantificadores universales ∀, existenciales ∃, negaciones y dominios de discurso")
+              ) : activeModule === "mat2" && subTopic === "traductor" ? (
+                /* <LogicTranslatorView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Traductor de Lógica a Código", "Traducción de proposiciones lógicas directamente a código ejecutable en C++, Python y JavaScript")
+
+              /* ===============================================================
+                  RAMA 3: MATEMÁTICAS III (FINANCIERAS)
+              ================================================================ */
+              ) : activeModule === "mat3" && subTopic === "interes-simple" ? (
+                /* <SimpleInterestView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Interés Simple", "Cálculo y despeje universal de Capital, Tasa, Tiempo y Monto final")
+              ) : activeModule === "mat3" && subTopic === "interes-compuesto" ? (
+                /* <CompoundInterestView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Interés Compuesto", "Capitalización periódica, tasa efectiva, tasa nominal, valor presente y valor futuro")
+              ) : activeModule === "mat3" && subTopic === "anualidades" ? (
+                /* <AnnuitiesView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Anualidades y Rentas", "Anualidades ordinarias, anticipadas, diferidas, valor actual y valor futuro")
+              ) : activeModule === "mat3" && subTopic === "amortizacion" ? (
+                /* <AmortizationView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Tablas de Amortización", "Generador de calendarios de amortización con cuota, interés, abono a capital y saldo insoluto")
+
+              /* ===============================================================
+                  RAMA 4: MATEMÁTICAS IV (COMPUTACIONALES / NUMÉRICAS)
+              ================================================================ */
+              ) : activeModule === "mat4" && subTopic === "matrices" ? (
+                /* <MatricesView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Álgebra Matricial", "Suma, resta, multiplicación de matrices, transposición y cálculo de matriz inversa")
+              ) : activeModule === "mat4" && subTopic === "determinantes" ? (
+                /* <DeterminantsView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Determinantes", "Cálculo por Cofactores, Sarrus y Regla de Cramer para matrices cuadradas")
+              ) : activeModule === "mat4" && subTopic === "sistemas-gauss" ? (
+                /* <GaussJordanView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Sistemas por Gauss y Gauss-Jordan", "Matriz aumentada paso a paso con operaciones elementales de fila")
+              ) : activeModule === "mat4" && subTopic === "raices-metodos" ? (
+                /* <NumericalRootsView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Métodos Numéricos para Raíces", "Aproximación iterativa por Bisección, Newton-Raphson, Secante y Punto Fijo")
+              ) : activeModule === "mat4" && subTopic === "interpolacion" ? (
+                /* <InterpolationView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Interpolación Numérica", "Polinomios de interpolación de Lagrange y diferencias divididas de Newton")
+              ) : activeModule === "mat4" && subTopic === "errores" ? (
+                /* <ErrorTheoryView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Teoría de Errores y Precisión", "Error absoluto, error relativo, error porcentual, redondeo y truncamiento computacional")
+
+              /* ===============================================================
+                  RAMA 5: MATEMÁTICAS V (PROBABILIDAD Y ESTADÍSTICA)
+              ================================================================ */
+              ) : activeModule === "mat5" && subTopic === "descriptiva" ? (
+                /* <DescriptiveStatsView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Estadística Descriptiva", "Cálculo de Media, Mediana, Moda, Rango, Varianza, Desviación Estándar y Cuartiles")
+              ) : activeModule === "mat5" && subTopic === "tablas-frecuencia" ? (
+                /* <FrequencyTableView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Tablas de Frecuencia", "Agrupación en intervalos, frecuencias absolutas, relativas y acumuladas")
+              ) : activeModule === "mat5" && subTopic === "probabilidad" ? (
+                /* <ProbabilityView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Probabilidad y Combinatoria", "Permutaciones, combinaciones, probabilidad condicional y Teorema de Bayes")
+              ) : activeModule === "mat5" && subTopic === "distribuciones" ? (
+                /* <DistributionsView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Distribuciones de Probabilidad", "Distribución Binomial, Poisson y Normal Estándar con cálculo de probabilidades Z")
+              ) : activeModule === "mat5" && subTopic === "regresion" ? (
+                /* <RegressionView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Regresión Lineal y Correlación", "Ajuste de recta por mínimos cuadrados, coeficiente de Pearson r y R²")
+
+              /* ===============================================================
+                  RAMA 6: MATEMÁTICAS VI (INVESTIGACIÓN DE OPERACIONES)
+              ================================================================ */
+              ) : activeModule === "mat6" && subTopic === "prog-lineal" ? (
+                /* <LinearProgrammingView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Programación Lineal Gráfica", "Optimización de función objetivo Z sujeta a restricciones, con región factible 2D")
+              ) : activeModule === "mat6" && subTopic === "simplex" ? (
+                /* <SimplexView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Algoritmo Simplex", "Tablas Simplex paso a paso, variables de holgura, método de la Gran M y Dos Fases")
+              ) : activeModule === "mat6" && subTopic === "transporte" ? (
+                /* <TransportationView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Modelos de Transporte", "Optimización logística por Esquina Noroeste, Costo Mínimo y Aproximación de Vogel")
+              ) : activeModule === "mat6" && subTopic === "asignacion" ? (
+                /* <AssignmentView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Problemas de Asignación", "Método Húngaro para minimización de costos o maximización de rendimientos")
+              ) : activeModule === "mat6" && subTopic === "teoria-colas" ? (
+                /* <QueueingTheoryView viewMode={viewMode} initialExpression={initialExpr} /> */
+                renderPlaceholder("Teoría de Colas y Líneas de Espera", "Modelos M/M/1, M/M/c, factor de utilización ρ, tiempos en cola Wq y en el sistema W")
               ) : (
-                <div className="h-full min-h-[400px] border border-dashed border-zinc-800/80 rounded-3xl flex flex-col items-center justify-center p-10 text-center bg-zinc-900/20 backdrop-blur-sm">
-                  <div className="w-14 h-14 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-center mb-4">
-                    <Calculator size={22} className="text-zinc-500" />
-                  </div>
-                  <h3 className="text-base font-serif font-bold text-zinc-200">
-                    Módulo en desarrollo
-                  </h3>
-                  <p className="text-xs text-zinc-500 max-w-sm mt-2 leading-relaxed">
-                    La arquitectura modular está lista para recibir las funciones de
-                    este apartado.
-                  </p>
-                </div>
+                renderPlaceholder("Módulo en Desarrollo", "La arquitectura modular está lista para recibir las funciones de este apartado.")
               )}
             </motion.div>
           </AnimatePresence>
@@ -459,7 +638,6 @@ function DashboardContent() {
       {/* =======================================================================
           3. ASISTENTE IA: PERMANENTE, ARRASTRABLE (DRAG) Y MAXIMIZABLE
       ======================================================================== */}
-      {/* Fondo oscuro al maximizar */}
       {isAiMaximized && (
         <div
           onClick={() => setIsAiMaximized(false)}
@@ -475,7 +653,6 @@ function DashboardContent() {
             : "relative z-10 border-l border-zinc-800/60 p-5 hidden xl:flex h-full bg-zinc-950/40 backdrop-blur-xl shrink-0"
         }`}
       >
-        {/* Barra de arrastrar: redimensionar el ancho de la IA hacia la izquierda/derecha */}
         {!isAiMaximized && (
           <div
             onMouseDown={handleMouseDown}
@@ -486,7 +663,6 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Cabecera del Asistente */}
         <div className="mb-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2 font-mono">
@@ -501,7 +677,6 @@ function DashboardContent() {
           </div>
 
           <div className="flex items-center gap-1.5">
-            {/* Botón de Maximizar / Restaurar */}
             <button
               type="button"
               onClick={() => setIsAiMaximized(!isAiMaximized)}
@@ -535,7 +710,6 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Instancia única persistente: NUNCA se desmonta */}
         <div className="flex-1 min-h-0 flex flex-col">
           <AIAssistant />
         </div>
