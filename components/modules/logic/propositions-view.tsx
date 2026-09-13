@@ -421,7 +421,7 @@ DEBES devolver al final DOS etiquetas estrictas:
       const data = await res.json();
 
       // Extraer y aplicar las variables contextuales
-      const varsMatch = data.reply?.match(/:::VARS:\s*(\{.*?\})\s*:::/s);
+      const varsMatch = data.reply?.match(/:::VARS:\s*(\{[\s\S]*?\})\s*:::/);
       if (varsMatch) {
         try {
           const parsedVars = JSON.parse(varsMatch[1]);
