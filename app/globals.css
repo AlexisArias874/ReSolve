@@ -182,3 +182,58 @@ html {
 body {
   font-size: 1rem; /* = 16px en laptop, escala con el html */
 }
+
+/* =============================================================================
+   AISLAMIENTO DE IMPRESIÓN Y EXPORTACIÓN A PDF (@media print)
+============================================================================= */
+@media print {
+  /* 1. Resetear el layout de la pantalla para permitir paginación natural */
+  html, body {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+
+  /* 2. Ocultar absolutamente toda la interfaz web del sistema */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* 3. Hacer visible ÚNICA y exclusivamente el reporte financiero */
+  #financial-report-print,
+  #financial-report-print * {
+    visibility: visible !important;
+  }
+
+  /* 4. Posicionar el documento en el origen de la hoja de impresión */
+  #financial-report-print {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 15mm !important;
+    display: block !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* 5. Forzar a que la barra lateral, modales y botones no existan en el PDF */
+  aside, nav, header, button, .print\:hidden {
+    display: none !important;
+  }
+
+  /* 6. Evitar que las tablas se corten a mitad de un renglón */
+  table, tr, td, th {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  @page {
+    size: letter portrait;
+    margin: 10mm;
+  }
+}

@@ -2,7 +2,8 @@
 
 import { useSearchParams } from "next/navigation";
 import ProfileModal from "@/components/profile/profile-modal";
-import { User as UserIcon, Settings } from "lucide-react";
+import { User as UserIcon, Settings, Zap } from "lucide-react";
+import OmniSolverView from "@/components/modules/omni/omni-solver-view";
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
@@ -44,18 +45,18 @@ import AlgebraView from "@/components/modules/basic-math/algebra-view";
 import GeometryView from "@/components/modules/basic-math/geometry-view";
 import FunctionsView from "@/components/modules/basic-math/functions-view";
 import LimitsView from "@/components/modules/basic-math/limits-view";
-// import DerivativesView from "@/components/modules/basic-math/derivatives-view";
-// import IntegralsView from "@/components/modules/basic-math/integrals-view";
+import DerivativesView from "@/components/modules/basic-math/derivatives-view";
+import IntegralsView from "@/components/modules/basic-math/integrals-view";
 
 // --- MATEMÁTICAS II: LÓGICA COMPUTACIONAL (FUTURAS) ---
-// import PropositionsView from "@/components/modules/logic/propositions-view";
+import PropositionsView from "@/components/modules/logic/propositions-view";
 // import EquivalencesView from "@/components/modules/logic/equivalences-view";
-// import InferencesView from "@/components/modules/logic/inferences-view";
+import InferencesView from "@/components/modules/logic/inferences-view";
 // import PredicatesView from "@/components/modules/logic/predicates-view";
 // import LogicTranslatorView from "@/components/modules/logic/translator-view";
 
 // --- MATEMÁTICAS III: MATEMÁTICAS FINANCIERAS (FUTURAS) ---
-// import SimpleInterestView from "@/components/modules/finance/simple-interest-view";
+import SimpleInterestView from "@/components/modules/finance/simple-interest-view";
 // import CompoundInterestView from "@/components/modules/finance/compound-interest-view";
 // import AnnuitiesView from "@/components/modules/finance/annuities-view";
 // import AmortizationView from "@/components/modules/finance/amortization-view";
@@ -83,8 +84,9 @@ import LimitsView from "@/components/modules/basic-math/limits-view";
 // import QueueingTheoryView from "@/components/modules/optimization/queueing-theory-view";
 
 import AIAssistant from "@/components/ai/ai-assistant";
+import EquivalencesView from "@/components/modules/logic/equivalences-view";
 
-export type ModuleId = "mat1" | "mat2" | "mat3" | "mat4" | "mat5" | "mat6";
+export type ModuleId = "omni" | "mat1" | "mat2" | "mat3" | "mat4" | "mat5" | "mat6";
 export type ViewMode = "calc" | "steps" | "theory";
 
 interface ModuleConfig {
@@ -118,8 +120,8 @@ const SUBTOPICS_BY_MODULE: Record<ModuleId, { id: string; label: string; desc: s
     { id: "proposiciones", label: "Proposiciones", desc: "Tablas de Verdad, Tautologías y Conectores" },
     { id: "equivalencias", label: "Equivalencias", desc: "Leyes de De Morgan y Simplificación Lógica" },
     { id: "inferencias", label: "Inferencias", desc: "Modus Ponens, Tollens y Silogismos Válidos" },
-    { id: "predicados", label: "Predicados", desc: "Cuantificadores Universales ∀ y Existenciales ∃" },
-    { id: "traductor", label: "Traductor a Código", desc: "Conversión de Proposiciones a C++/Python" },
+    //{ id: "predicados", label: "Predicados", desc: "Cuantificadores Universales ∀ y Existenciales ∃" },
+    //{ id: "traductor", label: "Traductor a Código", desc: "Conversión de Proposiciones a C++/Python" },
   ],
   mat3: [
     { id: "interes-simple", label: "Interés Simple", desc: "Capital, Tasa, Tiempo y Despeje de Variables" },
@@ -149,6 +151,7 @@ const SUBTOPICS_BY_MODULE: Record<ModuleId, { id: string; label: string; desc: s
     { id: "asignacion", label: "Asignación", desc: "Método Húngaro de Minimización y Maximización" },
     { id: "teoria-colas", label: "Teoría de Colas", desc: "Modelos M/M/1, Tasas de Llegada y Espera" },
   ],
+  omni: []
 };
 
 const VIEW_MODES: { id: ViewMode; label: string; icon: React.ElementType }[] = [
@@ -227,6 +230,26 @@ function DashboardContent() {
     router.refresh();
   };
 
+  // Función de navegación parametrizada
+  const handleNavigateFromOmni = (
+    moduleId: ModuleId,
+    subtopicId: string,
+    formula: string,
+    extraParams?: { point?: string; side?: string }
+  ) => {
+    setActiveModule(moduleId);
+    setSubTopic(subtopicId);
+
+    const query = new URLSearchParams();
+    query.set("module", moduleId);
+    query.set("subtopic", subtopicId);
+    query.set("expr", formula);
+    if (extraParams?.point) query.set("point", extraParams.point);
+    if (extraParams?.side) query.set("side", extraParams.side);
+
+    router.push(`/dashboard?${query.toString()}`);
+  };
+
   // Cambio de módulo con reseteo al primer subtema correspondiente
   const handleSelectModule = (id: ModuleId) => {
     setActiveModule(id);
@@ -302,6 +325,25 @@ function DashboardContent() {
           </div>
 
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+
+            <div className="px-3 pt-2 pb-1">
+            <button
+              onClick={() => setActiveModule("omni")}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left transition-all border ${
+                activeModule === "omni"
+                  ? "bg-amber-400/10 border-amber-400/30 text-amber-300 font-semibold shadow-lg shadow-amber-400/5"
+                  : "bg-zinc-900/40 border-zinc-800/80 text-zinc-300 hover:border-zinc-700 hover:text-zinc-100"
+              }`}
+            >
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                <Zap size={15} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="block text-[13px] leading-tight">ReSolve Solver</span>
+                <span className="block text-[10px] text-zinc-500 font-mono">Omni-Motor Photomath</span>
+              </div>
+            </button>
+          </div>
             <p className="px-3 pt-2 pb-2 text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-mono">
               Módulos
             </p>
@@ -516,8 +558,12 @@ function DashboardContent() {
               {/* ===============================================================
                   RAMA 1: MATEMÁTICAS I (BÁSICAS Y CÁLCULO)
               ================================================================ */}
-              {activeModule === "mat1" && subTopic === "aritmetica" ? (
+             {activeModule === "omni" ? (
+                <OmniSolverView onNavigateToModule={handleNavigateFromOmni} />
+
+              ) : activeModule === "mat1" && subTopic === "aritmetica" ? (
                 <ArithmeticView viewMode={viewMode} initialExpression={initialExpr} />
+
               ) : activeModule === "mat1" && subTopic === "algebra" ? (
                 <AlgebraView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat1" && subTopic === "geometria" ? (
@@ -527,24 +573,19 @@ function DashboardContent() {
               ) : activeModule === "mat1" && subTopic === "limites" ? (
                 <LimitsView viewMode={viewMode} initialExpression={initialExpr} /> 
               ) : activeModule === "mat1" && subTopic === "derivadas" ? (
-                /* <DerivativesView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Derivadas y Aplicaciones", "Regla de la potencia, cadena, producto, cociente, máximos y mínimos")
+                <DerivativesView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat1" && subTopic === "integrales" ? (
-                /* <IntegralsView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Cálculo Integral", "Integrales inmediatas, integración por partes, sustitución y área bajo la curva")
+                <IntegralsView viewMode={viewMode} initialExpression={initialExpr} /> 
 
               /* ===============================================================
                   RAMA 2: MATEMÁTICAS II (LÓGICA COMPUTACIONAL)
               ================================================================ */
               ) : activeModule === "mat2" && subTopic === "proposiciones" ? (
-                /* <PropositionsView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Tablas de Verdad y Proposiciones", "Generador interactivo de tablas de verdad, tautologías, contradicciones y contingencias")
+                <PropositionsView viewMode={viewMode} initialExpression={initialExpr} /> 
               ) : activeModule === "mat2" && subTopic === "equivalencias" ? (
-                /* <EquivalencesView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Equivalencias Lógicas", "Leyes de De Morgan, simplificación booleana y compuertas lógicas")
+                <EquivalencesView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat2" && subTopic === "inferencias" ? (
-                /* <InferencesView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Reglas de Inferencia", "Modus Ponens, Modus Tollens, Silogismos y validación formal de argumentos")
+               <InferencesView viewMode={viewMode} initialExpression={initialExpr} /> 
               ) : activeModule === "mat2" && subTopic === "predicados" ? (
                 /* <PredicatesView viewMode={viewMode} initialExpression={initialExpr} /> */
                 renderPlaceholder("Lógica de Predicados", "Cuantificadores universales ∀, existenciales ∃, negaciones y dominios de discurso")
@@ -556,8 +597,7 @@ function DashboardContent() {
                   RAMA 3: MATEMÁTICAS III (FINANCIERAS)
               ================================================================ */
               ) : activeModule === "mat3" && subTopic === "interes-simple" ? (
-                /* <SimpleInterestView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Interés Simple", "Cálculo y despeje universal de Capital, Tasa, Tiempo y Monto final")
+                 <SimpleInterestView viewMode={viewMode} initialExpression={initialExpr} /> 
               ) : activeModule === "mat3" && subTopic === "interes-compuesto" ? (
                 /* <CompoundInterestView viewMode={viewMode} initialExpression={initialExpr} /> */
                 renderPlaceholder("Interés Compuesto", "Capitalización periódica, tasa efectiva, tasa nominal, valor presente y valor futuro")

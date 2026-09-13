@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { sanitizeMathExpression, evaluateUniversalMath } from "@/lib/math/universal-evaluator";
 import { useState, useMemo, useEffect } from "react";
 import { useAIContext } from "@/lib/context/ai-context";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,30 +34,65 @@ export interface StepDetail {
 }
 
 // --- Motor de Desglose Paso a Paso (PEMDAS) ---
-function solveStepByStep(rawExpr: string): { steps: StepDetail[]; finalResult: string; error?: string } {
-  let expr = rawExpr.replace(/\s+/g, "");
+function solveStepByStep(rawExpr: string): {
+  steps: StepDetail[];
+  finalResult: string;
+  error?: string;
+} {
+  // 1. Sanitizar la expresión (soporta √, sqrt, abs, etc.) y quitar espacios
+  let expr = sanitizeMathExpression(rawExpr).replace(/\s+/g, "");
   if (!expr) return { steps: [], finalResult: "--" };
 
   const steps: StepDetail[] = [];
   let stepId = 1;
 
   try {
-    // 1. Resolver Paréntesis
+    // A. Resolución de Raíces Cuadradas: sqrt(...) o √(...)
+    const sqrtRegex = /sqrt\(([^()]+)\)/;
+    while (sqrtRegex.test(expr)) {
+      const match = sqrtRegex.exec(expr);
+      if (!match) break;
+      const inner = match[1];
+
+      // Evaluar el interior de la raíz con el evaluador universal
+      const innerVal = evaluateUniversalMath(inner);
+      const sqrtVal = Math.sqrt(innerVal);
+      const updated = expr.replace(
+        match[0],
+        Number(sqrtVal.toFixed(4)).toString()
+      );
+
+      steps.push({
+        id: stepId++,
+        operation: "Extracción de Raíz Cuadrada",
+        before: expr,
+        after: updated,
+        explanation: `Calculamos la raíz cuadrada de (${inner}) = ${Number(
+          sqrtVal.toFixed(4)
+        )}`,
+      });
+      expr = updated;
+    }
+
+    // B. Resolución de Paréntesis (de dentro hacia fuera)
     const parenRegex = /\(([^()]+)\)/;
     while (parenRegex.test(expr)) {
       const match = parenRegex.exec(expr);
       if (!match) break;
       const innerExpr = match[1];
 
-      const subSolved = evaluateSubExpression(innerExpr, (op, beforeSub, afterSub, exp) => {
-        steps.push({
-          id: stepId++,
-          operation: op,
-          before: expr,
-          after: expr.replace(`(${innerExpr})`, `(${afterSub})`),
-          explanation: exp,
-        });
-      });
+      const subSolved = evaluateSubExpression(
+        innerExpr,
+        (op, beforeSub, afterSub, exp) => {
+          steps.push({
+            id: stepId++,
+            operation: op,
+            before: expr,
+            after: expr.replace(`(${innerExpr})`, `(${afterSub})`),
+            explanation: exp,
+          });
+        }
+      );
 
       const updated = expr.replace(match[0], subSolved);
       steps.push({
@@ -69,16 +105,19 @@ function solveStepByStep(rawExpr: string): { steps: StepDetail[]; finalResult: s
       expr = updated;
     }
 
-    // 2. Resolver operaciones restantes
-    const finalVal = evaluateSubExpression(expr, (op, beforeSub, afterSub, exp) => {
-      steps.push({
-        id: stepId++,
-        operation: op,
-        before: beforeSub,
-        after: afterSub,
-        explanation: exp,
-      });
-    });
+    // C. Resolver operaciones restantes (multiplicación, división, suma, resta)
+    const finalVal = evaluateSubExpression(
+      expr,
+      (op, beforeSub, afterSub, exp) => {
+        steps.push({
+          id: stepId++,
+          operation: op,
+          before: beforeSub,
+          after: afterSub,
+          explanation: exp,
+        });
+      }
+    );
 
     const parsedNum = Number(finalVal);
     if (isNaN(parsedNum) || !isFinite(parsedNum)) {

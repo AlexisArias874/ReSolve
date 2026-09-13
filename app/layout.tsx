@@ -13,8 +13,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "MathAI | Plataforma Universitaria",
-  description: "Resolución y análisis matemático potenciado por Inteligencia Artificial.",
+  title: "ReSolve",
+  description: "Suite matemática integral para ciencias de la computación e ingeniería",
 };
 
 export default function RootLayout({

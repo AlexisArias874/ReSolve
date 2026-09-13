@@ -32,6 +32,7 @@ import {
   deleteUserHistory,
   type HistoryItem,
 } from "@/lib/supabase/history";
+import { useSearchParams } from "next/navigation";
 
 // -----------------------------------------------------------------------------
 // TIPOS Y CATÁLOGO DE EJEMPLOS
@@ -354,12 +355,18 @@ export default function LimitsView({
   viewMode: "calc" | "steps" | "theory";
   initialExpression?: string;
 }) {
+  const searchParams = useSearchParams();
+  const queryPoint = searchParams.get("point");
+  const querySide = searchParams.get("side") as "both" | "left" | "right" | null;
+
   const [funcInput, setFuncInput] = useState<string>(
     initialExpression || "(x^2 - 4) / (x - 2)"
   );
   const [bottomView, setBottomView] = useState<"steps" | "graph">("graph");
-  const [limitPoint, setLimitPoint] = useState<string>("2");
-  const [limitSide, setLimitSide] = useState<"both" | "left" | "right">("both");
+  const [limitPoint, setLimitPoint] = useState<string>(queryPoint || "2");
+  const [limitSide, setLimitSide] = useState<"both" | "left" | "right">(
+    querySide || "both"
+  );
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [copied, setCopied] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
