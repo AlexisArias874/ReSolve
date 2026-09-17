@@ -451,7 +451,7 @@ function DashboardContent() {
 
           <div className="flex items-center gap-2 px-2 py-2 mt-1 text-[10px] text-zinc-500 font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 animate-pulse" />
-            v1.0 · Beta
+            Beta 1.0
           </div>
         </div>
       </aside>

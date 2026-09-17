@@ -189,43 +189,52 @@ export default function LandingPage() {
       <BackgroundSymbols />
 
       {/* Barra de Navegación */}
-      <nav className="fixed top-0 w-full border-b border-zinc-900 bg-zinc-950/70 backdrop-blur-md z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center shadow-sm">
-              <Calculator className="text-zinc-950" size={18} />
-            </div>
-            <span className="text-xl font-bold font-serif tracking-wide text-zinc-100">
-              Re<span className="text-zinc-500">Solve</span>
-            </span>
-          </div>
+<nav className="fixed top-0 w-full border-b border-zinc-900 bg-zinc-950/70 backdrop-blur-md z-50">
+  <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+    
+    {/* Logo */}
+    <Link href="/" className="flex items-center gap-2 shrink-0">
+      <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center shadow-sm">
+        <Calculator className="text-zinc-950" size={18} />
+      </div>
+      <span className="text-xl font-bold font-serif tracking-wide text-zinc-100">
+        Re<span className="text-zinc-500">Solve</span>
+      </span>
+    </Link>
 
-          <div>
-            {isLoggedIn ? (
-              <div className="flex items-center gap-6 text-sm font-medium text-zinc-400">
-                <Link href="/metodos" className="hover:text-zinc-100 transition-colors">
-                  Métodos
-                </Link>
-                <Link href="/historial" className="hover:text-zinc-100 transition-colors">
-                  Historial
-                </Link>
-                <button className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-zinc-800 hover:bg-zinc-900 text-zinc-100 transition-all">
-                  <User size={14} /> Perfil
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-4 text-sm font-medium">
-                <button className="text-zinc-400 hover:text-zinc-100 transition-colors">
-                  Regístrate
-                </button>
-                <button className="flex items-center gap-2 bg-zinc-100 text-zinc-950 px-4 py-2 rounded-full hover:bg-zinc-300 transition-colors font-medium">
-                  <LogIn size={16} /> Iniciar Sesión
-                </button>
-              </div>
-            )}
-          </div>
+    {/* Acciones / Navegación */}
+    <div className="flex items-center gap-4 shrink-0">
+      {isLoggedIn ? (
+        <div className="flex items-center gap-6 text-sm font-medium text-zinc-400">
+          <Link href="/metodos" className="hover:text-zinc-100 transition-colors whitespace-nowrap">
+            Métodos
+          </Link>
+          <Link href="/historial" className="hover:text-zinc-100 transition-colors whitespace-nowrap">
+            Historial
+          </Link>
+          <button className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-zinc-800 hover:bg-zinc-900 text-zinc-100 transition-all whitespace-nowrap">
+            <User size={14} /> Perfil
+          </button>
         </div>
-      </nav>
+      ) : (
+        <div className="flex items-center gap-4 text-sm font-medium">
+          <Link
+            href="/registro"
+            className="text-zinc-400 hover:text-zinc-100 transition-colors whitespace-nowrap"
+          >
+            Regístrate
+          </Link>
+          <Link
+            href="/login"
+            className="flex items-center gap-2 bg-zinc-100 text-zinc-950 px-4 py-2 rounded-full hover:bg-zinc-300 transition-colors font-medium whitespace-nowrap"
+          >
+            <LogIn size={16} /> Iniciar Sesión
+          </Link>
+        </div>
+      )}
+    </div>
+  </div>
+</nav>
 
       {/* Contenido Principal */}
       <div className="relative z-10">
@@ -237,10 +246,6 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-zinc-800 bg-zinc-900/60 text-xs font-medium text-zinc-400 mb-8 backdrop-blur-sm shadow-inner">
-              <span className="w-2 h-2 rounded-full bg-emerald-500/80 animate-pulse"></span>
-              Plataforma Universitaria V1.0
-            </div>
 
             <h1 className="text-5xl md:text-7xl font-serif leading-tight tracking-tight text-zinc-100 mb-6 drop-shadow-sm">
               El poder de las matemáticas,<br />
@@ -248,7 +253,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="text-lg text-zinc-400 mb-10 max-w-2xl mx-auto font-light leading-relaxed">
-              Una suite analítica diseñada para estudiantes de informática e ingeniería. 
+              Proyecto analitico diseñado para estudiantes. 
               Resuelve desde cálculo diferencial hasta modelos de investigación de operaciones, 
               potenciado con contexto algorítmico y explicaciones claras.
             </p>
