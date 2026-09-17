@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { printDocumentById } from "@/lib/utils/print-report";
+import { createClient } from "@/lib/supabase/client";
 import {
   Copy,
   Check,
@@ -148,7 +150,8 @@ export default function SimpleInterestView({
 
   // 4. Panel de Exportación y Opciones del Reporte
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
-  const [studentName, setStudentName] = useState("Alexis Martínez");
+  // ✅ CORREGIDO: Empieza vacío, se popula desde Supabase
+  const [studentName, setStudentName] = useState("");
   const [institution, setInstitution] = useState(
     "Facultad de Ingeniería e Informática"
   );
@@ -159,11 +162,26 @@ export default function SimpleInterestView({
     includeStepByStep: true,
     includePeriodicSchedule: true,
     includeSignatures: true,
+    validationSealLabel: "ReSolve Engine",
   });
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [copied, setCopied] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+  // Cargar nombre del usuario desde Supabase (solo cliente)
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        const realName =
+          user.user_metadata?.full_name ||
+          user.email?.split("@")[0] ||
+          "";
+        setStudentName(realName);
+      }
+    });
+  }, []);
 
   const { setAIContext } = useAIContext();
 
@@ -437,7 +455,12 @@ export default function SimpleInterestView({
 
   // Disparar la impresión del reporte
   const handleTriggerPrint = () => {
-    window.print();
+    // Usa el nombre editado por el usuario en el modal, o un fallback neutral
+    const safeName = (studentName?.trim() || "Estudiante").replace(/\s+/g, "_");
+    printDocumentById(
+      "financial-report-print",
+      `Reporte_Interes_Simple_${safeName}`
+    );
   };
 
   // Cargar un ejemplo precargado en la consola
@@ -1253,7 +1276,25 @@ export default function SimpleInterestView({
                           className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-200 outline-none"
                         />
                       </div>
+
+                      <div>
+                        <label className="text-[10px] text-zinc-500 font-mono block mb-1">
+                          Sello de Validación (nombre del sello):
+                        </label>
+                        <input
+                          type="text"
+                          value={pdfOptions.validationSealLabel}
+                          onChange={(e) =>
+                            setPdfOptions({
+                              ...pdfOptions,
+                              validationSealLabel: e.target.value,
+                            })
+                          }
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-200 outline-none"
+                        />
+                      </div>
                     </div>
+
                   )}
                 </div>
 
@@ -1333,104 +1374,98 @@ export default function SimpleInterestView({
         )}
       </AnimatePresence>
 
-      {/* =======================================================================
-          DOCUMENTO DE AUDITORÍA (SOLO VISIBLE AL IMPRIMIR)
-      ======================================================================== */}
+      {/* =====================================================================
+    2. REPORTE EJECUTIVO FORMAL (SOLO VISIBLE AL IMPRIMIR)
+====================================================================== */}
       <div
         id="financial-report-print"
         className="hidden print:block font-sans text-black bg-white"
       >
-        {/* 1. Membrete Ejecutivo */}
+        {/* ============ 1. MEMBRETE OFICIAL (OPCIONAL) ============ */}
         {pdfOptions.includeHeader && (
-          <div className="border-b-2 border-black pb-4 mb-6 flex justify-between items-start">
+          <div className="border-b-2 border-black pb-3 mb-4 flex justify-between items-start print-avoid-break">
             <div>
-              <h1 className="text-2xl font-serif font-bold tracking-tight text-black">
-                Suite Universitaria de Matemáticas Financieras
+              <h1 className="text-xl font-bold tracking-tight text-black">
+                ReSolve · Suite Universitaria
               </h1>
-              <p className="text-sm font-semibold text-gray-700 mt-0.5">
-                Reporte de Auditoría: Modelo de Interés Simple
+              <p className="text-xs font-semibold text-gray-700">
+                Reporte de Auditoría Financiera: Modelo de Interés Simple
               </p>
             </div>
-            <div className="text-right text-xs text-gray-800">
-              <p className="font-bold text-sm text-black">{studentName}</p>
-              <p className="text-gray-600">{institution}</p>
-              <p className="text-gray-500 mt-1 font-mono">
-                {new Date().toLocaleDateString("es-ES", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </p>
+            <div className="text-right text-xs">
+              {studentName?.trim() && (
+                <p className="font-bold text-black">{studentName}</p>
+              )}
+              {institution?.trim() && (
+                <p className="text-gray-600 text-[11px]">{institution}</p>
+              )}
             </div>
           </div>
         )}
 
-        {/* 2. Ficha Técnica de Parámetros */}
+        {/* ============ 2. FICHA TÉCNICA (OPCIONAL) ============ */}
         {pdfOptions.includeParametersTable && (
-          <div className="mb-6">
-            <h2 className="text-xs font-bold uppercase tracking-wider border-b border-gray-400 pb-1 mb-3 text-black">
-              1. Ficha Técnica de Variables y Parámetros
+          <div className="mb-5 print-avoid-break">
+            <h2 className="text-[13px] font-bold uppercase tracking-wider border-b-2 border-black pb-1 mb-2 text-black">
+              1. Ficha Técnica de Parámetros y Condiciones
             </h2>
-            <table className="w-full text-left text-xs border border-gray-400 mb-2">
-              <tbody className="divide-y divide-gray-300">
+            <table className="w-full text-xs border border-gray-500">
+              <tbody className="divide-y divide-gray-400">
                 <tr>
-                  <td className="p-2 font-bold bg-gray-100 w-1/4 border-r border-gray-300">
-                    Incógnita Evaluada:
-                  </td>
-                  <td className="p-2 font-mono font-bold text-black">
-                    {unknownVar}
-                  </td>
-                  <td className="p-2 font-bold bg-gray-100 w-1/4 border-r border-gray-300">
-                    Resultado Obtenido:
-                  </td>
-                  <td className="p-2 font-mono font-bold text-black">
+                  <th className="p-2 font-bold bg-gray-100 w-1/4 border-r border-gray-400 text-black">
+                    Incógnita:
+                  </th>
+                  <td className="p-2 font-mono font-bold text-black">{unknownVar}</td>
+                  <th className="p-2 font-bold bg-gray-100 w-1/4 border-r border-gray-400 text-black">
+                    Resultado:
+                  </th>
+                  <td className="p-2 font-mono font-bold text-black text-sm">
                     {calculation.primaryResultValue}
                   </td>
                 </tr>
                 <tr>
-                  <td className="p-2 font-bold bg-gray-100 border-r border-gray-300">
+                  <th className="p-2 font-bold bg-gray-100 border-r border-gray-400 text-black">
                     Capital Inicial (C):
-                  </td>
+                  </th>
                   <td className="p-2 font-mono">
                     {currency}
                     {calculation.capital.toLocaleString()}
                   </td>
-                  <td className="p-2 font-bold bg-gray-100 border-r border-gray-300">
+                  <th className="p-2 font-bold bg-gray-100 border-r border-gray-400 text-black">
                     Monto Final (M):
-                  </td>
+                  </th>
                   <td className="p-2 font-mono">
                     {currency}
                     {calculation.monto.toLocaleString()}
                   </td>
                 </tr>
                 <tr>
-                  <td className="p-2 font-bold bg-gray-100 border-r border-gray-300">
+                  <th className="p-2 font-bold bg-gray-100 border-r border-gray-400 text-black">
                     Tasa Nominal (i):
-                  </td>
+                  </th>
                   <td className="p-2 font-mono">
                     {calculation.rateValue}% {rateFreq}
                   </td>
-                  <td className="p-2 font-bold bg-gray-100 border-r border-gray-300">
+                  <th className="p-2 font-bold bg-gray-100 border-r border-gray-400 text-black">
                     Plazo o Tiempo (t):
-                  </td>
+                  </th>
                   <td className="p-2 font-mono">
                     {calculation.timeValue} {timeUnit}
                   </td>
                 </tr>
                 <tr>
-                  <td className="p-2 font-bold bg-gray-100 border-r border-gray-300">
-                    Interés Devengado (I):
-                  </td>
+                  <th className="p-2 font-bold bg-gray-100 border-r border-gray-400 text-black">
+                    Interés Generado (I):
+                  </th>
                   <td className="p-2 font-mono">
                     {currency}
                     {calculation.interes.toLocaleString()}
                   </td>
-                  <td className="p-2 font-bold bg-gray-100 border-r border-gray-300">
+                  <th className="p-2 font-bold bg-gray-100 border-r border-gray-400 text-black">
                     Base de Cálculo:
-                  </td>
+                  </th>
                   <td className="p-2 font-mono">
-                    {baseDays} días (
-                    {baseDays === "360" ? "Comercial" : "Exacta o Real"})
+                    {baseDays} días ({baseDays === "360" ? "Comercial" : "Exacta"})
                   </td>
                 </tr>
               </tbody>
@@ -1438,21 +1473,23 @@ export default function SimpleInterestView({
           </div>
         )}
 
-        {/* 3. Desglose Paso a Paso */}
+        {/* ============ 3. DESGLOSE ANALÍTICO (OPCIONAL) ============ */}
         {pdfOptions.includeStepByStep && (
-          <div className="mb-6">
-            <h2 className="text-xs font-bold uppercase tracking-wider border-b border-gray-400 pb-1 mb-3 text-black">
+          <div className="mb-5 print-avoid-break">
+            <h2 className="text-[13px] font-bold uppercase tracking-wider border-b-2 border-black pb-1 mb-2 text-black">
               2. Procedimiento Analítico y Fórmulas Sustituidas
             </h2>
-            <div className="space-y-3 text-xs">
+            <div className="space-y-2 text-xs">
               {calculation.steps.map((st, i) => (
                 <div
                   key={i}
-                  className="p-3 border border-gray-300 rounded bg-gray-50"
+                  className="p-2.5 border border-gray-400 rounded bg-gray-50 print-avoid-break"
                 >
-                  <p className="font-bold text-black text-xs">{st.stage}</p>
-                  <p className="text-gray-700 text-xs my-0.5">{st.desc}</p>
-                  <p className="font-mono font-bold text-black mt-1 bg-white p-2 border border-gray-200 rounded whitespace-pre-line">
+                  <p className="font-bold text-black text-xs mb-0.5">{st.stage}</p>
+                  <p className="text-gray-700 text-[11px] mb-1.5 leading-snug">
+                    {st.desc}
+                  </p>
+                  <p className="font-mono font-bold text-black bg-white p-2 border border-gray-300 rounded whitespace-pre-line text-[11px]">
                     {st.math}
                   </p>
                 </div>
@@ -1461,51 +1498,45 @@ export default function SimpleInterestView({
           </div>
         )}
 
-        {/* 4. Cronograma Periódico */}
+        {/* ============ 4. CRONOGRAMA (OPCIONAL) ============ */}
         {pdfOptions.includePeriodicSchedule && (
-          <div className="mb-6">
-            <h2 className="text-xs font-bold uppercase tracking-wider border-b border-gray-400 pb-1 mb-3 text-black">
-              3. Cronograma Periódico de Acumulación
+          <div
+            className={`mb-5 ${
+              calculation.scheduleRows.length > 15
+                ? "print-break-before"
+                : "print-avoid-break"
+            }`}
+          >
+            <h2 className="text-[13px] font-bold uppercase tracking-wider border-b-2 border-black pb-1 mb-2 text-black">
+              3. Cronograma Periódico de Rendimientos
             </h2>
-            <table className="w-full text-left text-xs border border-gray-400">
-              <thead className="bg-gray-100 border-b border-gray-400 text-black">
+            <table className="w-full text-left text-xs border border-gray-500">
+              <thead className="bg-gray-200 border-b-2 border-gray-500 text-black">
                 <tr>
-                  <th className="p-2 border-r border-gray-300">Periodo</th>
-                  <th className="p-2 border-r border-gray-300">Tiempo</th>
-                  <th className="p-2 border-r border-gray-300">Capital Base</th>
-                  <th className="p-2 border-r border-gray-300">
-                    Interés Periodo
-                  </th>
-                  <th className="p-2 border-r border-gray-300">
-                    Interés Acumulado
-                  </th>
-                  <th className="p-2">Saldo Total (M)</th>
+                  <th className="p-2 border-r border-gray-400 font-bold">Periodo</th>
+                  <th className="p-2 border-r border-gray-400 font-bold">Tiempo</th>
+                  <th className="p-2 border-r border-gray-400 font-bold">Capital Base</th>
+                  <th className="p-2 border-r border-gray-400 font-bold">Interés Periodo</th>
+                  <th className="p-2 border-r border-gray-400 font-bold">Interés Acum.</th>
+                  <th className="p-2 font-bold">Saldo Total (M)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-300">
+              <tbody className="divide-y divide-gray-300 text-[11px]">
                 {calculation.scheduleRows.map((r) => (
                   <tr key={r.period}>
-                    <td className="p-1.5 border-r border-gray-300 font-bold">
-                      #{r.period}
+                    <td className="p-2 border-r border-gray-400 font-bold">#{r.period}</td>
+                    <td className="p-2 border-r border-gray-400">{r.timeLabel}</td>
+                    <td className="p-2 border-r border-gray-400 font-mono">
+                      {currency}{r.initialCapital.toLocaleString()}
                     </td>
-                    <td className="p-1.5 border-r border-gray-300">
-                      {r.timeLabel}
+                    <td className="p-2 border-r border-gray-400 font-mono">
+                      {currency}{r.interestEarned.toLocaleString()}
                     </td>
-                    <td className="p-1.5 border-r border-gray-300 font-mono">
-                      {currency}
-                      {r.initialCapital.toLocaleString()}
+                    <td className="p-2 border-r border-gray-400 font-mono">
+                      {currency}{r.cumulativeInterest.toLocaleString()}
                     </td>
-                    <td className="p-1.5 border-r border-gray-300 font-mono">
-                      {currency}
-                      {r.interestEarned.toLocaleString()}
-                    </td>
-                    <td className="p-1.5 border-r border-gray-300 font-mono">
-                      {currency}
-                      {r.cumulativeInterest.toLocaleString()}
-                    </td>
-                    <td className="p-1.5 font-bold font-mono text-black">
-                      {currency}
-                      {r.totalBalance.toLocaleString()}
+                    <td className="p-2 font-bold font-mono text-black">
+                      {currency}{r.totalBalance.toLocaleString()}
                     </td>
                   </tr>
                 ))}
@@ -1514,24 +1545,35 @@ export default function SimpleInterestView({
           </div>
         )}
 
-        {/* 5. Firmas */}
+        {/* ============ 5. FIRMAS (OPCIONAL) ============ */}
         {pdfOptions.includeSignatures && (
-          <div className="pt-10 mt-8 border-t border-gray-300 grid grid-cols-2 gap-12 text-center text-xs">
-            <div>
-              <div className="border-b border-black w-48 mx-auto mb-1"></div>
-              <p className="font-bold text-black">{studentName}</p>
-              <p className="text-gray-600">
-                Firma del Estudiante o Analista
-              </p>
-            </div>
-            <div>
-              <div className="border-b border-black w-48 mx-auto mb-1"></div>
-              <p className="font-bold text-black">
-                Motor de Validación Financiera
-              </p>
-              <p className="text-gray-600">
-                Sello de Validación y Auditoría
-              </p>
+          <div className="pt-20 mt-10 border-t border-gray-400 print-avoid-break text-center">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-16 text-xs">
+              {/* Firma del estudiante / analista */}
+              <div className="flex flex-col items-center text-center w-64">
+                <div className="border-b-2 border-black w-full mb-1" style={{ width: "100%" }}></div>
+                {studentName?.trim() ? (
+                  <p className="font-bold text-black mt-2 whitespace-nowrap overflow-x-auto">
+                    {studentName}
+                  </p>
+                ) : (
+                  <p className="font-bold text-black mt-2">&nbsp;</p>
+                )}
+                <p className="text-gray-600 text-[11px] mt-1">
+                  Firma del Analista / Estudiante
+                </p>
+              </div>
+
+              {/* Sello de validación / auditoría */}
+              <div className="flex flex-col items-center text-center w-64">
+                <div className="border-b-2 border-black w-full mb-1" style={{ width: "100%" }}></div>
+                <p className="font-bold text-black mt-2">
+                  {pdfOptions.validationSealLabel?.trim() || "ReSolve Engine"}
+                </p>
+                <p className="text-gray-600 text-[11px] mt-1">
+                  Sello de Validación y Auditoría
+                </p>
+              </div>
             </div>
           </div>
         )}

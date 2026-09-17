@@ -170,10 +170,6 @@
   }
 }
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 html {
   /* Escala fluida: 14px en móvil, 16px en laptop, 18px en 2K+ */
   font-size: clamp(14px, 0.85vw + 8px, 18px);
@@ -184,56 +180,65 @@ body {
 }
 
 /* =============================================================================
-   AISLAMIENTO DE IMPRESIÓN Y EXPORTACIÓN A PDF (@media print)
+   REGLAS DE IMPRESIÓN PROFESIONAL (@media print)
 ============================================================================= */
 @media print {
-  /* 1. Resetear el layout de la pantalla para permitir paginación natural */
+  /* 1. Fondo blanco puro y texto negro nítido */
   html, body {
-    height: auto !important;
-    min-height: auto !important;
-    overflow: visible !important;
     background: #ffffff !important;
     color: #000000 !important;
-    font-size: 11pt !important;
-  }
-
-  /* 2. Ocultar absolutamente toda la interfaz web del sistema */
-  body * {
-    visibility: hidden !important;
-  }
-
-  /* 3. Hacer visible ÚNICA y exclusivamente el reporte financiero */
-  #financial-report-print,
-  #financial-report-print * {
-    visibility: visible !important;
-  }
-
-  /* 4. Posicionar el documento en el origen de la hoja de impresión */
-  #financial-report-print {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
+    font-size: 10pt !important;
     margin: 0 !important;
-    padding: 15mm !important;
-    display: block !important;
-    background: #ffffff !important;
-    color: #000000 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
   }
 
-  /* 5. Forzar a que la barra lateral, modales y botones no existan en el PDF */
-  aside, nav, header, button, .print\:hidden {
+  /* 2. Ocultar al 100% la consola interactiva, barra lateral, botones y modales */
+  .print\:hidden,
+  aside,
+  nav,
+  header,
+  button,
+  [role="dialog"] {
     display: none !important;
   }
 
-  /* 6. Evitar que las tablas se corten a mitad de un renglón */
-  table, tr, td, th {
+  /* 3. El reporte ocupa el flujo natural de la hoja */
+  #financial-report-print {
+    display: block !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* 4. Tablas compactas con bordes nítidos y sin cortes a mitad de renglón */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Evita que bloques de fórmulas o firmas queden huérfanas */
+  .print-avoid-break {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
   @page {
     size: letter portrait;
-    margin: 10mm;
+    margin: 12mm 15mm;
   }
 }

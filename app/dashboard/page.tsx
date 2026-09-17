@@ -57,16 +57,16 @@ import InferencesView from "@/components/modules/logic/inferences-view";
 
 // --- MATEMÁTICAS III: MATEMÁTICAS FINANCIERAS (FUTURAS) ---
 import SimpleInterestView from "@/components/modules/finance/simple-interest-view";
-// import CompoundInterestView from "@/components/modules/finance/compound-interest-view";
-// import AnnuitiesView from "@/components/modules/finance/annuities-view";
-// import AmortizationView from "@/components/modules/finance/amortization-view";
+import CompoundInterestView from "@/components/modules/finance/compound-interest-view";
+import AnnuitiesView from "@/components/modules/finance/annuities-view";
+import AmortizationView from "@/components/modules/finance/amortization-view";
 
 // --- MATEMÁTICAS IV: MATEMÁTICAS COMPUTACIONALES (FUTURAS) ---
-// import MatricesView from "@/components/modules/computational/matrices-view";
-// import DeterminantsView from "@/components/modules/computational/determinants-view";
-// import GaussJordanView from "@/components/modules/computational/gauss-jordan-view";
-// import NumericalRootsView from "@/components/modules/computational/numerical-roots-view";
-// import InterpolationView from "@/components/modules/computational/interpolation-view";
+import MatricesView from "@/components/modules/computational/matrices-view";
+import DeterminantsView from "@/components/modules/computational/determinants-view";
+import GaussJordanView from "@/components/modules/computational/gauss-jordan-view";
+import NumericalRootsView from "@/components/modules/computational/numerical-roots-view";
+import InterpolationView from "@/components/modules/computational/interpolation-view";
 // import ErrorTheoryView from "@/components/modules/computational/error-theory-view";
 
 // --- MATEMÁTICAS V: PROBABILIDAD Y ESTADÍSTICA (FUTURAS) ---
@@ -283,7 +283,7 @@ function DashboardContent() {
   );
 
   return (
-    <div className="relative flex h-screen w-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans select-none">
+    <div className="relative flex h-screen w-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans select-none print:h-auto print:w-full print:overflow-visible print:bg-white print:text-black">
       {/* Fondo ambiental */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(63,63,70,0.25),transparent_50%),radial-gradient(circle_at_80%_90%,rgba(63,63,70,0.2),transparent_50%)]" />
@@ -292,7 +292,7 @@ function DashboardContent() {
 
       {/* 1. MENÚ LATERAL IZQUIERDO */}
       <aside
-        className={`relative z-20 h-full border-r border-zinc-800/60 bg-zinc-950/60 backdrop-blur-xl flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0 ${
+        className={`relative z-20 h-full border-r border-zinc-800/60 bg-zinc-950/60 backdrop-blur-xl flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0 print:hidden ${
           isSidebarOpen ? "w-72" : "w-0 border-r-0 overflow-hidden"
         }`}
       >
@@ -310,7 +310,7 @@ function DashboardContent() {
                   Re<span className="text-zinc-500">Solve</span>
                 </h1>
                 <p className="text-[10px] text-zinc-500 tracking-[0.2em] uppercase font-mono mt-2">
-                  Suite Universitaria
+                  
                 </p>
               </div>
               <button
@@ -458,7 +458,7 @@ function DashboardContent() {
 
       {/* 2. ÁREA CENTRAL */}
       <main className="relative z-10 flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <header className="px-6 lg:px-8 py-5 border-b border-zinc-800/60 bg-zinc-950/40 backdrop-blur-xl flex flex-col gap-4 shrink-0">
+        <header className="px-6 lg:px-8 py-5 border-b border-zinc-800/60 bg-zinc-950/40 backdrop-blur-xl flex flex-col gap-4 shrink-0 print:hidden">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               {!isSidebarOpen && (
@@ -599,33 +599,24 @@ function DashboardContent() {
               ) : activeModule === "mat3" && subTopic === "interes-simple" ? (
                  <SimpleInterestView viewMode={viewMode} initialExpression={initialExpr} /> 
               ) : activeModule === "mat3" && subTopic === "interes-compuesto" ? (
-                /* <CompoundInterestView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Interés Compuesto", "Capitalización periódica, tasa efectiva, tasa nominal, valor presente y valor futuro")
+                <CompoundInterestView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat3" && subTopic === "anualidades" ? (
-                /* <AnnuitiesView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Anualidades y Rentas", "Anualidades ordinarias, anticipadas, diferidas, valor actual y valor futuro")
+                <AnnuitiesView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat3" && subTopic === "amortizacion" ? (
-                /* <AmortizationView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Tablas de Amortización", "Generador de calendarios de amortización con cuota, interés, abono a capital y saldo insoluto")
-
+                <AmortizationView viewMode={viewMode} initialExpression={initialExpr} />
               /* ===============================================================
                   RAMA 4: MATEMÁTICAS IV (COMPUTACIONALES / NUMÉRICAS)
               ================================================================ */
               ) : activeModule === "mat4" && subTopic === "matrices" ? (
-                /* <MatricesView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Álgebra Matricial", "Suma, resta, multiplicación de matrices, transposición y cálculo de matriz inversa")
+                <MatricesView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat4" && subTopic === "determinantes" ? (
-                /* <DeterminantsView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Determinantes", "Cálculo por Cofactores, Sarrus y Regla de Cramer para matrices cuadradas")
+                <DeterminantsView viewMode={viewMode} initialExpression={initialExpr} /> 
               ) : activeModule === "mat4" && subTopic === "sistemas-gauss" ? (
-                /* <GaussJordanView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Sistemas por Gauss y Gauss-Jordan", "Matriz aumentada paso a paso con operaciones elementales de fila")
+                <GaussJordanView viewMode={viewMode} initialExpression={initialExpr} /> 
               ) : activeModule === "mat4" && subTopic === "raices-metodos" ? (
-                /* <NumericalRootsView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Métodos Numéricos para Raíces", "Aproximación iterativa por Bisección, Newton-Raphson, Secante y Punto Fijo")
+                <NumericalRootsView viewMode={viewMode} initialExpression={initialExpr} /> 
               ) : activeModule === "mat4" && subTopic === "interpolacion" ? (
-                /* <InterpolationView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Interpolación Numérica", "Polinomios de interpolación de Lagrange y diferencias divididas de Newton")
+                <InterpolationView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat4" && subTopic === "errores" ? (
                 /* <ErrorTheoryView viewMode={viewMode} initialExpression={initialExpr} /> */
                 renderPlaceholder("Teoría de Errores y Precisión", "Error absoluto, error relativo, error porcentual, redondeo y truncamiento computacional")
@@ -691,7 +682,7 @@ function DashboardContent() {
           isAiMaximized
             ? "fixed inset-4 lg:inset-8 z-50 max-w-6xl mx-auto rounded-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl shadow-2xl p-6 lg:p-8 overflow-hidden"
             : "relative z-10 border-l border-zinc-800/60 p-5 hidden xl:flex h-full bg-zinc-950/40 backdrop-blur-xl shrink-0"
-        }`}
+        }print:hidden`}
       >
         {!isAiMaximized && (
           <div
