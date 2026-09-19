@@ -1,30 +1,21 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Copy,
-  Check,
-  History,
-  Trash2,
-  CornerDownLeft,
-  BookOpen,
-  ListOrdered,
-  Sparkles,
   HelpCircle,
   X,
-  Activity,
   ChevronRight,
-  Info,
-  Download,
   Sliders,
   Table as TableIcon,
-  TrendingUp,
-  RefreshCw,
-  Plus,
-  Minus,
+  RotateCcw,
+  Sparkles,
   FunctionSquare,
-  Terminal
+  Terminal,
+  Activity,
+  Maximize2,
+  Layers,
+  CircleDot
 } from "lucide-react";
 import { useAIContext } from "@/lib/context/ai-context";
 import {
@@ -33,41 +24,35 @@ import {
   deleteUserHistory,
   type HistoryItem,
 } from "@/lib/supabase/history";
+import MathGrapher, {
+  type GraphPoint,
+  type GuideLine,
+  type LegendItem,
+} from "@/components/shared/math-grapher";
 
-// --- Evaluador Matemático Robusto con Soporte para Gauss y Precedencia Negativa ---
+// --- Evaluador Matemático Robusto con Soporte de Parámetros y Operaciones Compuestas ---
 function evaluateMath(expr: string, x: number, a = 1, b = 1, c = 0): number {
   try {
     let s = expr.toLowerCase().replace(/\s+/g, "");
     if (!s) return NaN;
 
-    // Alias directo
     if (s === "gauss" || s.includes("campana")) {
       s = "exp(-x^2)";
     }
 
-    // 1. Convertir e^(...) o e^x a exp(...)
+    // Separación de multiplicaciones implícitas
+    s = s.replace(/([0-9])([xabc(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "$1*$2");
+    s = s.replace(/([abc])([x(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "$1*$2");
+    s = s.replace(/([x])([abc(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "$1*$2");
+    s = s.replace(/\)([\d\w(]|sin|cos|tan|exp|ln|sqrt|abs)/g, ")*$1");
     s = s.replace(/e\s*\^\s*\(([^()]+)\)/g, "exp($1)");
     s = s.replace(/e\s*\^\s*([a-zA-Z0-9_.]+)/g, "exp($1)");
-
-    // 2. Multiplicación implícita (2x -> 2*x, 3a -> 3*a, 5sin -> 5*sin, 2( -> 2*()
-    s = s.replace(/([0-9])([xabc(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "$1*$2");
-    s = s.replace(/\)([\d\w(]|sin|cos|tan|exp|ln|sqrt|abs)/g, ")*$1");
-    s = s.replace(/([xabc])([0-9(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "$1*$2");
-
-    // 3. CORRECCIÓN CRÍTICA: Envolver el signo negativo antes de potencias (-x^2 -> -(x^2))
-    // Evita el SyntaxError fatal de JavaScript con operadores unarios y '**'
     s = s.replace(
       /(^|[+\-*/,(])\s*-\s*([a-zA-Z0-9_.]+|\([^()]+\))\s*\^\s*([+-]?[a-zA-Z0-9_.]+|\([^()]+\))/g,
       "$1-(($2)^($3))"
     );
-
-    // 4. Exponentes negativos: x^-2 -> x^(-2)
     s = s.replace(/\^\s*-\s*([a-zA-Z0-9_.]+|\([^()]+\))/g, "^(-($1))");
-
-    // 5. Potencias ^ a **
     s = s.replace(/\^/g, "**");
-
-    // 6. Funciones estándar de Math
     s = s.replace(/sqrt/g, "Math.sqrt");
     s = s.replace(/sin/g, "Math.sin");
     s = s.replace(/cos/g, "Math.cos");
@@ -88,7 +73,17 @@ function evaluateMath(expr: string, x: number, a = 1, b = 1, c = 0): number {
   }
 }
 
-// Define el tipo y la lista arriba del componente (nivel superior del archivo)
+// Inyector numérico para MathGrapher (reemplaza variables a, b, c por constantes)
+function prepareExpressionForGrapher(expr: string, a: number, b: number, c: number): string {
+  if (!expr.trim()) return "";
+  let s = expr.replace(/([0-9])([abc])/g, "$1*$2");
+  s = s.replace(/([abc])([x])/g, "$1*$2");
+  s = s.replace(/\ba\b/g, `(${a})`);
+  s = s.replace(/\bb\b/g, `(${b})`);
+  s = s.replace(/\bc\b/g, `(${c})`);
+  return s;
+}
+
 interface ModuleExample {
   category: string;
   eq: string;
@@ -98,11 +93,11 @@ interface ModuleExample {
 const MODULE_EXAMPLES: ModuleExample[] = [
   { category: "Campana de Gauss", eq: "exp(-x^2)", desc: "Distribución normal estándar simétrica par" },
   { category: "Cúbica con Extremos", eq: "x^3 - 3*x", desc: "Máximo y mínimo local con puntos de inflexión" },
-  { category: "Parábola con Parámetros", eq: "a*x^2 + b*x + c", desc: "Usa los deslizadores a, b, c para variar su apertura y vértice" },
-  { category: "Trigonométrica / Senoidal", eq: "a * sin(b * x)", desc: "Ajusta amplitud (a) y frecuencia angular (b)" },
-  { category: "Racional con Asíntotas", eq: "1 / (x - 2)", desc: "Discontinuidad y asíntota vertical en x = 2" },
+  { category: "Parábola Parametrizada", eq: "a*x^2 + b*x + c", desc: "Usa los deslizadores a, b, c para variar su apertura y vértice" },
+  { category: "Trigonométrica Senoidal", eq: "a * sin(b * x)", desc: "Ajusta amplitud (a) y frecuencia angular (b)" },
+  { category: "Racional con Asíntota", eq: "1 / (x - 2)", desc: "Discontinuidad y asíntota vertical en x = 2" },
   { category: "Amortiguación Física", eq: "exp(-0.2*x) * cos(2*x)", desc: "Oscilador armónico amortiguado en ingeniería" },
-  { category: "Logaritmo Natural", eq: "ln(x)", desc: "Dominio restringido x > 0 y crecimiento suave" },
+  { category: "Logaritmo Natural", eq: "ln(x)", desc: "Dominio restringido x > 0 y crecimiento monotónico" },
   { category: "Raíz Cuadrada", eq: "sqrt(x + 4)", desc: "Dominio x ≥ -4 con rama real principal" },
 ];
 
@@ -113,62 +108,49 @@ export default function FunctionsView({
   viewMode: "calc" | "steps" | "theory";
   initialExpression?: string;
 }) {
-  const [funcInput, setFuncInput] = useState<string>(
-    initialExpression || "exp(-x^2)"
-  );
+  // Estado de las funciones
+  const [funcInput, setFuncInput] = useState<string>(initialExpression || "exp(-x^2)");
   const [compareFunc, setCompareFunc] = useState<string>("");
   const [showCompare, setShowCompare] = useState<boolean>(false);
 
-  // Parámetros dinámicos
+  // Moduladores de Parámetros (a, b, c)
   const [paramA, setParamA] = useState<number>(1);
   const [paramB, setParamB] = useState<number>(1);
   const [paramC, setParamC] = useState<number>(0);
   const [showSliders, setShowSliders] = useState<boolean>(false);
 
-  // Herramientas de cálculo: Tangente y Área
+  // Moduladores de Tangente e Integración
   const [tangentX, setTangentX] = useState<number>(0);
   const [showTangent, setShowTangent] = useState<boolean>(true);
   const [integralA, setIntegralA] = useState<number>(-1.5);
   const [integralB, setIntegralB] = useState<number>(1.5);
   const [showIntegral, setShowIntegral] = useState<boolean>(true);
 
-  // Marcadores y Vistas
+  // Moduladores de Visibilidad de Puntos
   const [showRoots, setShowRoots] = useState<boolean>(true);
   const [showExtremes, setShowExtremes] = useState<boolean>(true);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [copied, setCopied] = useState(false);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"graph" | "table">("graph");
 
-  // Tabla
+  // Moduladores de Tabla
+  const [activeTab, setActiveTab] = useState<"graph" | "table">("graph");
   const [tableMin, setTableMin] = useState<number>(-3);
   const [tableMax, setTableMax] = useState<number>(3);
   const [tableStep, setTableStep] = useState<number>(0.5);
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  // Viewport Canvas
-  const [viewState, setViewState] = useState({
-    centerX: 0,
-    centerY: 0,
-    scale: 65, // Escala inicial óptima
-  });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [mouseCoords, setMouseCoords] = useState<{ x: number; y: number; fVal: number | null } | null>(null);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [, setHistory] = useState<HistoryItem[]>([]);
 
   const { setAIContext, injectedExpression, clearInjectedExpression } = useAIContext();
 
   // ---------------------------------------------------------------------------
-  // ANÁLISIS NUMÉRICO DE LA FUNCIÓN
+  // ANÁLISIS NUMÉRICO DE ALTA RESOLUCIÓN
   // ---------------------------------------------------------------------------
   const analysis = useMemo(() => {
     const f = (x: number) => evaluateMath(funcInput, x, paramA, paramB, paramC);
 
     const yIntercept = f(0);
+    const yAtTangent = f(tangentX);
 
-    // Búsqueda de Raíces
+    // Detección de raíces por bisección
     const roots: number[] = [];
     const step = 0.08;
     let prev = f(-15);
@@ -176,7 +158,8 @@ export default function FunctionsView({
       const curr = f(x);
       if (!isNaN(prev) && !isNaN(curr)) {
         if (prev * curr <= 0) {
-          let left = x - step, right = x;
+          let left = x - step;
+          let right = x;
           for (let k = 0; k < 12; k++) {
             const mid = (left + right) / 2;
             if (f(left) * f(mid) <= 0) right = mid;
@@ -191,7 +174,7 @@ export default function FunctionsView({
       prev = curr;
     }
 
-    // Extremos Locales (Máximos y Mínimos)
+    // Detección de máximos y mínimos (cambio de signo en derivada numérica)
     const extremes: { x: number; y: number; type: "Máximo" | "Mínimo" }[] = [];
     const h = 0.001;
     const df = (x: number) => (f(x + h) - f(x - h)) / (2 * h);
@@ -208,8 +191,9 @@ export default function FunctionsView({
       prevD = currD;
     }
 
-    // Simetría
-    const t1 = f(2), t2 = f(-2);
+    // Análisis de simetría
+    const t1 = f(2);
+    const t2 = f(-2);
     let symmetry = "Sin simetría";
     if (!isNaN(t1) && !isNaN(t2)) {
       if (Math.abs(t1 - t2) < 1e-4) symmetry = "Par: f(-x) = f(x) (Simetría Eje Y)";
@@ -218,12 +202,15 @@ export default function FunctionsView({
 
     const slopeAtX0 = df(tangentX);
 
-    // Integral de Riemann
+    // Integración numérica mediante regla del trapecio
     let integralVal = 0;
-    const nTraps = 120;
-    const dInt = (integralB - integralA) / nTraps;
+    const nTraps = 150;
+    const lowLim = Math.min(integralA, integralB);
+    const highLim = Math.max(integralA, integralB);
+    const dInt = (highLim - lowLim) / nTraps;
+
     for (let i = 0; i < nTraps; i++) {
-      const xA = integralA + i * dInt;
+      const xA = lowLim + i * dInt;
       const xB = xA + dInt;
       const yA = f(xA);
       const yB = f(xB);
@@ -232,8 +219,11 @@ export default function FunctionsView({
       }
     }
 
+    if (integralA > integralB) integralVal = -integralVal;
+
     return {
       yIntercept: !isNaN(yIntercept) ? Number(yIntercept.toFixed(3)) : null,
+      yAtTangent: !isNaN(yAtTangent) ? Number(yAtTangent.toFixed(3)) : null,
       roots,
       extremes,
       symmetry,
@@ -242,18 +232,126 @@ export default function FunctionsView({
     };
   }, [funcInput, paramA, paramB, paramC, tangentX, integralA, integralB]);
 
-  // Sincronización con ReSolve AI
+  // ---------------------------------------------------------------------------
+  // ELEMENTOS PINTADOS EN MathGrapher (PUNTOS, GUÍAS Y LEYENDA)
+  // ---------------------------------------------------------------------------
+  const grapherPoints = useMemo<GraphPoint[]>(() => {
+    const pts: GraphPoint[] = [];
+
+    // 1. Raíces
+    if (showRoots) {
+      analysis.roots.forEach((r) => {
+        pts.push({
+          x: r,
+          y: 0,
+          label: `Raíz (${r}, 0)`,
+          color: "#10b981",
+          type: "solid",
+        });
+      });
+    }
+
+    // 2. Extremos Relativos
+    if (showExtremes) {
+      analysis.extremes.forEach((e) => {
+        pts.push({
+          x: e.x,
+          y: e.y,
+          label: `${e.type} (${e.x}, ${e.y})`,
+          color: "#06b6d4",
+          type: "solid",
+        });
+      });
+    }
+
+    // 3. Punto de Tangencia P0(x0, y0)
+    if (showTangent && analysis.yAtTangent !== null) {
+      pts.push({
+        x: tangentX,
+        y: analysis.yAtTangent,
+        label: `P₀ (${tangentX}, ${analysis.yAtTangent})`,
+        color: "#f59e0b",
+        type: "solid",
+      });
+    }
+
+    return pts;
+  }, [analysis, showRoots, showExtremes, showTangent, tangentX]);
+
+  // Líneas Guía Verticales en el Canvas
+  const grapherGuideLines = useMemo<GuideLine[]>(() => {
+    const lines: GuideLine[] = [];
+
+    // Guía del punto de tangencia
+    if (showTangent) {
+      lines.push({
+        type: "vertical",
+        value: tangentX,
+        color: "rgba(245, 158, 11, 0.45)",
+      });
+    }
+
+    // Guías de los límites de integración
+    if (showIntegral) {
+      lines.push(
+        {
+          type: "vertical",
+          value: integralA,
+          color: "rgba(16, 185, 129, 0.4)",
+        },
+        {
+          type: "vertical",
+          value: integralB,
+          color: "rgba(16, 185, 129, 0.4)",
+        }
+      );
+    }
+
+    return lines;
+  }, [showTangent, tangentX, showIntegral, integralA, integralB]);
+
+  const grapherLegend = useMemo<LegendItem[]>(() => {
+    const items: LegendItem[] = [
+      { label: `f(x) = ${funcInput}`, color: "#38bdf8", shape: "line" },
+    ];
+    if (showCompare && compareFunc.trim()) {
+      items.push({ label: `g(x) = ${compareFunc}`, color: "#f43f5e", shape: "line" });
+    }
+    if (showTangent && analysis.slopeAtX0 !== null) {
+      items.push({ label: `Tangente (m = ${analysis.slopeAtX0})`, color: "#f59e0b", shape: "line" });
+    }
+    if (showIntegral) {
+      items.push({ label: `Área [${integralA}, ${integralB}] = ${analysis.integralVal} u²`, color: "#34d399", shape: "area" });
+    }
+    if (showRoots && analysis.roots.length > 0) {
+      items.push({ label: `Raíces (${analysis.roots.length})`, color: "#10b981", shape: "dot" });
+    }
+    if (showExtremes && analysis.extremes.length > 0) {
+      items.push({ label: `Extremos (${analysis.extremes.length})`, color: "#06b6d4", shape: "dot" });
+    }
+    return items;
+  }, [funcInput, compareFunc, showCompare, showTangent, analysis, showIntegral, integralA, integralB, showRoots, showExtremes]);
+
+  // Expresiones evaluadas con parámetros resueltos
+  const grapherMainExpression = useMemo(() => {
+    return prepareExpressionForGrapher(funcInput, paramA, paramB, paramC);
+  }, [funcInput, paramA, paramB, paramC]);
+
+  const grapherCompareExpression = useMemo(() => {
+    return prepareExpressionForGrapher(compareFunc, paramA, paramB, paramC);
+  }, [compareFunc, paramA, paramB, paramC]);
+
+  // Sincronización con el canal global ReSolve AI
   useEffect(() => {
     setAIContext({
       module: "Matemáticas I",
       subtopic: "Graficador y Funciones",
       expression: `f(x) = ${funcInput}`,
-      result: `Intersección Y: ${analysis.yIntercept}, Simetría: ${analysis.symmetry}, Extremos: ${analysis.extremes.length}`,
-      details: `f'(${tangentX}) = ${analysis.slopeAtX0}. Integral [${integralA}, ${integralB}] = ${analysis.integralVal} u²`,
+      result: `f(0) = ${analysis.yIntercept}, Simetría: ${analysis.symmetry}, Extremos: ${analysis.extremes.length}`,
+      details: `Pendiente en x₀=${tangentX}: m=${analysis.slopeAtX0}. Integral [${integralA}, ${integralB}] = ${analysis.integralVal} u²`,
     });
   }, [funcInput, analysis, tangentX, integralA, integralB, setAIContext]);
 
-  // Inyección inversa
   useEffect(() => {
     if (injectedExpression) {
       setFuncInput(injectedExpression);
@@ -261,401 +359,61 @@ export default function FunctionsView({
     }
   }, [injectedExpression, clearInjectedExpression]);
 
-  // Historial
   useEffect(() => {
     fetchUserHistory("mat1", "funciones").then((data) => setHistory(data));
   }, []);
 
   const saveCalculation = async () => {
     if (!funcInput.trim()) return;
-    const summary = `Y-Int: ${analysis.yIntercept} ; Simetría: ${analysis.symmetry}`;
+    const summary = `f(0)=${analysis.yIntercept} | Simetría: ${analysis.symmetry} | Extremos: ${analysis.extremes.length}`;
     await saveUserCalculation("mat1", "funciones", `f(x) = ${funcInput}`, summary);
     const refreshed = await fetchUserHistory("mat1", "funciones");
     setHistory(refreshed);
-  };
-
-  const clearHistory = async () => {
-    await deleteUserHistory("funciones");
-    setHistory([]);
-  };
-
-  // ---------------------------------------------------------------------------
-  // DIBUJO EN CANVAS
-  // ---------------------------------------------------------------------------
-  const drawGraph = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const width = canvas.width;
-    const height = canvas.height;
-    const { centerX, centerY, scale } = viewState;
-
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "#09090b";
-    ctx.fillRect(0, 0, width, height);
-
-    const originX = width / 2 + centerX * scale;
-    const originY = height / 2 - centerY * scale;
-
-    // Cuadrícula
-    const stepUnit = scale > 90 ? 0.5 : scale < 30 ? 5 : 1;
-    const startX = Math.floor((-originX) / (scale * stepUnit)) * stepUnit;
-    const endX = Math.ceil((width - originX) / (scale * stepUnit)) * stepUnit;
-    const startY = Math.floor((originY - height) / (scale * stepUnit)) * stepUnit;
-    const endY = Math.ceil(originY / (scale * stepUnit)) * stepUnit;
-
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "#18181b";
-    for (let u = startX; u <= endX; u += stepUnit) {
-      const px = originX + u * scale;
-      ctx.beginPath();
-      ctx.moveTo(px, 0);
-      ctx.lineTo(px, height);
-      ctx.stroke();
-    }
-    for (let u = startY; u <= endY; u += stepUnit) {
-      const py = originY - u * scale;
-      ctx.beginPath();
-      ctx.moveTo(0, py);
-      ctx.lineTo(width, py);
-      ctx.stroke();
-    }
-
-    // Ejes Principales
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = "#3f3f46";
-    ctx.beginPath();
-    ctx.moveTo(0, originY);
-    ctx.lineTo(width, originY);
-    ctx.moveTo(originX, 0);
-    ctx.lineTo(originX, height);
-    ctx.stroke();
-
-    // Números
-    ctx.fillStyle = "#71717a";
-    ctx.font = "10px monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-
-    for (let u = startX; u <= endX; u += stepUnit) {
-      if (Math.abs(u) > 1e-6) {
-        ctx.fillText(Number(u.toFixed(2)).toString(), originX + u * scale, originY + 4);
-      }
-    }
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
-    for (let u = startY; u <= endY; u += stepUnit) {
-      if (Math.abs(u) > 1e-6) {
-        ctx.fillText(Number(u.toFixed(2)).toString(), originX - 6, originY - u * scale);
-      }
-    }
-
-    // Área Integral
-    if (showIntegral && integralA < integralB) {
-      ctx.fillStyle = "rgba(16, 185, 129, 0.18)";
-      ctx.beginPath();
-      const pxa = originX + integralA * scale;
-      ctx.moveTo(pxa, originY);
-
-      for (let px = pxa; px <= originX + integralB * scale; px += 2) {
-        const xVal = (px - originX) / scale;
-        const yVal = evaluateMath(funcInput, xVal, paramA, paramB, paramC);
-        if (!isNaN(yVal)) {
-          ctx.lineTo(px, originY - yVal * scale);
-        }
-      }
-      ctx.lineTo(originX + integralB * scale, originY);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    // Trazo de f(x)
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = "#38bdf8"; // Sky-400
-    ctx.beginPath();
-    let isDrawing = false;
-
-    for (let px = 0; px <= width; px += 2) {
-      const xVal = (px - originX) / scale;
-      const yVal = evaluateMath(funcInput, xVal, paramA, paramB, paramC);
-
-      if (!isNaN(yVal) && Math.abs(yVal) < 800) {
-        const py = originY - yVal * scale;
-        if (!isDrawing) {
-          ctx.moveTo(px, py);
-          isDrawing = true;
-        } else {
-          ctx.lineTo(px, py);
-        }
-      } else {
-        isDrawing = false;
-      }
-    }
-    ctx.stroke();
-
-    // Trazo de g(x)
-    if (showCompare && compareFunc.trim()) {
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "#f43f5e";
-      ctx.beginPath();
-      let isDrawingG = false;
-
-      for (let px = 0; px <= width; px += 2) {
-        const xVal = (px - originX) / scale;
-        const yVal = evaluateMath(compareFunc, xVal);
-
-        if (!isNaN(yVal) && Math.abs(yVal) < 800) {
-          const py = originY - yVal * scale;
-          if (!isDrawingG) {
-            ctx.moveTo(px, py);
-            isDrawingG = true;
-          } else {
-            ctx.lineTo(px, py);
-          }
-        } else {
-          isDrawingG = false;
-        }
-      }
-      ctx.stroke();
-    }
-
-    // Tangente en x₀
-    if (showTangent && analysis.slopeAtX0 !== null) {
-      const fX0 = evaluateMath(funcInput, tangentX, paramA, paramB, paramC);
-      if (!isNaN(fX0)) {
-        const m = analysis.slopeAtX0;
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = "#f59e0b";
-        ctx.beginPath();
-
-        const xStart = (0 - originX) / scale;
-        const xEnd = (width - originX) / scale;
-        const yStart = fX0 + m * (xStart - tangentX);
-        const yEnd = fX0 + m * (xEnd - tangentX);
-
-        ctx.moveTo(0, originY - yStart * scale);
-        ctx.lineTo(width, originY - yEnd * scale);
-        ctx.stroke();
-
-        ctx.fillStyle = "#f59e0b";
-        ctx.beginPath();
-        ctx.arc(originX + tangentX * scale, originY - fX0 * scale, 5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    // Raíces (Verde)
-    if (showRoots) {
-      ctx.fillStyle = "#10b981";
-      analysis.roots.forEach((rx) => {
-        const px = originX + rx * scale;
-        if (px >= 0 && px <= width) {
-          ctx.beginPath();
-          ctx.arc(px, originY, 4.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      });
-    }
-
-    // Extremos (Cian)
-    if (showExtremes) {
-      ctx.fillStyle = "#06b6d4";
-      analysis.extremes.forEach((ext) => {
-        const px = originX + ext.x * scale;
-        const py = originY - ext.y * scale;
-        if (px >= 0 && px <= width && py >= 0 && py <= height) {
-          ctx.beginPath();
-          ctx.arc(px, py, 5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      });
-    }
-  }, [viewState, funcInput, compareFunc, showCompare, paramA, paramB, paramC, showTangent, tangentX, showIntegral, integralA, integralB, showRoots, showExtremes, analysis]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (canvasRef.current && containerRef.current) {
-        canvasRef.current.width = containerRef.current.clientWidth;
-        canvasRef.current.height = containerRef.current.clientHeight;
-        drawGraph();
-      }
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [drawGraph]);
-
-  useEffect(() => {
-    drawGraph();
-  }, [drawGraph]);
-
-  const onMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDragging(true);
-    setDragStart({ x: e.clientX, y: e.clientY });
-  };
-
-  const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const mousePxX = e.clientX - rect.left;
-    const mousePxY = e.clientY - rect.top;
-
-    const originX = canvas.width / 2 + viewState.centerX * viewState.scale;
-    const originY = canvas.height / 2 - viewState.centerY * viewState.scale;
-
-    const xMath = Number(((mousePxX - originX) / viewState.scale).toFixed(2));
-    const yMath = evaluateMath(funcInput, xMath, paramA, paramB, paramC);
-
-    setMouseCoords({
-      x: xMath,
-      y: Number(((originY - mousePxY) / viewState.scale).toFixed(2)),
-      fVal: !isNaN(yMath) ? Number(yMath.toFixed(2)) : null,
-    });
-
-    if (isDragging) {
-      const dx = (e.clientX - dragStart.x) / viewState.scale;
-      const dy = (e.clientY - dragStart.y) / viewState.scale;
-      setViewState((prev) => ({
-        ...prev,
-        centerX: prev.centerX + dx,
-        centerY: prev.centerY + dy,
-      }));
-      setDragStart({ x: e.clientX, y: e.clientY });
-    }
-  };
-
-  const onMouseUp = () => setIsDragging(false);
-
-  const onWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
-    setViewState((prev) => ({
-      ...prev,
-      scale: Math.max(10, Math.min(300, prev.scale * zoomFactor)),
-    }));
-  };
-
-  const handleDownloadImage = () => {
-    if (!canvasRef.current) return;
-    const link = document.createElement("a");
-    link.download = `resolve-grafica-${funcInput.replace(/[^a-zA-Z0-9]/g, "_")}.png`;
-    link.href = canvasRef.current.toDataURL("image/png");
-    link.click();
-  };
-
-  const handleResetView = () => {
-    setViewState({ centerX: 0, centerY: 0, scale: 65 });
   };
 
   return (
     <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="flex-1 flex flex-col gap-6 min-h-0">
-          
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-0">
-            
-            {/* CANVAS DE 60 FPS */}
-            <div
-              ref={containerRef}
-              className="xl:col-span-7 relative border border-zinc-800/60 bg-zinc-950 rounded-3xl overflow-hidden shadow-2xl flex flex-col min-h-[420px]"
-            >
-              {/* Controles Flotantes Superiores */}
-              <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-                <div className="px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800/80 backdrop-blur-md text-[11px] font-mono text-zinc-300 flex items-center gap-2 shadow-lg">
-                  <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
-                  <span>f(x) = {funcInput}</span>
-                </div>
-
-                {mouseCoords && (
-                  <div className="px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800/80 backdrop-blur-md text-[11px] font-mono text-zinc-400 hidden sm:flex items-center gap-2 shadow-lg">
-                    <span>x: <strong className="text-zinc-200">{mouseCoords.x}</strong></span>
-                    <span>y: <strong className="text-zinc-200">{mouseCoords.y}</strong></span>
-                    {mouseCoords.fVal !== null && (
-                      <span className="text-sky-400 font-bold">f(x): {mouseCoords.fVal}</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Botones Flotantes Inferiores */}
-              <div className="absolute bottom-4 left-4 z-20 flex flex-wrap items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setViewState((p) => ({ ...p, scale: Math.min(300, p.scale * 1.2) }))}
-                  title="Zoom +"
-                  className="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 transition-colors shadow-lg backdrop-blur-md"
-                >
-                  <Plus size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewState((p) => ({ ...p, scale: Math.max(10, p.scale * 0.8) }))}
-                  title="Zoom -"
-                  className="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 transition-colors shadow-lg backdrop-blur-md"
-                >
-                  <Minus size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleResetView}
-                  title="Centrar ejes (Origen)"
-                  className="px-2.5 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 transition-colors shadow-lg backdrop-blur-md flex items-center gap-1"
-                >
-                  <RefreshCw size={12} /> Reset
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDownloadImage}
-                  title="Descargar imagen PNG"
-                  className="px-2.5 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 transition-colors shadow-lg backdrop-blur-md flex items-center gap-1"
-                >
-                  <Download size={12} /> PNG
-                </button>
-              </div>
-
-              {/* Toggles Rápidos */}
-              <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setShowRoots(!showRoots)}
-                  className={`px-2.5 py-1 rounded-xl border text-[10px] font-mono transition-all backdrop-blur-md ${
-                    showRoots ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300" : "bg-zinc-900/80 border-zinc-800 text-zinc-500"
-                  }`}
-                >
-                  ● Raíces ({analysis.roots.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowExtremes(!showExtremes)}
-                  className={`px-2.5 py-1 rounded-xl border text-[10px] font-mono transition-all backdrop-blur-md ${
-                    showExtremes ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300" : "bg-zinc-900/80 border-zinc-800 text-zinc-500"
-                  }`}
-                >
-                  ● Extremos ({analysis.extremes.length})
-                </button>
-              </div>
-
-              <canvas
-                ref={canvasRef}
-                onMouseDown={onMouseDown}
-                onMouseMove={onMouseMove}
-                onMouseUp={onMouseUp}
-                onWheel={onWheel}
-                className="w-full h-full cursor-crosshair touch-none"
+            {/* CANVAS GRAFICADOR CENTRAL */}
+            <div className="xl:col-span-7 min-h-[460px] flex flex-col">
+              <MathGrapher
+                expression={grapherMainExpression}
+                secondaryExpression={showCompare && compareFunc.trim() ? grapherCompareExpression : undefined}
+                points={grapherPoints}
+                guideLines={grapherGuideLines}
+                shadedArea={
+                  showIntegral
+                    ? {
+                        from: Math.min(integralA, integralB),
+                        to: Math.max(integralA, integralB),
+                        color: "rgba(16, 185, 129, 0.22)",
+                      }
+                    : undefined
+                }
+                tangent={
+                  showTangent && analysis.slopeAtX0 !== null && analysis.yAtTangent !== null
+                    ? {
+                        x0: tangentX,
+                        slope: analysis.slopeAtX0,
+                      }
+                    : undefined
+                }
+                legend={grapherLegend}
+                initialScale={65}
+                height="h-full"
               />
             </div>
 
-            {/* CONSOLA DE CONTROL Y ANÁLISIS */}
-            <div className="xl:col-span-5 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 flex flex-col justify-between min-h-0 shadow-2xl overflow-y-auto custom-scrollbar">
-              
-              <div className="space-y-5">
+            {/* CONSOLA DE MODULADORES */}
+            <div className="xl:col-span-5 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 flex flex-col justify-between min-h-0 shadow-2xl overflow-y-auto custom-scrollbar space-y-5">
+              <div className="space-y-4">
+                {/* Cabecera */}
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-1.5">
                     <FunctionSquare size={14} className="text-zinc-500" />
-                    Control de Funciones
+                    Moduladores de Función
                   </span>
 
                   <button
@@ -663,72 +421,90 @@ export default function FunctionsView({
                     onClick={() => setIsHelpOpen(true)}
                     className="px-2.5 py-1 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 transition-colors flex items-center gap-1"
                   >
-                    <HelpCircle size={13} className="text-amber-400" /> Guía
+                    <HelpCircle size={13} className="text-amber-400" /> Catálogo
                   </button>
                 </div>
 
-                {/* Input Principal */}
+                {/* Entrada Principal f(x) */}
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
-                    <span>Función f(x):</span>
-                    <span className="text-[10px] text-sky-400 font-bold">Curva Azul</span>
+                    <span>Función Principal f(x):</span>
+                    <span className="text-[10px] text-sky-400 font-bold">Trazo Azul</span>
                   </label>
                   <input
                     type="text"
                     value={funcInput}
                     onChange={(e) => setFuncInput(e.target.value)}
-                    placeholder="Ej: exp(-x^2)  o  x^3 - 3*x"
-                    className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-2xl px-4 py-3 font-mono text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all shadow-inner"
+                    placeholder="Ej: exp(-x^2),  x^3 - 3*x,  a*x^2 + b*x + c"
+                    className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-2xl px-4 py-2.5 font-mono text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-sky-500/60 transition-all shadow-inner"
                   />
                 </div>
 
-                {/* Comparar g(x) */}
+                {/* Entrada Comparativa g(x) */}
                 {showCompare && (
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
-                      <span>Comparar con g(x):</span>
-                      <span className="text-[10px] text-rose-400 font-bold">Curva Roja</span>
+                      <span>Función Comparativa g(x):</span>
+                      <span className="text-[10px] text-rose-400 font-bold">Trazo Rojo</span>
                     </label>
                     <input
                       type="text"
                       value={compareFunc}
                       onChange={(e) => setCompareFunc(e.target.value)}
-                      placeholder="Ej: 2*x - 1"
-                      className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-2xl px-4 py-2.5 font-mono text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-rose-500/50 transition-all shadow-inner"
+                      placeholder="Ej: 2*x - 1,  cos(x)"
+                      className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-2xl px-4 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-rose-500/60 transition-all shadow-inner"
                     />
                   </div>
                 )}
 
-                {/* Botones de Control */}
+                {/* Barra de Activadores / Moduladores Principales */}
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   <button
                     type="button"
                     onClick={() => setShowSliders(!showSliders)}
                     className={`px-3 py-1.5 rounded-xl border text-xs font-mono transition-colors flex items-center gap-1.5 ${
-                      showSliders ? "bg-amber-500/20 border-amber-500/50 text-amber-300" : "bg-zinc-900/80 border-zinc-800 text-zinc-400"
+                      showSliders
+                        ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
+                        : "bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
                     }`}
                   >
-                    <Sliders size={13} /> Parámetros a,b,c
+                    <Sliders size={13} /> Parámetros ({paramA}, {paramB}, {paramC})
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setShowCompare(!showCompare)}
                     className={`px-3 py-1.5 rounded-xl border text-xs font-mono transition-colors flex items-center gap-1.5 ${
-                      showCompare ? "bg-rose-500/20 border-rose-500/50 text-rose-300" : "bg-zinc-900/80 border-zinc-800 text-zinc-400"
+                      showCompare
+                        ? "bg-rose-500/20 border-rose-500/50 text-rose-300"
+                        : "bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
                     }`}
                   >
-                    Comparar g(x)
+                    <Layers size={13} /> Comparar g(x)
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setShowIntegral(!showIntegral)}
+                    onClick={() => setShowRoots(!showRoots)}
                     className={`px-3 py-1.5 rounded-xl border text-xs font-mono transition-colors flex items-center gap-1.5 ${
-                      showIntegral ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300" : "bg-zinc-900/80 border-zinc-800 text-zinc-400"
+                      showRoots
+                        ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
+                        : "bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
                     }`}
                   >
-                    Área Integral
+                    <CircleDot size={13} /> Raíces
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowExtremes(!showExtremes)}
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-mono transition-colors flex items-center gap-1.5 ${
+                      showExtremes
+                        ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-300"
+                        : "bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
+                    }`}
+                  >
+                    <Activity size={13} /> Extremos
                   </button>
 
                   <button
@@ -736,16 +512,33 @@ export default function FunctionsView({
                     onClick={() => setActiveTab(activeTab === "graph" ? "table" : "graph")}
                     className="px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 text-xs font-mono transition-colors flex items-center gap-1.5 ml-auto"
                   >
-                    <TableIcon size={13} /> {activeTab === "graph" ? "Ver Tabla" : "Ver Análisis"}
+                    <TableIcon size={13} /> {activeTab === "graph" ? "Tabla" : "Análisis"}
                   </button>
                 </div>
 
-                {/* Deslizadores a, b, c */}
+                {/* MODULADOR: Parámetros Dinámicos (a, b, c) */}
                 {showSliders && (
-                  <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-3">
+                  <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-3 shadow-inner">
+                    <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                      <span className="text-[11px] font-mono text-amber-400 font-semibold uppercase tracking-wider">
+                        Controles Paramétricos
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setParamA(1);
+                          setParamB(1);
+                          setParamC(0);
+                        }}
+                        className="text-[10px] font-mono text-zinc-400 hover:text-zinc-200 flex items-center gap-1"
+                      >
+                        <RotateCcw size={11} /> Reiniciar
+                      </button>
+                    </div>
+
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px] font-mono text-zinc-400">
-                        <span>Parámetro a:</span>
+                        <span>Parámetro a (Escala/Apertura):</span>
                         <strong className="text-amber-400">{paramA}</strong>
                       </div>
                       <input
@@ -755,12 +548,13 @@ export default function FunctionsView({
                         step="0.1"
                         value={paramA}
                         onChange={(e) => setParamA(parseFloat(e.target.value))}
-                        className="w-full accent-amber-400 cursor-pointer"
+                        className="w-full"
                       />
                     </div>
+
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px] font-mono text-zinc-400">
-                        <span>Parámetro b:</span>
+                        <span>Parámetro b (Frecuencia/Inclinación):</span>
                         <strong className="text-amber-400">{paramB}</strong>
                       </div>
                       <input
@@ -770,12 +564,13 @@ export default function FunctionsView({
                         step="0.1"
                         value={paramB}
                         onChange={(e) => setParamB(parseFloat(e.target.value))}
-                        className="w-full accent-amber-400 cursor-pointer"
+                        className="w-full"
                       />
                     </div>
+
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px] font-mono text-zinc-400">
-                        <span>Parámetro c:</span>
+                        <span>Parámetro c (Desplazamiento Vertical):</span>
                         <strong className="text-amber-400">{paramC}</strong>
                       </div>
                       <input
@@ -785,111 +580,191 @@ export default function FunctionsView({
                         step="0.5"
                         value={paramC}
                         onChange={(e) => setParamC(parseFloat(e.target.value))}
-                        className="w-full accent-amber-400 cursor-pointer"
+                        className="w-full"
                       />
                     </div>
                   </div>
                 )}
 
-                {/* Tangente y Área */}
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-1.5">
-                    <div className="flex justify-between text-[11px] font-mono text-zinc-400">
-                      <span>Tangente en x₀:</span>
-                      <strong className="text-amber-400">{tangentX}</strong>
+                {/* MODULADORES: Tangente e Integral */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  {/* Modulador Tangente */}
+                  <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setShowTangent(!showTangent)}
+                        className={`text-[11px] font-mono flex items-center gap-1.5 font-semibold ${
+                          showTangent ? "text-amber-400" : "text-zinc-500"
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${showTangent ? "bg-amber-400" : "bg-zinc-600"}`} />
+                        Tangente en x₀
+                      </button>
+                      <strong className="text-[11px] font-mono text-amber-300">{tangentX}</strong>
                     </div>
                     <input
                       type="range"
-                      min="-4"
-                      max="4"
+                      min="-5"
+                      max="5"
                       step="0.1"
                       value={tangentX}
+                      disabled={!showTangent}
                       onChange={(e) => setTangentX(parseFloat(e.target.value))}
-                      className="w-full accent-amber-400 cursor-pointer"
+                      className="w-full disabled:opacity-40"
                     />
-                    <div className="text-[10px] font-mono text-zinc-500 truncate">
-                      m = f'({tangentX}) = <strong className="text-zinc-300">{analysis.slopeAtX0}</strong>
+                    <div className="text-[10px] font-mono text-zinc-500 truncate flex justify-between">
+                      <span>m = f'({tangentX})</span>
+                      <strong className="text-zinc-200">{analysis.slopeAtX0 ?? "Indef."}</strong>
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-1.5">
-                    <div className="flex justify-between text-[11px] font-mono text-zinc-400">
-                      <span>Intervalo [a, b]:</span>
-                      <strong className="text-emerald-400">[{integralA}, {integralB}]</strong>
+                  {/* Modulador Integral */}
+                  <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setShowIntegral(!showIntegral)}
+                        className={`text-[11px] font-mono flex items-center gap-1.5 font-semibold ${
+                          showIntegral ? "text-emerald-400" : "text-zinc-500"
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${showIntegral ? "bg-emerald-400" : "bg-zinc-600"}`} />
+                        Integral [a, b]
+                      </button>
+                      <span className="text-[10px] font-mono text-emerald-300 font-bold">
+                        {analysis.integralVal} u²
+                      </span>
                     </div>
                     <div className="flex gap-2">
-                      <input
-                        type="number"
-                        value={integralA}
-                        onChange={(e) => setIntegralA(parseFloat(e.target.value) || 0)}
-                        className="w-1/2 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-0.5 text-xs text-center font-mono text-zinc-200"
-                      />
-                      <input
-                        type="number"
-                        value={integralB}
-                        onChange={(e) => setIntegralB(parseFloat(e.target.value) || 0)}
-                        className="w-1/2 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-0.5 text-xs text-center font-mono text-zinc-200"
-                      />
-                    </div>
-                    <div className="text-[10px] font-mono text-zinc-500 truncate">
-                      Área: <strong className="text-emerald-400">{analysis.integralVal} u²</strong>
+                      <div className="w-1/2">
+                        <label className="text-[9px] font-mono text-zinc-500 block mb-0.5">Límite a:</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={integralA}
+                          onChange={(e) => setIntegralA(parseFloat(e.target.value) || 0)}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-center font-mono text-zinc-200 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="w-1/2">
+                        <label className="text-[9px] font-mono text-zinc-500 block mb-0.5">Límite b:</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={integralB}
+                          onChange={(e) => setIntegralB(parseFloat(e.target.value) || 0)}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-center font-mono text-zinc-200 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* ANÁLISIS O TABLA */}
+                {/* VISTA SECUNDARIA: ANÁLISIS CUALITATIVO O TABLA DINÁMICA */}
                 {activeTab === "graph" ? (
                   <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-2.5">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block font-semibold">
-                      Análisis Cualitativo
+                      Resumen del Comportamiento Analítico
                     </span>
                     <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                       <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60">
-                        <span className="text-[10px] text-zinc-500 block">Intersección Y (f(0))</span>
-                        <strong className="text-zinc-200">{analysis.yIntercept !== null ? analysis.yIntercept : "Indefinido"}</strong>
+                        <span className="text-[10px] text-zinc-500 block">Corte Eje Y (f(0))</span>
+                        <strong className="text-zinc-200">
+                          {analysis.yIntercept !== null ? analysis.yIntercept : "Indefinido"}
+                        </strong>
                       </div>
                       <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60">
-                        <span className="text-[10px] text-zinc-500 block">Simetría</span>
+                        <span className="text-[10px] text-zinc-500 block">Simetría Funcional</span>
                         <strong className="text-zinc-200 truncate block">{analysis.symmetry}</strong>
                       </div>
                     </div>
                     <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60 text-xs font-mono">
-                      <span className="text-[10px] text-zinc-500 block">Extremos detectados ({analysis.extremes.length})</span>
+                      <span className="text-[10px] text-zinc-500 block">
+                        Puntos Críticos Detectados ({analysis.extremes.length})
+                      </span>
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         {analysis.extremes.length > 0 ? (
                           analysis.extremes.map((ext, i) => (
-                            <span key={i} className="px-2 py-0.5 bg-cyan-950/40 border border-cyan-900/60 text-cyan-300 rounded text-[11px]">
+                            <span
+                              key={i}
+                              className="px-2 py-0.5 bg-cyan-950/40 border border-cyan-800/60 text-cyan-300 rounded text-[11px]"
+                            >
                               {ext.type}: ({ext.x}, {ext.y})
                             </span>
                           ))
                         ) : (
-                          <span className="text-zinc-600 text-[11px]">Curva monótona sin extremos en el rango</span>
+                          <span className="text-zinc-500 text-[11px]">
+                            Curva monótona sin puntos críticos locales
+                          </span>
                         )}
                       </div>
                     </div>
                   </div>
                 ) : (
                   <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-3">
-                    <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400">
-                      <span>Rango: [{tableMin}, {tableMax}]</span>
-                      <span>Paso: Δx = {tableStep}</span>
+                    <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 border-b border-zinc-800 pb-2">
+                      <div className="flex gap-2">
+                        <label className="flex items-center gap-1">
+                          <span>Min:</span>
+                          <input
+                            type="number"
+                            value={tableMin}
+                            onChange={(e) => setTableMin(parseFloat(e.target.value) || 0)}
+                            className="w-14 bg-zinc-900 border border-zinc-800 rounded px-1 text-center text-zinc-200"
+                          />
+                        </label>
+                        <label className="flex items-center gap-1">
+                          <span>Max:</span>
+                          <input
+                            type="number"
+                            value={tableMax}
+                            onChange={(e) => setTableMax(parseFloat(e.target.value) || 0)}
+                            className="w-14 bg-zinc-900 border border-zinc-800 rounded px-1 text-center text-zinc-200"
+                          />
+                        </label>
+                      </div>
+                      <label className="flex items-center gap-1">
+                        <span>Paso:</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={tableStep}
+                          onChange={(e) => setTableStep(Math.max(0.05, parseFloat(e.target.value) || 0.5))}
+                          className="w-14 bg-zinc-900 border border-zinc-800 rounded px-1 text-center text-zinc-200"
+                        />
+                      </label>
                     </div>
+
                     <div className="max-h-48 overflow-y-auto custom-scrollbar border border-zinc-800/60 rounded-xl">
                       <table className="w-full text-left font-mono text-xs divide-y divide-zinc-800">
                         <thead className="bg-zinc-900/80 text-zinc-400 sticky top-0">
                           <tr>
                             <th className="p-2">x</th>
                             <th className="p-2">f(x)</th>
+                            <th className="p-2">Estado</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-800/40 text-zinc-300">
-                          {Array.from({ length: Math.floor((tableMax - tableMin) / tableStep) + 1 }).map((_, i) => {
+                          {Array.from({
+                            length: Math.min(60, Math.floor((tableMax - tableMin) / tableStep) + 1),
+                          }).map((_, i) => {
                             const xVal = Number((tableMin + i * tableStep).toFixed(2));
                             const yVal = evaluateMath(funcInput, xVal, paramA, paramB, paramC);
+                            const isRoot = !isNaN(yVal) && Math.abs(yVal) < 0.05;
                             return (
                               <tr key={i} className="hover:bg-zinc-900/30">
                                 <td className="p-2 text-zinc-400">{xVal}</td>
-                                <td className="p-2 font-bold text-sky-400">{!isNaN(yVal) ? Number(yVal.toFixed(4)) : "Indef."}</td>
+                                <td className="p-2 font-bold text-sky-400">
+                                  {!isNaN(yVal) ? Number(yVal.toFixed(4)) : "Indefinido"}
+                                </td>
+                                <td className="p-2 text-[10px]">
+                                  {isRoot ? (
+                                    <span className="text-emerald-400 font-bold">Raíz aprox</span>
+                                  ) : (
+                                    <span className="text-zinc-600">—</span>
+                                  )}
+                                </td>
                               </tr>
                             );
                           })}
@@ -900,10 +775,9 @@ export default function FunctionsView({
                 )}
               </div>
 
-              <div className="pt-4 border-t border-zinc-800/60 mt-4 flex items-center justify-between">
-                <span className="text-[10px] font-mono text-zinc-500">
-                  Respaldo Supabase
-                </span>
+              {/* Botón de Guardado */}
+              <div className="pt-4 border-t border-zinc-800/60 flex items-center justify-between">
+                <span className="text-[10px] font-mono text-zinc-500">Persistencia ReSolve</span>
                 <button
                   type="button"
                   onClick={saveCalculation}
@@ -912,19 +786,18 @@ export default function FunctionsView({
                   Guardar Función
                 </button>
               </div>
-
             </div>
           </div>
         </div>
       )}
 
-      {/* MODO 2: PASO A PASO */}
+      {/* VISTA DE PROCEDIMIENTO PASO A PASO */}
       {viewMode === "steps" && (
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
           <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
             <div>
               <h3 className="text-xl font-serif font-bold text-zinc-100">
-                Procedimiento Analítico de la Función
+                Procedimiento y Deducción Analítica
               </h3>
               <p className="text-xs text-zinc-400 mt-1 font-mono">
                 f(x) = <span className="text-zinc-200 font-semibold">{funcInput}</span>
@@ -937,34 +810,64 @@ export default function FunctionsView({
 
           <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
             <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">1. Evaluación en el Origen y Cruce con Eje Y</span>
-              <p className="text-xs text-zinc-400">Calculamos f(0) para ubicar el corte vertical:</p>
+              <span className="text-xs font-mono font-semibold text-zinc-200">
+                1. Intersección con el Eje Vertical (Ordenada al Origen)
+              </span>
+              <p className="text-xs text-zinc-400">
+                Evaluamos la función en el punto neutro $x = 0$ para encontrar el cruce con el eje $Y$:
+              </p>
               <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
-                f(0) = {analysis.yIntercept !== null ? analysis.yIntercept : "No definido"}
+                f(0) = {analysis.yIntercept !== null ? analysis.yIntercept : "No definido en el dominio real"}
               </div>
             </div>
 
             <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">2. Puntos Críticos y Extremos</span>
-              <p className="text-xs text-zinc-400">Puntos donde la pendiente derivada es cero (f'(x) = 0):</p>
+              <span className="text-xs font-mono font-semibold text-zinc-200">
+                2. Detección de Raíces y Ceros de la Función
+              </span>
+              <p className="text-xs text-zinc-400">
+                Soluciones de la ecuación $f(x) = 0$ aproximadas mediante métodos numéricos de bisección:
+              </p>
+              <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
+                {analysis.roots.length > 0
+                  ? analysis.roots.map((r) => `x = ${r}`).join("  |  ")
+                  : "No se identificaron cruces por cero en el rango [-15, 15]"}
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
+              <span className="text-xs font-mono font-semibold text-zinc-200">
+                3. Puntos Críticos y Extremos Relativos
+              </span>
+              <p className="text-xs text-zinc-400">
+                Ubicaciones donde la primera derivada se anula ($f'(x) = 0$):
+              </p>
               <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-cyan-400 text-center font-bold">
                 {analysis.extremes.length > 0
                   ? analysis.extremes.map((e) => `${e.type} en (${e.x}, ${e.y})`).join("  |  ")
-                  : "No se hallaron extremos relativos en el intervalo"}
+                  : "Curva monótona sin extremos relativos"}
               </div>
             </div>
 
             <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">3. Análisis de la Recta Tangente en x₀ = {tangentX}</span>
-              <p className="text-xs text-zinc-400">Pendiente instantánea evaluada mediante diferencias finitas:</p>
+              <span className="text-xs font-mono font-semibold text-zinc-200">
+                4. Ecuación de la Recta Tangente en x₀ = {tangentX}
+              </span>
+              <p className="text-xs text-zinc-400">
+                Pendiente instantánea $m = f'(x_0)$ y modelo punto-pendiente $y - y_0 = m(x - x_0)$:
+              </p>
               <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-amber-400 text-center font-bold">
-                m = f'({tangentX}) = {analysis.slopeAtX0}
+                m = {analysis.slopeAtX0}  ⇒  y = {analysis.slopeAtX0}·(x - {tangentX}) + {analysis.yAtTangent}
               </div>
             </div>
 
             <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">4. Integral Definida y Área Riemann</span>
-              <p className="text-xs text-zinc-400">Área acumulada en [{integralA}, {integralB}]:</p>
+              <span className="text-xs font-mono font-semibold text-zinc-200">
+                5. Integración Definida y Área de Riemann
+              </span>
+              <p className="text-xs text-zinc-400">
+                Aproximación de la integral definida en el intervalo [{integralA}, {integralB}]:
+              </p>
               <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
                 ∫ f(x) dx ≈ {analysis.integralVal} u²
               </div>
@@ -973,43 +876,43 @@ export default function FunctionsView({
         </div>
       )}
 
-      {/* MODO 3: TEORÍA */}
+      {/* VISTA DE TEORÍA Y FUNDAMENTOS */}
       {viewMode === "theory" && (
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto shadow-xl shadow-black/20 custom-scrollbar">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
-              <BookOpen size={12} /> Fundamentos de Cálculo y Funciones
+              Fundamentos de Análisis Funcional
             </div>
             <h3 className="text-2xl font-serif font-bold text-zinc-100">
-              Mapeos, Espacios Funcionales y Modelado Algorítmico
+              Mapeos, Derivadas y Comportamiento de Funciones
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
-              Una función matemática f: X → Y es la base de las funciones puras en programación, donde cada entrada produce de forma determinista una única salida en el codominio.
+              Una función f: X → Y define una correspondencia unívoca entre variables. Las propiedades geométricas como las asíntotas, la concavidad y la tasa instantánea de cambio son indispensables para optimizar modelos de redes neuronales y simulaciones físicas.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                1. Dominio y Restricciones
+            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 space-y-2">
+              <strong className="text-xs text-zinc-200 block font-mono uppercase tracking-wider">
+                1. Derivada y Pendiente Tangente
               </strong>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                El dominio es el conjunto de valores donde f está definida. Denominadores cero (1/x) y radicandos negativos (sqrt(x)) restringen el dominio real.
+                La derivada f'(x₀) representa el límite del cociente incremental. Geométricamente, describe la pendiente de la recta que roza la curva en dicho punto.
               </p>
             </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                2. Tasa de Cambio y Tangente
+            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 space-y-2">
+              <strong className="text-xs text-zinc-200 block font-mono uppercase tracking-wider">
+                2. Integral de Riemann
               </strong>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                La pendiente m = f'(x₀) modela la velocidad instantánea de cambio, principio motor del Descenso de Gradiente en Inteligencia Artificial.
+                La integral definida representa la acumulación continua de un área neta bajo la curva. Si f(x) ≥ 0, la integral cuantifica exactamente la superficie acotada entre los límites [a, b].
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL DE AYUDA */}
+      {/* MODAL GUÍA / CATÁLOGO DE FUNCIONES */}
       <AnimatePresence>
         {isHelpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
@@ -1020,16 +923,20 @@ export default function FunctionsView({
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
-              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-amber-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-sky-500/10 rounded-full blur-3xl" />
 
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 relative z-10">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                    <HelpCircle size={16} />
+                  <div className="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                    <FunctionSquare size={16} />
                   </div>
                   <div>
-                    <h3 className="text-base font-serif font-bold text-zinc-100">Guía del Graficador y Funciones</h3>
-                    <p className="text-xs text-zinc-400">Sintaxis matemática, parámetros y ejemplos con un solo clic</p>
+                    <h3 className="text-base font-serif font-bold text-zinc-100">
+                      Catálogo y Operadores Matemáticos
+                    </h3>
+                    <p className="text-xs text-zinc-400">
+                      Haz clic en cualquier función modelo para cargarla en el graficador
+                    </p>
                   </div>
                 </div>
                 <button
@@ -1043,16 +950,16 @@ export default function FunctionsView({
               <div className="mt-5 space-y-5 max-h-[65vh] overflow-y-auto pr-1.5 text-xs relative z-10 custom-scrollbar">
                 <div className="p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800/80">
                   <h4 className="font-mono uppercase tracking-wider text-zinc-300 font-semibold mb-1 flex items-center gap-1.5">
-                    <Terminal size={13} className="text-zinc-400" /> Operadores Soportados
+                    <Terminal size={13} className="text-zinc-400" /> Sintaxis Dinámica
                   </h4>
                   <p className="text-zinc-400 leading-relaxed">
-                    Usa <code className="text-zinc-200">exp(-x^2)</code> o <code className="text-zinc-200">e^(-x^2)</code> para la campana de Gauss, <code className="text-zinc-200">sin</code>, <code className="text-zinc-200">cos</code>, <code className="text-zinc-200">tan</code>, <code className="text-zinc-200">ln</code>, <code className="text-zinc-200">sqrt</code> y los parámetros <code className="text-amber-400 font-bold">a, b, c</code> para explorarlos con los deslizadores.
+                    Puedes ingresar expresiones como <code className="text-zinc-200">exp(-x^2)</code>, <code className="text-zinc-200">a*x^2 + b*x + c</code>, <code className="text-zinc-200">sin(b*x)</code>, <code className="text-zinc-200">sqrt(x)</code> o <code className="text-zinc-200">1/(x-2)</code>. Los parámetros <code className="text-amber-400 font-bold">a, b, c</code> reaccionan a los deslizadores.
                   </p>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800/80">
                   <h4 className="font-mono uppercase tracking-wider text-zinc-300 font-semibold mb-2 flex items-center gap-1.5">
-                    <Sparkles size={13} className="text-amber-400" /> Catálogo de Funciones (Haz clic para probar)
+                    <Sparkles size={13} className="text-sky-400" /> Ejemplos de Estudio Universitario
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {MODULE_EXAMPLES.map((ex) => (
@@ -1065,9 +972,15 @@ export default function FunctionsView({
                         className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900 text-left transition-all flex items-center justify-between group shadow-sm"
                       >
                         <div className="min-w-0 pr-2">
-                          <span className="text-[10px] font-mono text-amber-400/90 block font-semibold">{ex.category}</span>
-                          <span className="font-mono text-zinc-200 text-[11px] block truncate">{ex.eq}</span>
-                          <span className="text-[10px] text-zinc-500 block truncate">{ex.desc}</span>
+                          <span className="text-[10px] font-mono text-sky-400 block font-semibold">
+                            {ex.category}
+                          </span>
+                          <span className="font-mono text-zinc-200 text-[11px] block truncate">
+                            {ex.eq}
+                          </span>
+                          <span className="text-[10px] text-zinc-500 block truncate">
+                            {ex.desc}
+                          </span>
                         </div>
                         <ChevronRight size={13} className="text-zinc-600 group-hover:text-zinc-200 shrink-0 transition-colors" />
                       </button>
@@ -1079,7 +992,6 @@ export default function FunctionsView({
           </div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }

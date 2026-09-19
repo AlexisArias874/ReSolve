@@ -137,6 +137,45 @@ function evaluateMath(expr: string, x: number): number {
   }
 }
 
+// Paleta de coordenadas del Canvas según el tema activo (dark, light, sepia, matrix)
+const THEME_GRAPH_COLORS: Record<
+  string,
+  { bg: string; axes: string; subGrid: string; mainGrid: string; labels: string; curve: string }
+> = {
+  dark: {
+    bg: "#09090b",
+    subGrid: "rgba(39, 39, 42, 0.35)",
+    mainGrid: "rgba(63, 63, 70, 0.5)",
+    axes: "#71717a",
+    labels: "#a1a1aa",
+    curve: "#38bdf8", // Sky-400
+  },
+  light: {
+    bg: "#ffffff",
+    subGrid: "rgba(226, 232, 240, 0.6)",
+    mainGrid: "rgba(203, 213, 225, 0.85)",
+    axes: "#334155",
+    labels: "#475569",
+    curve: "#0284c7", // Azul profundo visible en blanco
+  },
+  sepia: {
+    bg: "#fbf7ee",
+    subGrid: "rgba(230, 219, 201, 0.6)",
+    mainGrid: "rgba(214, 199, 176, 0.85)",
+    axes: "#5c4d3c",
+    labels: "#695748",
+    curve: "#b45309", // Ámbar tostado
+  },
+  matrix: {
+    bg: "#020804",
+    subGrid: "rgba(6, 43, 20, 0.6)",
+    mainGrid: "rgba(5, 150, 105, 0.55)",
+    axes: "#059669",
+    labels: "#34d399",
+    curve: "#10b981", // Verde fosforescente
+  },
+};
+
 export default function MathGrapher({
   expression,
   secondaryExpression,
@@ -336,8 +375,15 @@ export default function MathGrapher({
       const height = canvas.height;
       const { centerX, centerY, scale } = viewState;
 
+      // Helper para extraer el tema actual en tiempo real antes de pintar el frame
+      const currentTheme =
+        typeof document !== "undefined"
+          ? document.documentElement.getAttribute("data-theme") || "dark"
+          : "dark";
+      const themeGraphColors = THEME_GRAPH_COLORS[currentTheme] || THEME_GRAPH_COLORS.dark;
+
       ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "#09090b";
+      ctx.fillStyle = themeGraphColors.bg;
       ctx.fillRect(0, 0, width, height);
 
       const originX = width / 2 + centerX * scale;
@@ -349,9 +395,28 @@ export default function MathGrapher({
       const startY = Math.floor((originY - height) / (scale * stepUnit)) * stepUnit;
       const endY = Math.ceil(originY / (scale * stepUnit)) * stepUnit;
 
-      // Cuadrícula
+      // Cuadrículas (secundaria + principal)
       ctx.lineWidth = 1;
-      ctx.strokeStyle = "#18181b";
+      const subStepUnit = stepUnit / 5;
+      ctx.strokeStyle = themeGraphColors.subGrid;
+      for (let u = startX; u <= endX; u += subStepUnit) {
+        const px = originX + u * scale;
+        ctx.beginPath();
+        ctx.moveTo(px, 0);
+        ctx.lineTo(px, height);
+        ctx.stroke();
+      }
+      for (let u = startY; u <= endY; u += subStepUnit) {
+        const py = originY - u * scale;
+        ctx.beginPath();
+        ctx.moveTo(0, py);
+        ctx.lineTo(width, py);
+        ctx.stroke();
+      }
+
+      // Cuadrícula principal
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = themeGraphColors.mainGrid;
       for (let u = startX; u <= endX; u += stepUnit) {
         const px = originX + u * scale;
         ctx.beginPath();
@@ -369,7 +434,7 @@ export default function MathGrapher({
 
       // Ejes
       ctx.lineWidth = 1.5;
-      ctx.strokeStyle = "#3f3f46";
+      ctx.strokeStyle = themeGraphColors.axes;
       ctx.beginPath();
       ctx.moveTo(0, originY);
       ctx.lineTo(width, originY);
@@ -378,7 +443,7 @@ export default function MathGrapher({
       ctx.stroke();
 
       // Números de los ejes
-      ctx.fillStyle = "#71717a";
+      ctx.fillStyle = themeGraphColors.labels;
       ctx.font = "10px monospace";
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
@@ -458,7 +523,7 @@ export default function MathGrapher({
 
       // Curva principal f(x)
       ctx.lineWidth = 2.5;
-      ctx.strokeStyle = "#38bdf8";
+      ctx.strokeStyle = themeGraphColors.curve;
       ctx.beginPath();
       let isDrawing = false;
       for (let px = 0; px <= width; px += 2) {
@@ -552,6 +617,12 @@ export default function MathGrapher({
     return () => window.removeEventListener("resize", redrawAll);
   }, [redrawAll]);
 
+  useEffect(() => {
+    const handleThemeChange = () => redrawAll();
+    window.addEventListener("themechange", handleThemeChange);
+    return () => window.removeEventListener("themechange", handleThemeChange);
+  }, [redrawAll]);
+
   // Arrastre
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDragging(true);
@@ -600,251 +671,273 @@ export default function MathGrapher({
     }));
   };
 
+  
   // Exportación HD con Leyendas Dinámicas Reales y Rótulos de Coordenadas
-  const executeExportPNG = () => {
-    const offCanvas = document.createElement("canvas");
-    offCanvas.width = 1920;
-    offCanvas.height = 1080;
-    const ctx = offCanvas.getContext("2d");
-    if (!ctx) return;
+const executeExportPNG = () => {
+  const offCanvas = document.createElement("canvas");
+  offCanvas.width = 1920;
+  offCanvas.height = 1080;
+  const ctx = offCanvas.getContext("2d");
+  if (!ctx) return;
 
-    let exportScale: number;
-    let originX: number;
-    let originY: number;
+  // ✅ Detectar tema activo en el momento de la exportación
+  const currentTheme =
+    typeof document !== "undefined"
+      ? document.documentElement.getAttribute("data-theme") || "dark"
+      : "dark";
+  const themeGraphColors = THEME_GRAPH_COLORS[currentTheme] || THEME_GRAPH_COLORS.dark;
 
-    if (downloadMode === "current") {
-      const activeCanvas = isMaximized ? modalCanvasRef.current : canvasRef.current;
-      const currentWidth = activeCanvas?.width || 800;
-      const ratio = 1920 / currentWidth;
-      exportScale = viewState.scale * ratio;
-      originX = 1920 / 2 + viewState.centerX * exportScale;
-      originY = 1080 / 2 - viewState.centerY * exportScale;
-    } else if (downloadMode === "custom") {
-      const spanX = Math.max(1, customBounds.maxX - customBounds.minX);
-      const spanY = Math.max(1, customBounds.maxY - customBounds.minY);
-      const cX = -(customBounds.minX + customBounds.maxX) / 2;
-      const cY = -(customBounds.minY + customBounds.maxY) / 2;
+  // ✅ Derivar colores de UI (cartelas, leyendas, rótulos) según el tema
+  const isLightTheme = currentTheme === "light" || currentTheme === "sepia";
+  const uiPanelBg = isLightTheme ? "rgba(255, 255, 255, 0.94)" : "rgba(9, 9, 11, 0.92)";
+  const uiPanelBorder = isLightTheme ? "#cbd5e1" : "#27272a";
+  const uiPanelBorderStrong = isLightTheme ? "#94a3b8" : "#3f3f46";
+  const uiTextPrimary = isLightTheme ? "#0f172a" : "#e4e4e7";
+  const uiTextSecondary = isLightTheme ? "#475569" : "#71717a";
 
-      const sX = (1920 * 0.8) / spanX;
-      const sY = (1080 * 0.8) / spanY;
-      exportScale = Math.min(sX, sY);
+  let exportScale: number;
+  let originX: number;
+  let originY: number;
 
-      originX = 1920 / 2 + cX * exportScale;
-      originY = 1080 / 2 - cY * exportScale;
+  if (downloadMode === "current") {
+    const activeCanvas = isMaximized ? modalCanvasRef.current : canvasRef.current;
+    const currentWidth = activeCanvas?.width || 800;
+    const ratio = 1920 / currentWidth;
+    exportScale = viewState.scale * ratio;
+    originX = 1920 / 2 + viewState.centerX * exportScale;
+    originY = 1080 / 2 - viewState.centerY * exportScale;
+  } else if (downloadMode === "custom") {
+    const spanX = Math.max(1, customBounds.maxX - customBounds.minX);
+    const spanY = Math.max(1, customBounds.maxY - customBounds.minY);
+    const cX = -(customBounds.minX + customBounds.maxX) / 2;
+    const cY = -(customBounds.minY + customBounds.maxY) / 2;
+
+    const sX = (1920 * 0.8) / spanX;
+    const sY = (1080 * 0.8) / spanY;
+    exportScale = Math.min(sX, sY);
+
+    originX = 1920 / 2 + cX * exportScale;
+    originY = 1080 / 2 - cY * exportScale;
+  } else {
+    const { cX, cY, spanX, spanY } = getSmartFraming();
+    const sX = (1920 * 0.72) / spanX;
+    const sY = (1080 * 0.72) / spanY;
+    exportScale = Math.min(180, Math.max(30, Math.min(sX, sY)));
+    originX = 1920 / 2 + cX * exportScale;
+    originY = 1080 / 2 - cY * exportScale;
+  }
+
+  // ✅ Fondo adaptado al tema
+  ctx.fillStyle = themeGraphColors.bg;
+  ctx.fillRect(0, 0, 1920, 1080);
+
+  const stepUnit = getAdaptiveGridStep(exportScale);
+  const startX = Math.floor((-originX) / (exportScale * stepUnit)) * stepUnit;
+  const endX = Math.ceil((1920 - originX) / (exportScale * stepUnit)) * stepUnit;
+  const startY = Math.floor((originY - 1080) / (exportScale * stepUnit)) * stepUnit;
+  const endY = Math.ceil(originY / (exportScale * stepUnit)) * stepUnit;
+
+  // ✅ Cuadrícula adaptada al tema
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = themeGraphColors.mainGrid;
+  for (let u = startX; u <= endX; u += stepUnit) {
+    const px = originX + u * exportScale;
+    ctx.beginPath();
+    ctx.moveTo(px, 0);
+    ctx.lineTo(px, 1080);
+    ctx.stroke();
+  }
+  for (let u = startY; u <= endY; u += stepUnit) {
+    const py = originY - u * exportScale;
+    ctx.beginPath();
+    ctx.moveTo(0, py);
+    ctx.lineTo(1920, py);
+    ctx.stroke();
+  }
+
+  // ✅ Ejes adaptados al tema
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = themeGraphColors.axes;
+  ctx.beginPath();
+  ctx.moveTo(0, originY);
+  ctx.lineTo(1920, originY);
+  ctx.moveTo(originX, 0);
+  ctx.lineTo(originX, 1080);
+  ctx.stroke();
+
+  // ✅ Números de ejes adaptados al tema
+  ctx.fillStyle = themeGraphColors.labels;
+  ctx.font = "16px monospace";
+  ctx.textAlign = "center";
+  for (let u = startX; u <= endX; u += stepUnit) {
+    if (Math.abs(u) > 1e-6) ctx.fillText(Number(u.toFixed(2)).toString(), originX + u * exportScale, originY + 10);
+  }
+  ctx.textAlign = "right";
+  for (let u = startY; u <= endY; u += stepUnit) {
+    if (Math.abs(u) > 1e-6) ctx.fillText(Number(u.toFixed(2)).toString(), originX - 10, originY - u * exportScale);
+  }
+
+  // ✅ Trazo de f(x) adaptado al tema
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = themeGraphColors.curve;
+  ctx.beginPath();
+  let isDraw = false;
+  for (let px = 0; px <= 1920; px += 2) {
+    const xVal = (px - originX) / exportScale;
+    const yVal = evaluateMath(expression, xVal);
+    if (!isNaN(yVal) && Math.abs(yVal) < 1500) {
+      const py = originY - yVal * exportScale;
+      if (!isDraw) {
+        ctx.moveTo(px, py);
+        isDraw = true;
+      } else {
+        ctx.lineTo(px, py);
+      }
     } else {
-      const { cX, cY, spanX, spanY } = getSmartFraming();
-      const sX = (1920 * 0.72) / spanX;
-      const sY = (1080 * 0.72) / spanY;
-      exportScale = Math.min(180, Math.max(30, Math.min(sX, sY)));
-      originX = 1920 / 2 + cX * exportScale;
-      originY = 1080 / 2 - cY * exportScale;
+      isDraw = false;
     }
+  }
+  ctx.stroke();
 
-    ctx.fillStyle = "#09090b";
-    ctx.fillRect(0, 0, 1920, 1080);
+  // Dibujar Puntos Notables y Rótulos de Coordenadas
+  if (includePointsAndCoords) {
+    let exportPoints: GraphPoint[] = [...points];
 
-    const stepUnit = getAdaptiveGridStep(exportScale);
-    const startX = Math.floor((-originX) / (exportScale * stepUnit)) * stepUnit;
-    const endX = Math.ceil((1920 - originX) / (exportScale * stepUnit)) * stepUnit;
-    const startY = Math.floor((originY - 1080) / (exportScale * stepUnit)) * stepUnit;
-    const endY = Math.ceil(originY / (exportScale * stepUnit)) * stepUnit;
-
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "#18181b";
-    for (let u = startX; u <= endX; u += stepUnit) {
-      const px = originX + u * exportScale;
-      ctx.beginPath();
-      ctx.moveTo(px, 0);
-      ctx.lineTo(px, 1080);
-      ctx.stroke();
-    }
-    for (let u = startY; u <= endY; u += stepUnit) {
-      const py = originY - u * exportScale;
-      ctx.beginPath();
-      ctx.moveTo(0, py);
-      ctx.lineTo(1920, py);
-      ctx.stroke();
-    }
-
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = "#3f3f46";
-    ctx.beginPath();
-    ctx.moveTo(0, originY);
-    ctx.lineTo(1920, originY);
-    ctx.moveTo(originX, 0);
-    ctx.lineTo(originX, 1080);
-    ctx.stroke();
-
-    ctx.fillStyle = "#71717a";
-    ctx.font = "16px monospace";
-    ctx.textAlign = "center";
-    for (let u = startX; u <= endX; u += stepUnit) {
-      if (Math.abs(u) > 1e-6) ctx.fillText(Number(u.toFixed(2)).toString(), originX + u * exportScale, originY + 10);
-    }
-    ctx.textAlign = "right";
-    for (let u = startY; u <= endY; u += stepUnit) {
-      if (Math.abs(u) > 1e-6) ctx.fillText(Number(u.toFixed(2)).toString(), originX - 10, originY - u * exportScale);
-    }
-
-    // Trazo de f(x)
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = "#38bdf8";
-    ctx.beginPath();
-    let isDraw = false;
-    for (let px = 0; px <= 1920; px += 2) {
-      const xVal = (px - originX) / exportScale;
-      const yVal = evaluateMath(expression, xVal);
-      if (!isNaN(yVal) && Math.abs(yVal) < 1500) {
-        const py = originY - yVal * exportScale;
-        if (!isDraw) {
-          ctx.moveTo(px, py);
-          isDraw = true;
-        } else {
-          ctx.lineTo(px, py);
+    if (exportPoints.length === 0) {
+      let prevY = evaluateMath(expression, -20);
+      for (let x = -20; x <= 20; x += 0.1) {
+        const currY = evaluateMath(expression, x);
+        if (!isNaN(prevY) && !isNaN(currY) && prevY * currY <= 0 && Math.abs(currY - prevY) < 15) {
+          let left = x - 0.1, right = x;
+          for (let k = 0; k < 8; k++) {
+            const mid = (left + right) / 2;
+            if (evaluateMath(expression, left) * evaluateMath(expression, mid) <= 0) right = mid;
+            else left = mid;
+          }
+          const rootX = Number(((left + right) / 2).toFixed(3));
+          if (!exportPoints.some((p) => Math.abs(p.x - rootX) < 0.1)) {
+            exportPoints.push({
+              x: rootX,
+              y: 0,
+              label: "Raíz",
+              color: "#10b981",
+              type: "solid",
+            });
+          }
         }
-      } else {
-        isDraw = false;
+        prevY = currY;
       }
     }
-    ctx.stroke();
 
-    // Dibujar Puntos Notables y Rótulos de Coordenadas
-    if (includePointsAndCoords) {
-      let exportPoints: GraphPoint[] = [...points];
+    exportPoints.forEach((pt) => {
+      const px = originX + pt.x * exportScale;
+      const py = originY - pt.y * exportScale;
 
-      if (exportPoints.length === 0) {
-        let prevY = evaluateMath(expression, -20);
-        for (let x = -20; x <= 20; x += 0.1) {
-          const currY = evaluateMath(expression, x);
-          if (!isNaN(prevY) && !isNaN(currY) && prevY * currY <= 0 && Math.abs(currY - prevY) < 15) {
-            let left = x - 0.1, right = x;
-            for (let k = 0; k < 8; k++) {
-              const mid = (left + right) / 2;
-              if (evaluateMath(expression, left) * evaluateMath(expression, mid) <= 0) right = mid;
-              else left = mid;
-            }
-            const rootX = Number(((left + right) / 2).toFixed(3));
-            if (!exportPoints.some((p) => Math.abs(p.x - rootX) < 0.1)) {
-              exportPoints.push({
-                x: rootX,
-                y: 0,
-                label: "Raíz",
-                color: "#10b981",
-                type: "solid",
-              });
-            }
-          }
-          prevY = currY;
-        }
-      }
-
-      exportPoints.forEach((pt) => {
-        const px = originX + pt.x * exportScale;
-        const py = originY - pt.y * exportScale;
-
-        if (px >= 20 && px <= 1900 && py >= 20 && py <= 1060) {
-          ctx.beginPath();
-          ctx.arc(px, py, 9, 0, Math.PI * 2);
-          if (pt.type === "hole") {
-            ctx.fillStyle = "#09090b";
-            ctx.fill();
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = pt.color || "#38bdf8";
-            ctx.stroke();
-          } else {
-            ctx.fillStyle = pt.color || "#10b981";
-            ctx.fill();
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = "#ffffff";
-            ctx.stroke();
-          }
-
-          const coordText = pt.label
-            ? `${pt.label}: (${Number(pt.x.toFixed(2))}, ${Number(pt.y.toFixed(2))})`
-            : `(${Number(pt.x.toFixed(2))}, ${Number(pt.y.toFixed(2))})`;
-
-          ctx.font = "bold 15px monospace";
-          const textMetrics = ctx.measureText(coordText);
-          const textW = textMetrics.width;
-          const textH = 24;
-
-          ctx.fillStyle = "rgba(9, 9, 11, 0.88)";
-          ctx.strokeStyle = "#3f3f46";
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.roundRect(px + 14, py - 20, textW + 16, textH, 8);
+      if (px >= 20 && px <= 1900 && py >= 20 && py <= 1060) {
+        ctx.beginPath();
+        ctx.arc(px, py, 9, 0, Math.PI * 2);
+        if (pt.type === "hole") {
+          // ✅ Relleno del hueco adaptado al tema
+          ctx.fillStyle = themeGraphColors.bg;
           ctx.fill();
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = pt.color || themeGraphColors.curve;
           ctx.stroke();
-
-          ctx.fillStyle = pt.color || "#e4e4e7";
-          ctx.textAlign = "left";
-          ctx.textBaseline = "middle";
-          ctx.fillText(coordText, px + 22, py - 8);
+        } else {
+          ctx.fillStyle = pt.color || "#10b981";
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = isLightTheme ? "#ffffff" : "#ffffff";
+          ctx.stroke();
         }
-      });
-    }
 
-    // Cartela impresa con la ecuación f(x)
-    if (includeWatermark) {
-      ctx.fillStyle = "rgba(9, 9, 11, 0.92)";
-      ctx.strokeStyle = "#27272a";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect(50, 50, 600, 140, 20);
-      ctx.fill();
-      ctx.stroke();
+        const coordText = pt.label
+          ? `${pt.label}: (${Number(pt.x.toFixed(2))}, ${Number(pt.y.toFixed(2))})`
+          : `(${Number(pt.x.toFixed(2))}, ${Number(pt.y.toFixed(2))})`;
 
-      ctx.textAlign = "left";
-      ctx.fillStyle = "#f59e0b";
-      ctx.font = "bold 16px monospace";
-      ctx.fillText("RESOLVE", 75, 85);
+        ctx.font = "bold 15px monospace";
+        const textMetrics = ctx.measureText(coordText);
+        const textW = textMetrics.width;
+        const textH = 24;
 
-      ctx.fillStyle = "#38bdf8";
-      ctx.font = "bold 26px sans-serif";
-      ctx.fillText(`f(x) = ${formatMathForDisplay(expression)}`, 75, 125);
+        // ✅ Rótulo del punto adaptado al tema
+        ctx.fillStyle = uiPanelBg;
+        ctx.strokeStyle = uiPanelBorderStrong;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(px + 14, py - 20, textW + 16, textH, 8);
+        ctx.fill();
+        ctx.stroke();
 
-      if (secondaryExpression) {
-        ctx.fillStyle = "#f43f5e";
-        ctx.font = "bold 20px sans-serif";
-        ctx.fillText(`g(x) = ${formatMathForDisplay(secondaryExpression)}`, 75, 160);
-      } else {
-        ctx.fillStyle = "#71717a";
-        ctx.font = "14px monospace";
-        //ctx.fillText("Exportación Gráfica HD (1080p)", 75, 160);
+        ctx.fillStyle = pt.color || uiTextPrimary;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(coordText, px + 22, py - 8);
       }
+    });
+  }
+
+  // ✅ Cartela impresa con la ecuación f(x) adaptada al tema
+  if (includeWatermark) {
+    ctx.fillStyle = uiPanelBg;
+    ctx.strokeStyle = uiPanelBorder;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(50, 50, 600, 140, 20);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#f59e0b";
+    ctx.font = "bold 16px monospace";
+    ctx.fillText("RESOLVE", 75, 85);
+
+    // ✅ Ecuación con el color de la curva del tema
+    ctx.fillStyle = themeGraphColors.curve;
+    ctx.font = "bold 26px sans-serif";
+    ctx.fillText(`f(x) = ${formatMathForDisplay(expression)}`, 75, 125);
+
+    if (secondaryExpression) {
+      ctx.fillStyle = "#f43f5e";
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillText(`g(x) = ${formatMathForDisplay(secondaryExpression)}`, 75, 160);
+    } else {
+      ctx.fillStyle = uiTextSecondary;
+      ctx.font = "14px monospace";
     }
+  }
 
-    // ESTAMPAR LEYENDA DINÁMICA SEGÚN EL MÉTODO EN EL PNG
-    if (activeLegend.length > 0) {
-      const boxWidth = Math.min(1800, Math.max(450, activeLegend.length * 240));
-      ctx.fillStyle = "rgba(9, 9, 11, 0.92)";
-      ctx.strokeStyle = "#27272a";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect(50, 960, boxWidth, 65, 14);
-      ctx.fill();
-      ctx.stroke();
+  // ✅ ESTAMPAR LEYENDA DINÁMICA SEGÚN EL MÉTODO EN EL PNG
+  if (activeLegend.length > 0) {
+    const boxWidth = Math.min(1800, Math.max(450, activeLegend.length * 240));
+    ctx.fillStyle = uiPanelBg;
+    ctx.strokeStyle = uiPanelBorder;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(50, 960, boxWidth, 65, 14);
+    ctx.fill();
+    ctx.stroke();
 
-      ctx.font = "bold 14px monospace";
-      ctx.textAlign = "left";
+    ctx.font = "bold 14px monospace";
+    ctx.textAlign = "left";
 
-      let currentX = 75;
-      activeLegend.forEach((item) => {
-        ctx.fillStyle = item.color;
-        const icon = item.shape === "dot" ? "● " : item.shape === "area" ? "░ " : "— ";
-        const text = `${icon}${item.label}`;
-        ctx.fillText(text, currentX, 998);
-        currentX += ctx.measureText(text).width + 30;
-      });
-    }
+    let currentX = 75;
+    activeLegend.forEach((item) => {
+      ctx.fillStyle = item.color;
+      const icon = item.shape === "dot" ? "● " : item.shape === "area" ? "░ " : "— ";
+      const text = `${icon}${item.label}`;
+      ctx.fillText(text, currentX, 998);
+      currentX += ctx.measureText(text).width + 30;
+    });
+  }
 
-    const link = document.createElement("a");
-    link.download = `resolve-grafica-${expression.replace(/[^a-zA-Z0-9]/g, "_")}.png`;
-    link.href = offCanvas.toDataURL("image/png");
-    link.click();
+  const link = document.createElement("a");
+  link.download = `resolve-grafica-${expression.replace(/[^a-zA-Z0-9]/g, "_")}.png`;
+  link.href = offCanvas.toDataURL("image/png");
+  link.click();
 
-    setIsDownloadModalOpen(false);
-  };
+  setIsDownloadModalOpen(false);
+};
 
   return (
     <>

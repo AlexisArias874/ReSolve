@@ -67,7 +67,7 @@ import DeterminantsView from "@/components/modules/computational/determinants-vi
 import GaussJordanView from "@/components/modules/computational/gauss-jordan-view";
 import NumericalRootsView from "@/components/modules/computational/numerical-roots-view";
 import InterpolationView from "@/components/modules/computational/interpolation-view";
-// import ErrorTheoryView from "@/components/modules/computational/error-theory-view";
+import ErrorTheoryView from "@/components/modules/computational/error-theory-view";
 
 // --- MATEMÁTICAS V: PROBABILIDAD Y ESTADÍSTICA (FUTURAS) ---
 // import DescriptiveStatsView from "@/components/modules/statistics/descriptive-stats-view";
@@ -77,7 +77,7 @@ import InterpolationView from "@/components/modules/computational/interpolation-
 // import RegressionView from "@/components/modules/statistics/regression-view";
 
 // --- MATEMÁTICAS VI: INVESTIGACIÓN DE OPERACIONES (FUTURAS) ---
-// import LinearProgrammingView from "@/components/modules/optimization/linear-programming-view";
+import LinearProgrammingView from "@/components/modules/optimization/linear-programming-view";
 // import SimplexView from "@/components/modules/optimization/simplex-view";
 // import TransportationView from "@/components/modules/optimization/transportation-view";
 // import AssignmentView from "@/components/modules/optimization/assignment-view";
@@ -473,17 +473,17 @@ function DashboardContent() {
               )}
 
               <div className="truncate">
-                <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-mono uppercase tracking-wider mb-1">
-                  <span>{currentModule?.label}</span>
-                  <ChevronRight size={11} />
-                  <span className="text-zinc-400">{currentSubtopicConfig?.label}</span>
-                </div>
-                <h2 className="text-2xl md:text-3xl font-serif font-bold tracking-tight text-zinc-100 truncate leading-tight">
-                  {currentSubtopicConfig?.label}{" "}
-                  <span className="text-zinc-500 italic font-normal text-lg md:text-xl">
-                    · {currentSubtopicConfig?.desc}
-                  </span>
-                </h2>
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono uppercase tracking-wider mb-1">
+  <span>{currentModule?.label}</span>
+  <ChevronRight size={11} />
+  <span className="text-foreground/70">{currentSubtopicConfig?.label}</span>
+</div>
+<h2 className="text-2xl md:text-3xl font-serif font-bold tracking-tight text-foreground truncate leading-tight">
+  {currentSubtopicConfig?.label}{" "}
+  <span className="text-muted-foreground italic font-normal text-lg md:text-xl">
+    · {currentSubtopicConfig?.desc}
+  </span>
+</h2>
               </div>
             </div>
 
@@ -519,26 +519,28 @@ function DashboardContent() {
           {/* Barra de Subtemas Dinámica (Cambia según la materia activa) */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
             {currentSubtopics.map((item) => {
-              const isActive = subTopic === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setSubTopic(item.id)}
-                  className={`relative px-3.5 py-1.5 rounded-full whitespace-nowrap text-xs transition-colors ${
-                    isActive ? "text-zinc-100 font-medium" : "text-zinc-500 hover:text-zinc-200"
-                  }`}
-                >
-                  {isActive && (
-                    <motion.span
-                      layoutId="subtopicPill"
-                      className="absolute inset-0 bg-zinc-800/80 border border-zinc-700/80 rounded-full"
-                      transition={{ type: "spring", stiffness: 450, damping: 30 }}
-                    />
-                  )}
-                  <span className="relative z-10">{item.label}</span>
-                </button>
-              );
-            })}
+  const isActive = subTopic === item.id;
+  return (
+    <button
+      key={item.id}
+      onClick={() => setSubTopic(item.id)}
+      className={`relative px-3.5 py-1.5 rounded-full whitespace-nowrap text-xs transition-colors ${
+        isActive
+          ? "text-foreground font-medium"
+          : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {isActive && (
+        <motion.span
+          layoutId="subtopicPill"
+          className="absolute inset-0 bg-accent border border-border rounded-full"
+          transition={{ type: "spring", stiffness: 450, damping: 30 }}
+        />
+      )}
+      <span className="relative z-10">{item.label}</span>
+    </button>
+  );
+})}
           </div>
         </header>
 
@@ -618,8 +620,8 @@ function DashboardContent() {
               ) : activeModule === "mat4" && subTopic === "interpolacion" ? (
                 <InterpolationView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat4" && subTopic === "errores" ? (
-                /* <ErrorTheoryView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Teoría de Errores y Precisión", "Error absoluto, error relativo, error porcentual, redondeo y truncamiento computacional")
+                <ErrorTheoryView viewMode={viewMode} initialExpression={initialExpr} />
+
 
               /* ===============================================================
                   RAMA 5: MATEMÁTICAS V (PROBABILIDAD Y ESTADÍSTICA)
@@ -644,8 +646,7 @@ function DashboardContent() {
                   RAMA 6: MATEMÁTICAS VI (INVESTIGACIÓN DE OPERACIONES)
               ================================================================ */
               ) : activeModule === "mat6" && subTopic === "prog-lineal" ? (
-                /* <LinearProgrammingView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Programación Lineal Gráfica", "Optimización de función objetivo Z sujeta a restricciones, con región factible 2D")
+                <LinearProgrammingView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat6" && subTopic === "simplex" ? (
                 /* <SimplexView viewMode={viewMode} initialExpression={initialExpr} /> */
                 renderPlaceholder("Algoritmo Simplex", "Tablas Simplex paso a paso, variables de holgura, método de la Gran M y Dos Fases")

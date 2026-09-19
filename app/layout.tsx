@@ -23,7 +23,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className="dark">
+    <html lang="es" className="dark" suppressHydrationWarning>
+      <head>
+        {/* Inyector instantáneo de tema guardado */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const savedTheme = localStorage.getItem('resolve_theme') || 'dark';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+              } catch(e) {}
+            `,
+          }}
+        />
+      </head>
       <body className={`${geist.variable} ${playfair.variable} font-sans antialiased bg-zinc-950 text-zinc-50`}>
         {children}
       </body>
