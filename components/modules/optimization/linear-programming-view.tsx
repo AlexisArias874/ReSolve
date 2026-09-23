@@ -55,12 +55,12 @@ export interface Constraint {
   id: string;
   coefficients: number[];
   operator: ConstraintOperator;
-  rhs: number; // Término independiente b_i
+  rhs: number;
 }
 
 export interface LPModel {
   type: ObjectiveType;
-  objective: number[]; // Coeficientes c_j
+  objective: number[];
   constraints: Constraint[];
   varNames: string[];
 }
@@ -70,7 +70,7 @@ export interface SimplexTableau {
   description: string;
   headers: string[];
   basicVars: string[];
-  matrix: number[][]; // Filas de la tabla (incluyendo fila Z)
+  matrix: number[][];
   pivotRow?: number;
   pivotCol?: number;
 }
@@ -84,7 +84,7 @@ export interface Vertex2D {
 }
 
 // -----------------------------------------------------------------------------
-// CATÁLOGO DE CASOS UNIVERSITARIOS (EJEMPLOS DE 1 CLIC)
+// CATÁLOGO DE CASOS UNIVERSITARIOS
 // -----------------------------------------------------------------------------
 interface LPExample {
   title: string;
@@ -170,18 +170,15 @@ const LP_EXAMPLES: LPExample[] = [
 ];
 
 // -----------------------------------------------------------------------------
-// MOTOR ALGORÍTMICO: SIMPLEX DE DOS FASES EXACTO
+// MOTOR ALGORÍTMICO: SIMPLEX DE DOS FASES
 // -----------------------------------------------------------------------------
 function solveTwoPhaseSimplex(model: LPModel) {
   const isMax = model.type === "max";
   const numOrigVars = model.objective.length;
   const numConstraints = model.constraints.length;
 
-  // Ajustar coeficientes de la función objetivo para maximizar
-  // Si es minimización, max (-Z)
   const objCoeffs = model.objective.map((c) => (isMax ? c : -c));
 
-  // 1. Estandarización y conteo de variables adicionales
   let slackCount = 0;
   let surplusCount = 0;
   let artificialCount = 0;
@@ -207,7 +204,6 @@ function solveTwoPhaseSimplex(model: LPModel) {
   const totalVars = headers.length - 1;
   const tableaus: SimplexTableau[] = [];
 
-  // Construcción de la matriz inicial de restricciones
   const A: number[][] = [];
   const b: number[] = [];
   const basicVars: string[] = [];
@@ -220,7 +216,6 @@ function solveTwoPhaseSimplex(model: LPModel) {
     let rhs = c.rhs;
     let coeffs = [...c.coefficients];
 
-    // Si RHS < 0, multiplicar por -1 e invertir operador
     let op = c.operator;
     if (rhs < 0) {
       rhs = -rhs;
@@ -230,7 +225,6 @@ function solveTwoPhaseSimplex(model: LPModel) {
     }
 
     const row = new Array(totalVars).fill(0);
-    // Variables originales
     for (let j = 0; j < numOrigVars; j++) {
       row[j] = coeffs[j] || 0;
     }
@@ -255,15 +249,10 @@ function solveTwoPhaseSimplex(model: LPModel) {
     b.push(rhs);
   });
 
-  // ---------------------------------------------------------------------------
-  // FASE 1: Si existen variables artificiales, minimizar W = sum(R_i)
-  // ---------------------------------------------------------------------------
   let isPhase1Needed = artificialCount > 0;
   let tableau = A.map((row, i) => [...row, b[i]]);
 
   if (isPhase1Needed) {
-    // Fila W: Inicialmente 0 en todo, 1 en artificiales
-    // W - sum(R_i) = 0 => canonicalize
     const rowW = new Array(totalVars + 1).fill(0);
     const artStart = numOrigVars + slackCount + surplusCount;
 
@@ -271,7 +260,6 @@ function solveTwoPhaseSimplex(model: LPModel) {
       rowW[artStart + i] = 1;
     }
 
-    // Restar las filas de restricciones que contienen variables artificiales
     for (let i = 0; i < numConstraints; i++) {
       if (basicVars[i].startsWith("R")) {
         for (let j = 0; j <= totalVars; j++) {
@@ -290,10 +278,8 @@ function solveTwoPhaseSimplex(model: LPModel) {
       matrix: p1Tableau.map((r) => [...r]),
     });
 
-    // Bucle de pivoteo Fase 1
     let p1Iter = 1;
     while (p1Iter < 15) {
-      // Condición de optimalidad: coeficientes en fila 0 < 0
       let pivotCol = -1;
       let minVal = -1e-7;
       for (let j = 0; j < totalVars; j++) {
@@ -303,9 +289,8 @@ function solveTwoPhaseSimplex(model: LPModel) {
         }
       }
 
-      if (pivotCol === -1) break; // Fase 1 Óptima
+      if (pivotCol === -1) break;
 
-      // Prueba de la razón mínima (Minimum Ratio Test)
       let pivotRow = -1;
       let minRatio = Infinity;
       for (let i = 1; i <= numConstraints; i++) {
@@ -323,7 +308,6 @@ function solveTwoPhaseSimplex(model: LPModel) {
         return { status: "unbounded", tableaus, optimalZ: 0, solution: [] };
       }
 
-      // Pivoteo Gauss-Jordan
       const pivotVal = p1Tableau[pivotRow][pivotCol];
       for (let j = 0; j <= totalVars; j++) {
         p1Tableau[pivotRow][j] /= pivotVal;
@@ -351,7 +335,6 @@ function solveTwoPhaseSimplex(model: LPModel) {
       });
     }
 
-    // Verificar si W* = 0
     const finalW = Math.abs(p1Tableau[0][totalVars]);
     if (finalW > 1e-4) {
       return {
@@ -362,20 +345,14 @@ function solveTwoPhaseSimplex(model: LPModel) {
       };
     }
 
-    // Extraer matriz limpia para Fase 2 (sin fila W)
     tableau = p1Tableau.slice(1);
   }
 
-  // ---------------------------------------------------------------------------
-  // FASE 2: Optimización de la función objetivo original Z
-  // ---------------------------------------------------------------------------
-  // Fila Z: Z - sum(c_j * x_j) = 0
   const rowZ = new Array(totalVars + 1).fill(0);
   for (let j = 0; j < numOrigVars; j++) {
     rowZ[j] = -objCoeffs[j];
   }
 
-  // Poner la fila Z en forma canónica con respecto a la base actual
   for (let i = 0; i < numConstraints; i++) {
     const bVar = basicVars[i];
     const colIdx = headers.indexOf(bVar);
@@ -399,14 +376,12 @@ function solveTwoPhaseSimplex(model: LPModel) {
     matrix: p2Tableau.map((r) => [...r]),
   });
 
-  // Bucle de pivoteo Simplex Fase 2
   let iter = 1;
   while (iter < 20) {
     let pivotCol = -1;
     let minVal = -1e-7;
 
     for (let j = 0; j < totalVars; j++) {
-      // Ignorar variables artificiales en Fase 2
       if (headers[j].startsWith("R")) continue;
       if (p2Tableau[0][j] < minVal) {
         minVal = p2Tableau[0][j];
@@ -414,9 +389,8 @@ function solveTwoPhaseSimplex(model: LPModel) {
       }
     }
 
-    if (pivotCol === -1) break; // Solución Óptima Alcanzada
+    if (pivotCol === -1) break;
 
-    // Prueba del cociente de la razón mínima
     let pivotRow = -1;
     let minRatio = Infinity;
     for (let i = 1; i <= numConstraints; i++) {
@@ -439,7 +413,6 @@ function solveTwoPhaseSimplex(model: LPModel) {
       };
     }
 
-    // Pivoteo
     const pivotVal = p2Tableau[pivotRow][pivotCol];
     for (let j = 0; j <= totalVars; j++) {
       p2Tableau[pivotRow][j] /= pivotVal;
@@ -467,7 +440,6 @@ function solveTwoPhaseSimplex(model: LPModel) {
     });
   }
 
-  // Extraer valores finales
   const solution = new Array(numOrigVars).fill(0);
   for (let i = 0; i < numConstraints; i++) {
     const varName = basicVars[i];
@@ -481,7 +453,6 @@ function solveTwoPhaseSimplex(model: LPModel) {
   if (!isMax) finalZ = -finalZ;
   finalZ = Number(finalZ.toFixed(4));
 
-  // Precios Sombra (Shadow prices bajo las variables de holgura / exceso)
   const shadowPrices: { constraint: string; price: number }[] = [];
   model.constraints.forEach((c, idx) => {
     let colName = `s${idx + 1}`;
@@ -506,14 +477,13 @@ function solveTwoPhaseSimplex(model: LPModel) {
 }
 
 // -----------------------------------------------------------------------------
-// MOTOR GEOMÉTRICO 2D (MÉTODO GRÁFICO PARA n = 2)
+// MOTOR GEOMÉTRICO 2D
 // -----------------------------------------------------------------------------
 function calculate2DGeometry(model: LPModel) {
   if (model.objective.length !== 2) return null;
 
   const lines: { a: number; b: number; c: number; op: ConstraintOperator; id: string }[] = [];
 
-  // Restricciones de no negatividad x1 >= 0, x2 >= 0
   lines.push({ a: 1, b: 0, c: 0, op: ">=", id: "x1_nonneg" });
   lines.push({ a: 0, b: 1, c: 0, op: ">=", id: "x2_nonneg" });
 
@@ -527,7 +497,6 @@ function calculate2DGeometry(model: LPModel) {
     });
   });
 
-  // Intersección de todas las parejas de rectas
   const rawIntersections: { x: number; y: number }[] = [];
   for (let i = 0; i < lines.length; i++) {
     for (let j = i + 1; j < lines.length; j++) {
@@ -542,12 +511,10 @@ function calculate2DGeometry(model: LPModel) {
     }
   }
 
-  // Filtrar puntos que cumplen todas las restricciones
   const feasibleVertices: Vertex2D[] = [];
   const allVertices: Vertex2D[] = [];
 
   rawIntersections.forEach((pt, idx) => {
-    // Comprobar no negatividad
     if (pt.x < -1e-4 || pt.y < -1e-4) return;
 
     let isFeasible = true;
@@ -575,7 +542,6 @@ function calculate2DGeometry(model: LPModel) {
     }
   });
 
-  // Ordenar vértices factibles en sentido antihorario para delimitar el polígono
   if (feasibleVertices.length > 2) {
     const cx = feasibleVertices.reduce((sum, v) => sum + v.x, 0) / feasibleVertices.length;
     const cy = feasibleVertices.reduce((sum, v) => sum + v.y, 0) / feasibleVertices.length;
@@ -598,7 +564,6 @@ export default function LinearProgrammingView({
   viewMode: "calc" | "steps" | "theory";
   initialExpression?: string;
 }) {
-  // Estado del modelo de optimización
   const [model, setModel] = useState<LPModel>({
     type: "max",
     objective: [3, 5],
@@ -620,9 +585,6 @@ export default function LinearProgrammingView({
 
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
-  // ---------------------------------------------------------------------------
-  // MANIPULACIÓN DINÁMICA DE VARIABLES Y RESTRICCIONES
-  // ---------------------------------------------------------------------------
   const handleAddVariable = () => {
     const nextIdx = model.varNames.length + 1;
     setModel((prev) => ({
@@ -637,7 +599,7 @@ export default function LinearProgrammingView({
   };
 
   const handleRemoveVariable = () => {
-    if (model.varNames.length <= 2) return; // Mínimo 2 variables
+    if (model.varNames.length <= 2) return;
     setModel((prev) => ({
       ...prev,
       varNames: prev.varNames.slice(0, -1),
@@ -707,18 +669,13 @@ export default function LinearProgrammingView({
     }));
   };
 
-  // ---------------------------------------------------------------------------
-  // ANÁLISIS NUMÉRICO Y GEOMÉTRICO (useMemo)
-  // ---------------------------------------------------------------------------
   const calculation = useMemo(() => {
     const simplexRes = solveTwoPhaseSimplex(model);
     const geom2D = model.varNames.length === 2 ? calculate2DGeometry(model) : null;
 
-    // Pasos KaTeX para el desglose didáctico
     const steps: { stage: string; desc: string; math: string }[] = [];
     let stepId = 1;
 
-    // Paso 1: Planteamiento
     const objStr = model.objective.map((c, i) => `${c >= 0 && i > 0 ? "+" : ""}${c}${model.varNames[i]}`).join(" ");
     steps.push({
       stage: `${stepId++}. Modelo Matemático Primal`,
@@ -731,14 +688,12 @@ export default function LinearProgrammingView({
         .join(" \\\\[4pt] ")} \\\\[4pt] ${model.varNames.join(", ")} \\ge 0 \\end{cases}`,
     });
 
-    // Paso 2: Estandarización
     steps.push({
       stage: `${stepId++}. Conversión a Forma Estándar Canónica`,
       desc: "Introducción de variables de holgura (sᵢ ≥ 0), variables de exceso (eᵢ ≥ 0) y variables artificiales (Rᵢ ≥ 0) para formar la base canónica.",
       math: `\\text{Se transforman las desigualdades en igualdades estrictas vectoriales } A x = b`,
     });
 
-    // Paso 3: Resolución Simplex
     if (simplexRes.status === "optimal") {
       steps.push({
         stage: `${stepId++}. Criterio de Optimalidad y Vector Solución`,
@@ -746,7 +701,6 @@ export default function LinearProgrammingView({
         math: `X^* = \\begin{pmatrix} ${model.varNames.map((v, i) => `${v}^* = ${simplexRes.solution[i]}`).join(" \\\\ ")} \\end{pmatrix}, \\quad Z^* = ${simplexRes.optimalZ}`,
       });
 
-      // Paso 4: Precios Sombra
       if (simplexRes.shadowPrices && simplexRes.shadowPrices.length > 0) {
         steps.push({
           stage: `${stepId++}. Análisis Dual y Precios Sombra (Shadow Prices)`,
@@ -776,41 +730,35 @@ export default function LinearProgrammingView({
     };
   }, [model]);
 
-  /// ---------------------------------------------------------------------------
-  // PUNTOS NOTABLES: CORTES CON EJES (X, Y) E INTERSECCIÓN (ESTILO EXCEL)
-  // ---------------------------------------------------------------------------
   const grapherPoints = useMemo<GraphPoint[]>(() => {
     if (!calculation.geom2D) return [];
     const pts: GraphPoint[] = [];
 
-    // 1. Cortes con los ejes de cada restricción (idéntico a la imagen)
     model.constraints.forEach((c, idx) => {
       const color = idx === 0 ? "#38bdf8" : idx === 1 ? "#f97316" : "#ec4899";
       const a1 = c.coefficients[0] || 0;
       const a2 = c.coefficients[1] || 0;
 
-      // Corte con Eje Y (x = 0 => y = rhs / a2)
       if (Math.abs(a2) > 1e-4) {
         const yVal = Number((c.rhs / a2).toFixed(2));
         if (yVal >= 0) {
           pts.push({
             x: 0,
             y: yVal,
-            label: `${yVal}`, // Muestra "8" o "2.66" directo en el eje
+            label: `${yVal}`,
             color: color,
             type: "solid",
           });
         }
       }
 
-      // Corte con Eje X (y = 0 => x = rhs / a1)
       if (Math.abs(a1) > 1e-4) {
         const xVal = Number((c.rhs / a1).toFixed(2));
         if (xVal >= 0) {
           pts.push({
             x: xVal,
             y: 0,
-            label: `${xVal}`, // Muestra "4" u "8"
+            label: `${xVal}`,
             color: color,
             type: "solid",
           });
@@ -818,14 +766,12 @@ export default function LinearProgrammingView({
       }
     });
 
-    // 2. Punto de intersección entre restricciones y vértices factibles
     calculation.geom2D.feasibleVertices.forEach((v) => {
       const isOptimal =
         calculation.simplexRes.status === "optimal" &&
         Math.abs(v.x - calculation.simplexRes.solution[0]) < 0.05 &&
         Math.abs(v.y - calculation.simplexRes.solution[1]) < 0.05;
 
-      // Si es el punto de cruce interior (no en los ejes 0,0)
       if (v.x > 0.05 && v.y > 0.05) {
         pts.push({
           x: v.x,
@@ -842,7 +788,6 @@ export default function LinearProgrammingView({
     return pts;
   }, [calculation, model.constraints]);
 
-  // Rectas del método gráfico: primera restricción como f(x) y segunda como g(x)
   const grapherPrimaryExpr = useMemo<string>(() => {
     const c = model.constraints[0];
     if (!c || !calculation.is2D) return "0";
@@ -876,15 +821,10 @@ export default function LinearProgrammingView({
     return items;
   }, [model, calculation]);
 
-  // Helper local para verificar estado del simplex sin depender de tipos extra
   function showRootsCheck(m: LPModel): boolean {
     return m.constraints.length > 0;
   }
 
-  // ---------------------------------------------------------------------------
-  // CONEXIÓN CON RE-SOLVE AI (EMISOR Y RECEPTOR)
-  // ---------------------------------------------------------------------------
-  // Emisor: Actualiza el contexto global permanentemente
   useEffect(() => {
     const solStr =
       calculation.simplexRes.status === "optimal"
@@ -902,7 +842,6 @@ export default function LinearProgrammingView({
     });
   }, [model, calculation, setAIContext]);
 
-  // Receptor: Carga problemas inyectados desde el Omni-Solver o Chat de IA
   useEffect(() => {
     if (injectedExpression) {
       try {
@@ -921,13 +860,12 @@ export default function LinearProgrammingView({
           });
         }
       } catch {
-        // En caso de que se pase una expresión no serializada
+        // silent
       }
       clearInjectedExpression();
     }
   }, [injectedExpression, clearInjectedExpression]);
 
-  // Persistencia Supabase
   useEffect(() => {
     fetchUserHistory("mat6", "programacion_lineal").then((data) => setHistory(data));
   }, []);
@@ -954,13 +892,10 @@ export default function LinearProgrammingView({
   return (
     <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
       {viewMode === "calc" && (
-        <div className="flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto custom-scrollbar pr-1">
-          {/* SECCIÓN SUPERIOR: CONFIGURACIÓN DEL MODELO + RESULTADO ÓPTIMO */}
+        <div className="relative flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto custom-scrollbar pr-1">
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 shrink-0">
-            {/* Panel Izquierdo: Constructor de Función Objetivo y Restricciones */}
             <div className="xl:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 space-y-6">
               <div className="space-y-5">
-                {/* Cabecera y Selector de Modo */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/60 pb-4">
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
@@ -973,7 +908,6 @@ export default function LinearProgrammingView({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Botón de Casos Universitarios */}
                     <button
                       type="button"
                       onClick={() => setIsHelpOpen(true)}
@@ -983,7 +917,6 @@ export default function LinearProgrammingView({
                       <span>Modelos Modelo</span>
                     </button>
 
-                    {/* Modulador de Variables (+ / -) */}
                     <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl p-0.5">
                       <button
                         type="button"
@@ -1007,7 +940,6 @@ export default function LinearProgrammingView({
                   </div>
                 </div>
 
-                {/* 1. Función Objetivo */}
                 <div className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono font-semibold text-zinc-300">
@@ -1039,7 +971,6 @@ export default function LinearProgrammingView({
                     </div>
                   </div>
 
-                  {/* Fila de Coeficientes Z */}
                   <div className="flex flex-wrap items-center gap-2 overflow-x-auto py-1">
                     <span className="text-sm font-serif font-bold text-zinc-400">Z =</span>
                     {model.varNames.map((vName, idx) => (
@@ -1058,7 +989,6 @@ export default function LinearProgrammingView({
                   </div>
                 </div>
 
-                {/* 2. Restricciones Tecnológicas */}
                 <div className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono font-semibold text-zinc-300">
@@ -1096,7 +1026,6 @@ export default function LinearProgrammingView({
                           </div>
                         ))}
 
-                        {/* Operador <=, >=, = */}
                         <select
                           value={c.operator}
                           onChange={(e) => updateConstraintOp(c.id, e.target.value as ConstraintOperator)}
@@ -1107,7 +1036,6 @@ export default function LinearProgrammingView({
                           <option value="=">=</option>
                         </select>
 
-                        {/* RHS (b_i) */}
                         <input
                           type="number"
                           value={c.rhs}
@@ -1133,7 +1061,6 @@ export default function LinearProgrammingView({
                 </div>
               </div>
 
-              {/* Botón Guardar en Supabase */}
               <div className="pt-4 border-t border-zinc-800/60 flex items-center justify-between">
                 <span className="text-[10px] font-mono text-zinc-500">
                   Persistencia ReSolve · Motor Simplex 2-Fases
@@ -1148,7 +1075,6 @@ export default function LinearProgrammingView({
               </div>
             </div>
 
-            {/* Panel Derecho: Tarjeta Hero con Solución Óptima y Vector X* */}
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden relative">
               <div className="pointer-events-none absolute -bottom-16 -right-16 w-52 h-52 bg-emerald-500/10 rounded-full blur-3xl" />
 
@@ -1194,7 +1120,6 @@ export default function LinearProgrammingView({
                   </span>
                 </div>
 
-                {/* Vector Solución Óptimo X* */}
                 <div className="space-y-2 font-mono text-xs">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block">
                     Vector de Decisión Óptimo (X*):
@@ -1216,7 +1141,6 @@ export default function LinearProgrammingView({
                   </div>
                 </div>
 
-                {/* Precios Sombra / Precios Duales */}
                 {calculation.simplexRes.shadowPrices && (
                   <div className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 space-y-1.5">
                     <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400">
@@ -1237,7 +1161,6 @@ export default function LinearProgrammingView({
                 )}
               </div>
 
-              {/* Botón de Análisis de Sensibilidad */}
               <div className="relative z-10 border-t border-zinc-800/60 pt-3 mt-3">
                 <button
                   type="button"
@@ -1254,17 +1177,14 @@ export default function LinearProgrammingView({
             </div>
           </div>
 
-          {/* SECCIÓN INFERIOR: VISUALIZADOR 2D (SI n=2) O TABLAS SIMPLEX EXPANDIDAS */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-0">
-            {/* Contenedor Principal con Soporte de Expansión Pantalla Completa */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-[640px]">
             <div
               className={`${
                 isExpanded
-                  ? "fixed inset-4 z-50 bg-zinc-950/95 backdrop-blur-2xl border border-zinc-700/80 rounded-3xl p-6 shadow-2xl flex flex-col"
+                  ? "absolute inset-2 z-30 bg-zinc-950/95 backdrop-blur-2xl border border-zinc-700/80 rounded-3xl p-6 shadow-2xl flex flex-col min-h-0 min-w-0 overflow-hidden"
                   : "xl:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4"
               }`}
             >
-              {/* Barra de pestañas + Botón de Expansión */}
               <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3 shrink-0">
                 <div className="flex items-center gap-2">
                   {calculation.is2D && (
@@ -1306,7 +1226,6 @@ export default function LinearProgrammingView({
                   )}
                 </div>
 
-                {/* BOTÓN EXPANDIR / REDUCIR */}
                 <button
                   type="button"
                   onClick={() => setIsExpanded(!isExpanded)}
@@ -1318,121 +1237,134 @@ export default function LinearProgrammingView({
                 </button>
               </div>
 
-              {/* Contenido Dinámico: Altura adaptativa al expandirse */}
-              <div className="flex-1 min-h-0 pt-3">
+              <div className="flex-1 min-h-0 flex flex-col">
                 {activeTab === "graph" && calculation.is2D && (
-                  <div className={`w-full ${isExpanded ? "h-[calc(100vh-140px)]" : "h-[500px]"}`}>
-                    <MathGrapher
-                      expression={grapherPrimaryExpr}
-                      secondaryExpression={grapherSecondaryExpr}
-                      points={grapherPoints}
-                      legend={grapherLegend}
-                      initialScale={isExpanded ? 65 : 45}
-                      height="h-full"
-                    />
-                  </div>
-                )}
+  <div
+    className="relative w-full overflow-hidden rounded-xl"
+    style={{ height: isExpanded ? "calc(100vh - 220px)" : "640px" }}
+  >
+    <div className="absolute inset-0">
+      <MathGrapher
+        expression={grapherPrimaryExpr}
+        secondaryExpression={grapherSecondaryExpr}
+        points={grapherPoints}
+        legend={grapherLegend}
+        initialScale={isExpanded ? 65 : 45}
+        height="h-full"
+      />
+    </div>
+  </div>
+)}
 
-                {activeTab === "simplex" && (
-                  <div className={`overflow-y-auto space-y-4 custom-scrollbar pr-1 ${isExpanded ? "max-h-[calc(100vh-140px)]" : "max-h-[500px]"}`}>
-                    {calculation.simplexRes.tableaus.map((tb, idx) => (
-                      <div
-                        key={idx}
-                        className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-2"
+                  {activeTab === "simplex" && (
+  <div
+    className="relative w-full overflow-hidden rounded-xl"
+    style={{ height: isExpanded ? "calc(100vh - 220px)" : "640px" }}
+  >
+    <div className="absolute inset-0 overflow-y-auto space-y-4 custom-scrollbar pr-1">
+      {calculation.simplexRes.tableaus.map((tb, idx) => (
+        <div
+          key={idx}
+          className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-2"
+        >
+          <div className="flex items-center justify-between text-xs font-mono">
+            <span className="font-bold text-zinc-200">{tb.description}</span>
+            <span className="text-[10px] text-zinc-500">Iteración {tb.iteration}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs font-mono text-center border-collapse">
+              <thead>
+                <tr className="border-b border-zinc-800 text-zinc-400 bg-zinc-900/60">
+                  <th className="p-2">Base</th>
+                  {tb.headers.map((h, i) => (
+                    <th
+                      key={i}
+                      className={`p-2 ${
+                        tb.pivotCol === i ? "bg-amber-500/20 text-amber-300 font-bold" : ""
+                      }`}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/40 text-zinc-300">
+                {tb.matrix.map((row, rIdx) => (
+                  <tr
+                    key={rIdx}
+                    className={`${
+                      tb.pivotRow === rIdx ? "bg-amber-500/10 text-amber-200 font-semibold" : ""
+                    }`}
+                  >
+                    <td className="p-2 font-bold text-zinc-400">{tb.basicVars[rIdx]}</td>
+                    {row.map((val, cIdx) => (
+                      <td
+                        key={cIdx}
+                        className={`p-2 ${
+                          tb.pivotRow === rIdx && tb.pivotCol === cIdx
+                            ? "bg-amber-400 text-zinc-950 font-extrabold rounded"
+                            : ""
+                        }`}
                       >
-                        <div className="flex items-center justify-between text-xs font-mono">
-                          <span className="font-bold text-zinc-200">{tb.description}</span>
-                          <span className="text-[10px] text-zinc-500">Iteración {tb.iteration}</span>
-                        </div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-xs font-mono text-center border-collapse">
-                            <thead>
-                              <tr className="border-b border-zinc-800 text-zinc-400 bg-zinc-900/60">
-                                <th className="p-2">Base</th>
-                                {tb.headers.map((h, i) => (
-                                  <th
-                                    key={i}
-                                    className={`p-2 ${
-                                      tb.pivotCol === i ? "bg-amber-500/20 text-amber-300 font-bold" : ""
-                                    }`}
-                                  >
-                                    {h}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-800/40 text-zinc-300">
-                              {tb.matrix.map((row, rIdx) => (
-                                <tr
-                                  key={rIdx}
-                                  className={`${
-                                    tb.pivotRow === rIdx ? "bg-amber-500/10 text-amber-200 font-semibold" : ""
-                                  }`}
-                                >
-                                  <td className="p-2 font-bold text-zinc-400">{tb.basicVars[rIdx]}</td>
-                                  {row.map((val, cIdx) => (
-                                    <td
-                                      key={cIdx}
-                                      className={`p-2 ${
-                                        tb.pivotRow === rIdx && tb.pivotCol === cIdx
-                                          ? "bg-amber-400 text-zinc-950 font-extrabold rounded"
-                                          : ""
-                                      }`}
-                                    >
-                                      {Number(val.toFixed(3))}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
+                        {Number(val.toFixed(3))}
+                      </td>
                     ))}
-                  </div>
-                )}
-
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+                
                 {activeTab === "table" && calculation.geom2D && (
-                  <div className={`overflow-y-auto custom-scrollbar border border-zinc-800/60 rounded-2xl ${isExpanded ? "max-h-[calc(100vh-140px)]" : "max-h-[500px]"}`}>
-                    <table className="w-full text-left font-mono text-xs divide-y divide-zinc-800">
-                      <thead className="bg-zinc-900/80 text-zinc-400 sticky top-0">
-                        <tr>
-                          <th className="p-3">Vértice</th>
-                          <th className="p-3">Coordenada (x₁, x₂)</th>
-                          <th className="p-3">Valor Z</th>
-                          <th className="p-3">Condición</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-800/40 text-zinc-300">
-                        {calculation.geom2D.feasibleVertices.map((v, i) => {
-                          const isOpt =
-                            calculation.simplexRes.status === "optimal" &&
-                            Math.abs(v.zValue - calculation.simplexRes.optimalZ) < 0.05;
-                          return (
-                            <tr key={i} className={isOpt ? "bg-emerald-500/10 font-bold" : ""}>
-                              <td className="p-3 text-zinc-400">V{i + 1}</td>
-                              <td className="p-3 text-sky-400">({v.x}, {v.y})</td>
-                              <td className="p-3 text-emerald-400">{v.zValue}</td>
-                              <td className="p-3 text-[11px]">
-                                {isOpt ? (
-                                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
-                                    ÓPTIMO GLOBAL
-                                  </span>
-                                ) : (
-                                  <span className="text-zinc-500">Factible</span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+  <div
+    className="relative w-full overflow-hidden rounded-xl"
+    style={{ height: isExpanded ? "calc(100vh - 220px)" : "640px" }}
+  >
+    <div className="absolute inset-0 overflow-y-auto custom-scrollbar border border-zinc-800/60 rounded-2xl">
+      <table className="w-full min-w-full text-left font-mono text-xs divide-y divide-zinc-800">
+        <thead className="bg-zinc-900/80 text-zinc-400 sticky top-0 z-10">
+          <tr>
+            <th className="p-3">Vértice</th>
+            <th className="p-3">Coordenada (x₁, x₂)</th>
+            <th className="p-3">Valor Z</th>
+            <th className="p-3">Condición</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-800/40 text-zinc-300">
+          {calculation.geom2D.feasibleVertices.map((v, i) => {
+            const isOpt =
+              calculation.simplexRes.status === "optimal" &&
+              Math.abs(v.zValue - calculation.simplexRes.optimalZ) < 0.05;
+            return (
+              <tr key={i} className={isOpt ? "bg-emerald-500/10 font-bold" : ""}>
+                <td className="p-3 text-zinc-400">V{i + 1}</td>
+                <td className="p-3 text-sky-400">({v.x}, {v.y})</td>
+                <td className="p-3 text-emerald-400">{v.zValue}</td>
+                <td className="p-3 text-[11px]">
+                  {isOpt ? (
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                      ÓPTIMO GLOBAL
+                    </span>
+                  ) : (
+                    <span className="text-zinc-500">Factible</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
               </div>
             </div>
 
-            {/* Panel Historial */}
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
@@ -1448,7 +1380,7 @@ export default function LinearProgrammingView({
                 )}
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
+              <div className="flex-1 min-h-[640px] overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
                 {history.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
                     <p>Sin modelos guardados.</p>
@@ -1473,7 +1405,6 @@ export default function LinearProgrammingView({
         </div>
       )}
 
-      {/* MODO 2: PROCEDIMIENTO ANALÍTICO PASO A PASO */}
       {viewMode === "steps" && (
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
           <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
@@ -1509,7 +1440,6 @@ export default function LinearProgrammingView({
         </div>
       )}
 
-      {/* MODO 3: TEORÍA DE PROGRAMACIÓN LINEAL E INVESTIGACIÓN DE OPERACIONES */}
       {viewMode === "theory" && (
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto shadow-xl shadow-black/20 custom-scrollbar">
           <div>
@@ -1545,7 +1475,6 @@ export default function LinearProgrammingView({
         </div>
       )}
 
-      {/* MODAL DE CASOS UNIVERSITARIOS DE 1 CLIC */}
       <AnimatePresence>
         {isHelpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
@@ -1600,7 +1529,6 @@ export default function LinearProgrammingView({
         )}
       </AnimatePresence>
 
-      {/* MODAL DE SENSIBILIDAD Y MODELO DUAL */}
       <AnimatePresence>
         {isSensitivityOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">

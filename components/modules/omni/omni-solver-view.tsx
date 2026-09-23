@@ -1,5 +1,6 @@
 "use client";
 
+import SolutionCard from "@/components/shared/solution-card";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -26,6 +27,7 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+
 
 // ============================================================
 // UTILIDAD: Formateo seguro de LaTeX para KaTeX

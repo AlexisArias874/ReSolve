@@ -23,6 +23,7 @@ import {
   Equal,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelRightClose,
   ChevronRight,
   LogOut,
   LogIn,
@@ -30,7 +31,11 @@ import {
   Maximize2,
   Minimize2,
   X,
-  Cpu
+  Cpu,
+  Palette,
+  Sun,
+  Moon,
+  Terminal
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -48,20 +53,18 @@ import LimitsView from "@/components/modules/basic-math/limits-view";
 import DerivativesView from "@/components/modules/basic-math/derivatives-view";
 import IntegralsView from "@/components/modules/basic-math/integrals-view";
 
-// --- MATEMÁTICAS II: LÓGICA COMPUTACIONAL (FUTURAS) ---
+// --- MATEMÁTICAS II: LÓGICA COMPUTACIONAL ---
 import PropositionsView from "@/components/modules/logic/propositions-view";
-// import EquivalencesView from "@/components/modules/logic/equivalences-view";
 import InferencesView from "@/components/modules/logic/inferences-view";
-// import PredicatesView from "@/components/modules/logic/predicates-view";
-// import LogicTranslatorView from "@/components/modules/logic/translator-view";
+import EquivalencesView from "@/components/modules/logic/equivalences-view";
 
-// --- MATEMÁTICAS III: MATEMÁTICAS FINANCIERAS (FUTURAS) ---
+// --- MATEMÁTICAS III: MATEMÁTICAS FINANCIERAS ---
 import SimpleInterestView from "@/components/modules/finance/simple-interest-view";
 import CompoundInterestView from "@/components/modules/finance/compound-interest-view";
 import AnnuitiesView from "@/components/modules/finance/annuities-view";
 import AmortizationView from "@/components/modules/finance/amortization-view";
 
-// --- MATEMÁTICAS IV: MATEMÁTICAS COMPUTACIONALES (FUTURAS) ---
+// --- MATEMÁTICAS IV: MATEMÁTICAS COMPUTACIONALES ---
 import MatricesView from "@/components/modules/computational/matrices-view";
 import DeterminantsView from "@/components/modules/computational/determinants-view";
 import GaussJordanView from "@/components/modules/computational/gauss-jordan-view";
@@ -69,22 +72,20 @@ import NumericalRootsView from "@/components/modules/computational/numerical-roo
 import InterpolationView from "@/components/modules/computational/interpolation-view";
 import ErrorTheoryView from "@/components/modules/computational/error-theory-view";
 
-// --- MATEMÁTICAS V: PROBABILIDAD Y ESTADÍSTICA (FUTURAS) ---
-// import DescriptiveStatsView from "@/components/modules/statistics/descriptive-stats-view";
-// import FrequencyTableView from "@/components/modules/statistics/frequency-table-view";
-// import ProbabilityView from "@/components/modules/statistics/probability-view";
-// import DistributionsView from "@/components/modules/statistics/distributions-view";
-// import RegressionView from "@/components/modules/statistics/regression-view";
+// --- MATEMÁTICAS V: PROBABILIDAD Y ESTADÍSTICA ---
+import DescriptiveStatsView from "@/components/modules/statistics/descriptive-stats-view";
+import FrequencyTableView from "@/components/modules/statistics/frequency-table-view";
+import ProbabilityView from "@/components/modules/statistics/probability-view";
+import DistributionsView from "@/components/modules/statistics/distributions-view";
+import RegressionView from "@/components/modules/statistics/regression-view";
 
-// --- MATEMÁTICAS VI: INVESTIGACIÓN DE OPERACIONES (FUTURAS) ---
+// --- MATEMÁTICAS VI: INVESTIGACIÓN DE OPERACIONES ---
 import LinearProgrammingView from "@/components/modules/optimization/linear-programming-view";
-// import SimplexView from "@/components/modules/optimization/simplex-view";
-// import TransportationView from "@/components/modules/optimization/transportation-view";
-// import AssignmentView from "@/components/modules/optimization/assignment-view";
-// import QueueingTheoryView from "@/components/modules/optimization/queueing-theory-view";
+import SimplexView from "@/components/modules/optimization/simplex-view";
+import AssignmentView from "@/components/modules/optimization/assignment-view";
+import QueueingTheoryView from "@/components/modules/optimization/queueing-theory-view";
 
 import AIAssistant from "@/components/ai/ai-assistant";
-import EquivalencesView from "@/components/modules/logic/equivalences-view";
 
 export type ModuleId = "omni" | "mat1" | "mat2" | "mat3" | "mat4" | "mat5" | "mat6";
 export type ViewMode = "calc" | "steps" | "theory";
@@ -105,7 +106,6 @@ const MODULES: ModuleConfig[] = [
   { id: "mat6", label: "Optimización", desc: "Simplex y Colas", icon: Network },
 ];
 
-// Catálogo Completo de Subtemas para las 6 materias
 const SUBTOPICS_BY_MODULE: Record<ModuleId, { id: string; label: string; desc: string }[]> = {
   mat1: [
     { id: "aritmetica", label: "Aritmética", desc: "Jerarquía, Fracciones y Operaciones Básicas" },
@@ -120,8 +120,6 @@ const SUBTOPICS_BY_MODULE: Record<ModuleId, { id: string; label: string; desc: s
     { id: "proposiciones", label: "Proposiciones", desc: "Tablas de Verdad, Tautologías y Conectores" },
     { id: "equivalencias", label: "Equivalencias", desc: "Leyes de De Morgan y Simplificación Lógica" },
     { id: "inferencias", label: "Inferencias", desc: "Modus Ponens, Tollens y Silogismos Válidos" },
-    //{ id: "predicados", label: "Predicados", desc: "Cuantificadores Universales ∀ y Existenciales ∃" },
-    //{ id: "traductor", label: "Traductor a Código", desc: "Conversión de Proposiciones a C++/Python" },
   ],
   mat3: [
     { id: "interes-simple", label: "Interés Simple", desc: "Capital, Tasa, Tiempo y Despeje de Variables" },
@@ -147,7 +145,6 @@ const SUBTOPICS_BY_MODULE: Record<ModuleId, { id: string; label: string; desc: s
   mat6: [
     { id: "prog-lineal", label: "Programación Lineal", desc: "Método Gráfico y Regiones Factibles" },
     { id: "simplex", label: "Método Simplex", desc: "Tablas Simplex, Variables Holgura y Gran M" },
-    { id: "transporte", label: "Problemas de Transporte", desc: "Esquina Noroeste, Costo Mínimo y Vogel" },
     { id: "asignacion", label: "Asignación", desc: "Método Húngaro de Minimización y Maximización" },
     { id: "teoria-colas", label: "Teoría de Colas", desc: "Modelos M/M/1, Tasas de Llegada y Espera" },
   ],
@@ -158,6 +155,13 @@ const VIEW_MODES: { id: ViewMode; label: string; icon: React.ElementType }[] = [
   { id: "calc", label: "Calcular", icon: Equal },
   { id: "steps", label: "Paso a Paso", icon: ListOrdered },
   { id: "theory", label: "Teoría", icon: BookOpen },
+];
+
+const THEME_OPTIONS = [
+  { id: "dark", label: "Oscuro", icon: Moon },
+  { id: "light", label: "Claro", icon: Sun },
+  { id: "sepia", label: "Sepia", icon: BookOpen },
+  { id: "matrix", label: "Matrix", icon: Terminal },
 ];
 
 function DashboardContent() {
@@ -171,10 +175,27 @@ function DashboardContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // --- Estados de Redimensionamiento y Maximizado de IA ---
+  // --- Estados de Asistente IA (Visibilidad, Ancho y Maximizado) ---
+  const [isAiOpen, setIsAiOpen] = useState<boolean>(true);
   const [aiWidth, setAiWidth] = useState<number>(360);
   const [isAiMaximized, setIsAiMaximized] = useState<boolean>(false);
   const isDraggingRef = useRef<boolean>(false);
+
+  // --- Estado Global de Tema (Para Invitados y Autenticados) ---
+  const [currentTheme, setCurrentTheme] = useState<string>("dark");
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("resolve-theme") || document.documentElement.getAttribute("data-theme") || "dark";
+    setCurrentTheme(saved);
+    document.documentElement.setAttribute("data-theme", saved);
+  }, []);
+
+  const handleThemeChange = (newTheme: string) => {
+    setCurrentTheme(newTheme);
+    document.documentElement.setAttribute("data-theme", newTheme);
+    localStorage.setItem("resolve-theme", newTheme);
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -230,7 +251,6 @@ function DashboardContent() {
     router.refresh();
   };
 
-  // Función de navegación parametrizada
   const handleNavigateFromOmni = (
     moduleId: ModuleId,
     subtopicId: string,
@@ -250,7 +270,6 @@ function DashboardContent() {
     router.push(`/dashboard?${query.toString()}`);
   };
 
-  // Cambio de módulo con reseteo al primer subtema correspondiente
   const handleSelectModule = (id: ModuleId) => {
     setActiveModule(id);
     const subList = SUBTOPICS_BY_MODULE[id];
@@ -267,7 +286,6 @@ function DashboardContent() {
     ? user.user_metadata.full_name.substring(0, 2).toUpperCase()
     : user?.email?.substring(0, 2).toUpperCase() || "U";
 
-  // Función auxiliar para renderizar placeholders de módulos en preparación
   const renderPlaceholder = (title: string, desc: string) => (
     <div className="h-full min-h-[400px] border border-dashed border-zinc-800/80 rounded-3xl flex flex-col items-center justify-center p-10 text-center bg-zinc-900/20 backdrop-blur-sm max-w-2xl mx-auto my-auto">
       <div className="w-14 h-14 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-center mb-4 text-zinc-400 shadow-inner">
@@ -309,9 +327,6 @@ function DashboardContent() {
                 <h1 className="text-2xl font-bold tracking-tight font-serif leading-none">
                   Re<span className="text-zinc-500">Solve</span>
                 </h1>
-                <p className="text-[10px] text-zinc-500 tracking-[0.2em] uppercase font-mono mt-2">
-                  
-                </p>
               </div>
               <button
                 onClick={() => setIsSidebarOpen(false)}
@@ -325,25 +340,24 @@ function DashboardContent() {
           </div>
 
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-
             <div className="px-3 pt-2 pb-1">
-            <button
-              onClick={() => setActiveModule("omni")}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left transition-all border ${
-                activeModule === "omni"
-                  ? "bg-amber-400/10 border-amber-400/30 text-amber-300 font-semibold shadow-lg shadow-amber-400/5"
-                  : "bg-zinc-900/40 border-zinc-800/80 text-zinc-300 hover:border-zinc-700 hover:text-zinc-100"
-              }`}
-            >
-              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-                <Zap size={15} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="block text-[13px] leading-tight">ReSolve Solver</span>
-                <span className="block text-[10px] text-zinc-500 font-mono">Omni-Motor Photomath</span>
-              </div>
-            </button>
-          </div>
+              <button
+                onClick={() => setActiveModule("omni")}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left transition-all border ${
+                  activeModule === "omni"
+                    ? "bg-amber-400/10 border-amber-400/30 text-amber-300 font-semibold shadow-lg shadow-amber-400/5"
+                    : "bg-zinc-900/40 border-zinc-800/80 text-zinc-300 hover:border-zinc-700 hover:text-zinc-100"
+                }`}
+              >
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                  <Zap size={15} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block text-[13px] leading-tight">ReSolve Solver</span>
+                  <span className="block text-[10px] text-zinc-500 font-mono">Omni-Motor Photomath</span>
+                </div>
+              </button>
+            </div>
             <p className="px-3 pt-2 pb-2 text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-mono">
               Módulos
             </p>
@@ -391,7 +405,35 @@ function DashboardContent() {
         </div>
 
         {/* PIE DEL MENÚ LATERAL */}
-        <div className="p-3 border-t border-zinc-800/60 bg-zinc-950/40 shrink-0">
+        <div className="p-3 border-t border-zinc-800/60 bg-zinc-950/40 shrink-0 space-y-2">
+          {/* Selector Rápido de Temas en Barra Lateral (Visible para todos) */}
+          <div className="p-2 rounded-xl bg-zinc-900/40 border border-zinc-800/80 flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase text-zinc-500 flex items-center gap-1.5">
+              <Palette size={12} className="text-amber-400" /> Tema
+            </span>
+            <div className="flex gap-1">
+              {THEME_OPTIONS.map((t) => {
+                const Icon = t.icon;
+                const isCurrent = currentTheme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => handleThemeChange(t.id)}
+                    title={`Cambiar a tema ${t.label}`}
+                    className={`p-1.5 rounded-lg text-xs transition-colors ${
+                      isCurrent
+                        ? "bg-zinc-100 text-zinc-950 font-bold"
+                        : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                    }`}
+                  >
+                    <Icon size={12} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {user ? (
             <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur">
               <button
@@ -449,7 +491,7 @@ function DashboardContent() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 px-2 py-2 mt-1 text-[10px] text-zinc-500 font-mono">
+          <div className="flex items-center gap-2 px-2 py-1 text-[10px] text-zinc-500 font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 animate-pulse" />
             Beta 1.0
           </div>
@@ -474,79 +516,130 @@ function DashboardContent() {
 
               <div className="truncate">
                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono uppercase tracking-wider mb-1">
-  <span>{currentModule?.label}</span>
-  <ChevronRight size={11} />
-  <span className="text-foreground/70">{currentSubtopicConfig?.label}</span>
-</div>
-<h2 className="text-2xl md:text-3xl font-serif font-bold tracking-tight text-foreground truncate leading-tight">
-  {currentSubtopicConfig?.label}{" "}
-  <span className="text-muted-foreground italic font-normal text-lg md:text-xl">
-    · {currentSubtopicConfig?.desc}
-  </span>
-</h2>
+                  <span>{currentModule?.label}</span>
+                  <ChevronRight size={11} />
+                  <span className="text-foreground/70">{currentSubtopicConfig?.label}</span>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-serif font-bold tracking-tight text-foreground truncate leading-tight">
+                  {currentSubtopicConfig?.label}{" "}
+                  <span className="text-muted-foreground italic font-normal text-lg md:text-xl">
+                    · {currentSubtopicConfig?.desc}
+                  </span>
+                </h2>
               </div>
             </div>
 
-            <div className="flex bg-zinc-900/60 border border-zinc-800/80 p-1 rounded-2xl gap-1 shrink-0 backdrop-blur">
-              {VIEW_MODES.map((vm) => {
-                const Icon = vm.icon;
-                const isActive = viewMode === vm.id;
-                return (
-                  <button
-                    key={vm.id}
-                    onClick={() => setViewMode(vm.id)}
-                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-colors ${
-                      isActive ? "text-zinc-950 font-semibold" : "text-zinc-400 hover:text-zinc-100"
-                    }`}
-                  >
-                    {isActive && (
-                      <motion.span
-                        layoutId="viewModePill"
-                        className="absolute inset-0 bg-zinc-100 rounded-xl"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                    <span className="relative flex items-center gap-1.5">
-                      <Icon size={13} />
-                      {vm.label}
-                    </span>
-                  </button>
-                );
-              })}
+            {/* Acciones de la cabecera: Temas, Modos de Vista y Reabrir IA */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Selector de Temas con Dropdown (Accesible para todos) */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
+                  title="Cambiar tema de color"
+                  className="p-2 rounded-2xl border border-zinc-800/80 bg-zinc-900/60 backdrop-blur text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors flex items-center gap-1.5 text-xs font-mono"
+                >
+                  <Palette size={14} className="text-amber-400" />
+                  <span className="hidden md:inline capitalize">{currentTheme}</span>
+                </button>
+
+                {isThemeMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-36 rounded-2xl border border-zinc-800 bg-zinc-950/95 backdrop-blur-xl p-1.5 shadow-2xl z-50 space-y-1 font-mono text-xs">
+                    {THEME_OPTIONS.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          handleThemeChange(t.id);
+                          setIsThemeMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-left transition-colors ${
+                          currentTheme === t.id
+                            ? "bg-zinc-100 text-zinc-950 font-bold"
+                            : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
+                        }`}
+                      >
+                        <t.icon size={13} />
+                        <span>{t.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Selector de Modos de Vista */}
+              <div className="flex bg-zinc-900/60 border border-zinc-800/80 p-1 rounded-2xl gap-1 shrink-0 backdrop-blur">
+                {VIEW_MODES.map((vm) => {
+                  const Icon = vm.icon;
+                  const isActive = viewMode === vm.id;
+                  return (
+                    <button
+                      key={vm.id}
+                      onClick={() => setViewMode(vm.id)}
+                      className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-colors ${
+                        isActive ? "text-zinc-950 font-semibold" : "text-zinc-400 hover:text-zinc-100"
+                      }`}
+                    >
+                      {isActive && (
+                        <motion.span
+                          layoutId="viewModePill"
+                          className="absolute inset-0 bg-zinc-100 rounded-xl"
+                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                        />
+                      )}
+                      <span className="relative flex items-center gap-1.5">
+                        <Icon size={13} />
+                        {vm.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Botón para Reabrir IA cuando está oculta */}
+              {!isAiOpen && (
+                <button
+                  type="button"
+                  onClick={() => setIsAiOpen(true)}
+                  title="Abrir asistente ReSolve AI"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-zinc-800/80 bg-zinc-900/60 backdrop-blur text-xs font-mono text-zinc-300 hover:text-zinc-100 hover:border-amber-400/40 transition-all shadow-sm"
+                >
+                  <Sparkles size={13} className="text-amber-400" />
+                  <span className="hidden sm:inline">ReSolve AI</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Barra de Subtemas Dinámica (Cambia según la materia activa) */}
+          {/* Barra de Subtemas Dinámica */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
             {currentSubtopics.map((item) => {
-  const isActive = subTopic === item.id;
-  return (
-    <button
-      key={item.id}
-      onClick={() => setSubTopic(item.id)}
-      className={`relative px-3.5 py-1.5 rounded-full whitespace-nowrap text-xs transition-colors ${
-        isActive
-          ? "text-foreground font-medium"
-          : "text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {isActive && (
-        <motion.span
-          layoutId="subtopicPill"
-          className="absolute inset-0 bg-accent border border-border rounded-full"
-          transition={{ type: "spring", stiffness: 450, damping: 30 }}
-        />
-      )}
-      <span className="relative z-10">{item.label}</span>
-    </button>
-  );
-})}
+              const isActive = subTopic === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setSubTopic(item.id)}
+                  className={`relative px-3.5 py-1.5 rounded-full whitespace-nowrap text-xs transition-colors ${
+                    isActive
+                      ? "text-foreground font-medium"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {isActive && (
+                    <motion.span
+                      layoutId="subtopicPill"
+                      className="absolute inset-0 bg-accent border border-border rounded-full"
+                      transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10">{item.label}</span>
+                </button>
+              );
+            })}
           </div>
         </header>
 
-        {/* =====================================================================
-            CONTENEDOR DE VISTAS (ACTIVAS Y PREPARADAS PARA EL FUTURO)
-        ====================================================================== */}
+        {/* CONTENEDOR DE VISTAS */}
         <div className="flex-1 min-h-0 p-6 lg:p-8 overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div
@@ -557,15 +650,11 @@ function DashboardContent() {
               transition={{ duration: 0.25, ease: "easeOut" }}
               className="h-full"
             >
-              {/* ===============================================================
-                  RAMA 1: MATEMÁTICAS I (BÁSICAS Y CÁLCULO)
-              ================================================================ */}
-             {activeModule === "omni" ? (
+              {/* RAMA 1: MATEMÁTICAS I */}
+              {activeModule === "omni" ? (
                 <OmniSolverView onNavigateToModule={handleNavigateFromOmni} />
-
               ) : activeModule === "mat1" && subTopic === "aritmetica" ? (
                 <ArithmeticView viewMode={viewMode} initialExpression={initialExpr} />
-
               ) : activeModule === "mat1" && subTopic === "algebra" ? (
                 <AlgebraView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat1" && subTopic === "geometria" ? (
@@ -573,92 +662,65 @@ function DashboardContent() {
               ) : activeModule === "mat1" && subTopic === "funciones" ? (
                 <FunctionsView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat1" && subTopic === "limites" ? (
-                <LimitsView viewMode={viewMode} initialExpression={initialExpr} /> 
+                <LimitsView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat1" && subTopic === "derivadas" ? (
                 <DerivativesView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat1" && subTopic === "integrales" ? (
-                <IntegralsView viewMode={viewMode} initialExpression={initialExpr} /> 
+                <IntegralsView viewMode={viewMode} initialExpression={initialExpr} />
 
-              /* ===============================================================
-                  RAMA 2: MATEMÁTICAS II (LÓGICA COMPUTACIONAL)
-              ================================================================ */
+              /* RAMA 2: MATEMÁTICAS II */
               ) : activeModule === "mat2" && subTopic === "proposiciones" ? (
-                <PropositionsView viewMode={viewMode} initialExpression={initialExpr} /> 
+                <PropositionsView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat2" && subTopic === "equivalencias" ? (
                 <EquivalencesView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat2" && subTopic === "inferencias" ? (
-               <InferencesView viewMode={viewMode} initialExpression={initialExpr} /> 
-              ) : activeModule === "mat2" && subTopic === "predicados" ? (
-                /* <PredicatesView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Lógica de Predicados", "Cuantificadores universales ∀, existenciales ∃, negaciones y dominios de discurso")
-              ) : activeModule === "mat2" && subTopic === "traductor" ? (
-                /* <LogicTranslatorView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Traductor de Lógica a Código", "Traducción de proposiciones lógicas directamente a código ejecutable en C++, Python y JavaScript")
+                <InferencesView viewMode={viewMode} initialExpression={initialExpr} />
 
-              /* ===============================================================
-                  RAMA 3: MATEMÁTICAS III (FINANCIERAS)
-              ================================================================ */
+              /* RAMA 3: MATEMÁTICAS III */
               ) : activeModule === "mat3" && subTopic === "interes-simple" ? (
-                 <SimpleInterestView viewMode={viewMode} initialExpression={initialExpr} /> 
+                <SimpleInterestView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat3" && subTopic === "interes-compuesto" ? (
                 <CompoundInterestView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat3" && subTopic === "anualidades" ? (
                 <AnnuitiesView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat3" && subTopic === "amortizacion" ? (
                 <AmortizationView viewMode={viewMode} initialExpression={initialExpr} />
-              /* ===============================================================
-                  RAMA 4: MATEMÁTICAS IV (COMPUTACIONALES / NUMÉRICAS)
-              ================================================================ */
+
+              /* RAMA 4: MATEMÁTICAS IV */
               ) : activeModule === "mat4" && subTopic === "matrices" ? (
                 <MatricesView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat4" && subTopic === "determinantes" ? (
-                <DeterminantsView viewMode={viewMode} initialExpression={initialExpr} /> 
+                <DeterminantsView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat4" && subTopic === "sistemas-gauss" ? (
-                <GaussJordanView viewMode={viewMode} initialExpression={initialExpr} /> 
+                <GaussJordanView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat4" && subTopic === "raices-metodos" ? (
-                <NumericalRootsView viewMode={viewMode} initialExpression={initialExpr} /> 
+                <NumericalRootsView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat4" && subTopic === "interpolacion" ? (
                 <InterpolationView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat4" && subTopic === "errores" ? (
                 <ErrorTheoryView viewMode={viewMode} initialExpression={initialExpr} />
 
-
-              /* ===============================================================
-                  RAMA 5: MATEMÁTICAS V (PROBABILIDAD Y ESTADÍSTICA)
-              ================================================================ */
+              /* RAMA 5: MATEMÁTICAS V */
               ) : activeModule === "mat5" && subTopic === "descriptiva" ? (
-                /* <DescriptiveStatsView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Estadística Descriptiva", "Cálculo de Media, Mediana, Moda, Rango, Varianza, Desviación Estándar y Cuartiles")
+                <DescriptiveStatsView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat5" && subTopic === "tablas-frecuencia" ? (
-                /* <FrequencyTableView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Tablas de Frecuencia", "Agrupación en intervalos, frecuencias absolutas, relativas y acumuladas")
+                <FrequencyTableView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat5" && subTopic === "probabilidad" ? (
-                /* <ProbabilityView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Probabilidad y Combinatoria", "Permutaciones, combinaciones, probabilidad condicional y Teorema de Bayes")
+                <ProbabilityView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat5" && subTopic === "distribuciones" ? (
-                /* <DistributionsView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Distribuciones de Probabilidad", "Distribución Binomial, Poisson y Normal Estándar con cálculo de probabilidades Z")
+                <DistributionsView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat5" && subTopic === "regresion" ? (
-                /* <RegressionView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Regresión Lineal y Correlación", "Ajuste de recta por mínimos cuadrados, coeficiente de Pearson r y R²")
+                <RegressionView viewMode={viewMode} initialExpression={initialExpr} />
 
-              /* ===============================================================
-                  RAMA 6: MATEMÁTICAS VI (INVESTIGACIÓN DE OPERACIONES)
-              ================================================================ */
+              /* RAMA 6: MATEMÁTICAS VI */
               ) : activeModule === "mat6" && subTopic === "prog-lineal" ? (
                 <LinearProgrammingView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat6" && subTopic === "simplex" ? (
-                /* <SimplexView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Algoritmo Simplex", "Tablas Simplex paso a paso, variables de holgura, método de la Gran M y Dos Fases")
-              ) : activeModule === "mat6" && subTopic === "transporte" ? (
-                /* <TransportationView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Modelos de Transporte", "Optimización logística por Esquina Noroeste, Costo Mínimo y Aproximación de Vogel")
+                <SimplexView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat6" && subTopic === "asignacion" ? (
-                /* <AssignmentView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Problemas de Asignación", "Método Húngaro para minimización de costos o maximización de rendimientos")
+                <AssignmentView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat6" && subTopic === "teoria-colas" ? (
-                /* <QueueingTheoryView viewMode={viewMode} initialExpression={initialExpr} /> */
-                renderPlaceholder("Teoría de Colas y Líneas de Espera", "Modelos M/M/1, M/M/c, factor de utilización ρ, tiempos en cola Wq y en el sistema W")
+                <QueueingTheoryView viewMode={viewMode} initialExpression={initialExpr} />
               ) : (
                 renderPlaceholder("Módulo en Desarrollo", "La arquitectura modular está lista para recibir las funciones de este apartado.")
               )}
@@ -668,7 +730,7 @@ function DashboardContent() {
       </main>
 
       {/* =======================================================================
-          3. ASISTENTE IA: PERMANENTE, ARRASTRABLE (DRAG) Y MAXIMIZABLE
+          3. ASISTENTE IA: OCULTABLE, ARRASTRABLE (DRAG) Y MAXIMIZABLE
       ======================================================================== */}
       {isAiMaximized && (
         <div
@@ -677,75 +739,75 @@ function DashboardContent() {
         />
       )}
 
-      <aside
-        style={!isAiMaximized ? { width: `${aiWidth}px` } : undefined}
-        className={`transition-all duration-200 ease-out flex flex-col justify-between ${
-          isAiMaximized
-            ? "fixed inset-4 lg:inset-8 z-50 max-w-6xl mx-auto rounded-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl shadow-2xl p-6 lg:p-8 overflow-hidden"
-            : "relative z-10 border-l border-zinc-800/60 p-5 hidden xl:flex h-full bg-zinc-950/40 backdrop-blur-xl shrink-0"
-        }print:hidden`}
-      >
-        {!isAiMaximized && (
-          <div
-            onMouseDown={handleMouseDown}
-            title="Arrastra para redimensionar el ancho del chat"
-            className="absolute -left-1 top-0 bottom-0 w-2.5 cursor-col-resize hover:bg-zinc-500/40 active:bg-amber-400/50 transition-colors z-30 flex items-center justify-center group"
-          >
-            <div className="w-0.5 h-8 bg-zinc-700/60 group-hover:bg-zinc-400 rounded-full transition-colors" />
-          </div>
-        )}
-
-        <div className="mb-4 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2 font-mono">
-              <Sparkles size={13} className="text-amber-400" />
-              ReSolve AI
-              {isAiMaximized && (
-                <span className="text-[10px] text-zinc-500 lowercase font-sans font-normal">
-                  · modo extendido
-                </span>
-              )}
-            </h3>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setIsAiMaximized(!isAiMaximized)}
-              title={isAiMaximized ? "Restaurar tamaño (Esc)" : "Expandir a pantalla completa"}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 transition-colors flex items-center gap-1 text-xs font-mono"
+      {isAiOpen && (
+        <aside
+          style={!isAiMaximized ? { width: `${aiWidth}px` } : undefined}
+          className={`transition-all duration-200 ease-out flex flex-col justify-between ${
+            isAiMaximized
+              ? "fixed inset-4 lg:inset-8 z-50 max-w-6xl mx-auto rounded-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl shadow-2xl p-6 lg:p-8 overflow-hidden"
+              : "relative z-10 border-l border-zinc-800/60 p-5 hidden xl:flex h-full bg-zinc-950/40 backdrop-blur-xl shrink-0"
+          } print:hidden`}
+        >
+          {!isAiMaximized && (
+            <div
+              onMouseDown={handleMouseDown}
+              title="Arrastra para redimensionar el ancho del chat"
+              className="absolute -left-1 top-0 bottom-0 w-2.5 cursor-col-resize hover:bg-zinc-500/40 active:bg-amber-400/50 transition-colors z-30 flex items-center justify-center group"
             >
-              {isAiMaximized ? (
-                <>
-                  <Minimize2 size={13} />
-                  <span className="hidden sm:inline text-[11px]">Restaurar</span>
-                </>
-              ) : (
-                <Maximize2 size={13} />
-              )}
-            </button>
+              <div className="w-0.5 h-8 bg-zinc-700/60 group-hover:bg-zinc-400 rounded-full transition-colors" />
+            </div>
+          )}
 
-            {isAiMaximized && (
+          <div className="mb-4 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2 font-mono">
+                <Sparkles size={13} className="text-amber-400" />
+                ReSolve AI
+                {isAiMaximized && (
+                  <span className="text-[10px] text-zinc-500 lowercase font-sans font-normal">
+                    · modo extendido
+                  </span>
+                )}
+              </h3>
+            </div>
+
+            <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => setIsAiMaximized(false)}
-                title="Cerrar (Esc)"
+                onClick={() => setIsAiMaximized(!isAiMaximized)}
+                title={isAiMaximized ? "Restaurar tamaño (Esc)" : "Expandir a pantalla completa"}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 transition-colors flex items-center gap-1 text-xs font-mono"
+              >
+                {isAiMaximized ? (
+                  <>
+                    <Minimize2 size={13} />
+                    <span className="hidden sm:inline text-[11px]">Restaurar</span>
+                  </>
+                ) : (
+                  <Maximize2 size={13} />
+                )}
+              </button>
+
+              {/* Botón para Ocultar / Colapsar Panel de IA */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isAiMaximized) setIsAiMaximized(false);
+                  setIsAiOpen(false);
+                }}
+                title="Ocultar asistente IA"
                 className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 transition-colors"
               >
-                <X size={15} />
+                <PanelRightClose size={15} />
               </button>
-            )}
-
-            {!isAiMaximized && (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 animate-pulse ml-1" />
-            )}
+            </div>
           </div>
-        </div>
 
-        <div className="flex-1 min-h-0 flex flex-col">
-          <AIAssistant />
-        </div>
-      </aside>
+          <div className="flex-1 min-h-0 flex flex-col">
+            <AIAssistant />
+          </div>
+        </aside>
+      )}
 
       {/* MODAL DE PERFIL */}
       <ProfileModal

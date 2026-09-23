@@ -33,16 +33,40 @@ ESQUEMA JSON OBLIGATORIO:
     { "stage": string, "description": string, "math": string }
   ],
   "graphableExpression": string | null,
-  "explanation": string
+  "explanation": string,
+  "matrixData": {
+    "operation": string,
+    "matrices": [{ "label": string, "data": (number|string)[][], "kind": "matrix" | "vector" | "result" }]
+  } | null,
+  "propositionData": {
+    "variables": string[],
+    "formula": string,
+    "classification": "Tautología" | "Contradicción" | "Contingencia",
+    "rows": [{ "values": boolean[], "result": boolean }]
+  } | null,
+  "frequencyData": {
+    "variableLabel": string,
+    "rows": [{ "lower": number, "upper": number, "absFreq": number, "relFreq": number, "pctFreq": number }]
+  } | null,
+  "amortizationData": {
+    "currency": string,
+    "rateLabel": string,
+    "rows": [{ "period": number, "initialBalance": number, "payment": number, "interest": number, "principal": number, "finalBalance": number }]
+  } | null
 }
 
-REGLAS:
-1. "problemStatement": el texto del enunciado del ejercicio (si el usuario pidió generar un problema aleatorio, inventa un ejercicio universitario desafiante y pon su enunciado aquí; si el usuario ingresó un problema, repite el enunciado de forma clara aquí).
-2. "extractedFormula": la fórmula canónica que deba resolverse en la calculadora de destino (ej: "(x - 2)(x - 1)(x^2 + 4) = 0", "sqrt(3782)", "(3*x^2 + 5)/(2*x^2 - x)", etc.).
-3. "primaryResult": el resultado final exacto y destacado.
-4. "steps": pasos de resolución en formato LaTeX.
-5. "graphableExpression": función matemática limpia si tiene curva 2D, o null si no aplica.`;
-
+REGLAS DE RELLENO:
+1. "problemStatement": enunciado formal del problema.
+2. "extractedFormula": expresión matemática canónica limpia para cargar en calculadora.
+3. "primaryResult": resultado final sintetizado.
+4. "steps": pasos deductivos con 'math' en formato LaTeX.
+5. "graphableExpression": ecuación limpia en 'x' para graficar si aplica curva 2D, o null.
+6. TABLAS ESTRUCTURADAS:
+   - Si el problema es de matrices/sistemas: llena 'matrixData'.
+   - Si el problema es de lógica/tablas de verdad: llena 'propositionData'.
+   - Si el problema es de tablas de frecuencia/estadística agrupada: llena 'frequencyData'.
+   - Si el problema es de cuotas/amortizaciones: llena 'amortizationData'.
+   - Si no aplica ninguna tabla, deja esos campos en null.`;
     const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
