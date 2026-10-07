@@ -28,61 +28,11 @@ import MathGrapher, {
   type GraphPoint,
   type GuideLine,
   type LegendItem,
+  evaluateMath,
 } from "@/components/shared/math-grapher";
 
-// --- Evaluador Matemático Robusto con Soporte de Parámetros y Operaciones Compuestas ---
-function evaluateMath(expr: string, x: number, a = 1, b = 1, c = 0): number {
-  try {
-    let s = expr.toLowerCase().replace(/\s+/g, "");
-    if (!s) return NaN;
-
-    if (s === "gauss" || s.includes("campana")) {
-      s = "exp(-x^2)";
-    }
-
-    // Separación de multiplicaciones implícitas
-    s = s.replace(/([0-9])([xabc(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "$1*$2");
-    s = s.replace(/([abc])([x(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "$1*$2");
-    s = s.replace(/([x])([abc(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "$1*$2");
-    s = s.replace(/\)([\d\w(]|sin|cos|tan|exp|ln|sqrt|abs)/g, ")*$1");
-    s = s.replace(/e\s*\^\s*\(([^()]+)\)/g, "exp($1)");
-    s = s.replace(/e\s*\^\s*([a-zA-Z0-9_.]+)/g, "exp($1)");
-    s = s.replace(
-      /(^|[+\-*/,(])\s*-\s*([a-zA-Z0-9_.]+|\([^()]+\))\s*\^\s*([+-]?[a-zA-Z0-9_.]+|\([^()]+\))/g,
-      "$1-(($2)^($3))"
-    );
-    s = s.replace(/\^\s*-\s*([a-zA-Z0-9_.]+|\([^()]+\))/g, "^(-($1))");
-    s = s.replace(/\^/g, "**");
-    s = s.replace(/sqrt/g, "Math.sqrt");
-    s = s.replace(/sin/g, "Math.sin");
-    s = s.replace(/cos/g, "Math.cos");
-    s = s.replace(/tan/g, "Math.tan");
-    s = s.replace(/abs/g, "Math.abs");
-    s = s.replace(/ln/g, "Math.log");
-    s = s.replace(/log10/g, "Math.log10");
-    s = s.replace(/exp/g, "Math.exp");
-    s = s.replace(/pi/g, "Math.PI");
-    s = s.replace(/e\b/g, "Math.E");
-
-    // eslint-disable-next-line no-new-func
-    const fn = new Function("x", "a", "b", "c", `"use strict"; return (${s});`);
-    const val = fn(x, a, b, c);
-    return typeof val === "number" && !isNaN(val) && isFinite(val) ? val : NaN;
-  } catch {
-    return NaN;
-  }
-}
 
 // Inyector numérico para MathGrapher (reemplaza variables a, b, c por constantes)
-function prepareExpressionForGrapher(expr: string, a: number, b: number, c: number): string {
-  if (!expr.trim()) return "";
-  let s = expr.replace(/([0-9])([abc])/g, "$1*$2");
-  s = s.replace(/([abc])([x])/g, "$1*$2");
-  s = s.replace(/\ba\b/g, `(${a})`);
-  s = s.replace(/\bb\b/g, `(${b})`);
-  s = s.replace(/\bc\b/g, `(${c})`);
-  return s;
-}
 
 interface ModuleExample {
   category: string;
@@ -332,15 +282,6 @@ export default function FunctionsView({
     return items;
   }, [funcInput, compareFunc, showCompare, showTangent, analysis, showIntegral, integralA, integralB, showRoots, showExtremes]);
 
-  // Expresiones evaluadas con parámetros resueltos
-  const grapherMainExpression = useMemo(() => {
-    return prepareExpressionForGrapher(funcInput, paramA, paramB, paramC);
-  }, [funcInput, paramA, paramB, paramC]);
-
-  const grapherCompareExpression = useMemo(() => {
-    return prepareExpressionForGrapher(compareFunc, paramA, paramB, paramC);
-  }, [compareFunc, paramA, paramB, paramC]);
-
   // Sincronización con el canal global ReSolve AI
   useEffect(() => {
     setAIContext({
@@ -379,8 +320,11 @@ export default function FunctionsView({
             {/* CANVAS GRAFICADOR CENTRAL */}
             <div className="xl:col-span-7 min-h-[460px] flex flex-col">
               <MathGrapher
-                expression={grapherMainExpression}
-                secondaryExpression={showCompare && compareFunc.trim() ? grapherCompareExpression : undefined}
+                expression={funcInput}
+                paramA={paramA}
+                paramB={paramB}
+                paramC={paramC}
+                secondaryExpression={showCompare && compareFunc.trim() ? compareFunc : undefined}
                 points={grapherPoints}
                 guideLines={grapherGuideLines}
                 shadedArea={

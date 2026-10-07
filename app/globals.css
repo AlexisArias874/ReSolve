@@ -53,7 +53,7 @@
    VARIABLES SHADCN BASE (Arquitectura Dark-First por defecto)
 ============================================================================= */
 :root {
-  --background: oklch(0.145 0 0); /* zinc-950 equivalente */
+  --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -86,7 +86,6 @@
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.556 0 0);
 
-  /* Tokens dinámicos para scrollbars y sliders */
   --scrollbar-thumb: #27272a;
   --scrollbar-thumb-hover: #3f3f46;
   --slider-track: #27272a;
@@ -100,20 +99,72 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }
 }
 
+/* =============================================================================
+   SISTEMA DE ESCALA POR RESOLUCIÓN (ESCALONES DISCRETOS DETERMINISTAS)
+   -----------------------------------------------------------------------------
+   Sin clamp(), sin vw/vh. Cada resolución recibe un font-size raíz exacto.
+   Prioridad de cascada: las reglas más específicas (min-height alto) ganan.
+
+   Objetivo calibrado:
+     · 1366×768   → 12.5px  (laptops compactas, evita desbordes)
+     · 1920×1080  → 13.5px  (1080p estándar, cero desbordes)
+     · 2560×1440  → 16.5px  (2K, recupera presencia original)
+     · 3840×2160  → 18px    (4K, aprovecha densidad sin agigantar)
+============================================================================= */
+
+/* 1. Base universal (fallback para cualquier resolución no listada) */
 html {
-  font-size: clamp(14px, 0.85vw + 8px, 18px);
+  font-size: 15px;
+}
+
+/* 2. Laptops compactas y ventanas reducidas: 1366×768, 1280×720, etc. */
+@media screen and (max-height: 840px) {
+  html {
+    font-size: 12.5px;
+  }
+}
+
+/* 3. 1080p estándar (1920×1080) y 16:10 con altura útil < 960px */
+@media screen and (max-height: 960px) and (min-height: 841px) {
+  html {
+    font-size: 13.5px;
+  }
+}
+
+/* 4. 2K / QHD (2560×1440, 2560×1600, 3440×1440 ultrawide) */
+@media screen and (min-width: 2200px) and (min-height: 1200px) {
+  html {
+    font-size: 16.5px;
+  }
+}
+
+/* 5. 4K UHD (3840×2160, 4096×2160) */
+@media screen and (min-width: 3200px) and (min-height: 1800px) {
+  html {
+    font-size: 18px;
+  }
+}
+
+/* 6. 5K / 8K (5120×2880, 7680×4320) — monitores profesionales */
+@media screen and (min-width: 4500px) and (min-height: 2500px) {
+  html {
+    font-size: 20px;
+  }
 }
 
 body {
   font-size: 1rem;
+  line-height: 1.5;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
@@ -147,12 +198,13 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-/* BLINDAJE DE FORMULAS KaTeX (Heredan siempre el contraste del tema actual) */
+/* BLINDAJE DE FORMULAS KaTeX */
 .katex,
 .katex-display,
 .katex * {
@@ -160,7 +212,7 @@ body {
 }
 
 /* =============================================================================
-   SISTEMA DE DESLIZADORES (RANGE SLIDERS) - COMPATIBLE CON TODOS LOS MOTORES
+   SISTEMA DE DESLIZADORES (RANGE SLIDERS)
 ============================================================================= */
 input[type="range"] {
   -webkit-appearance: none;
@@ -174,7 +226,6 @@ input[type="range"]:focus {
   outline: none;
 }
 
-/* Chrome / Safari / Edge (WebKit) */
 input[type="range"]::-webkit-slider-runnable-track {
   background-color: var(--slider-track);
   height: 6px;
@@ -199,7 +250,6 @@ input[type="range"]:active::-webkit-slider-thumb {
   transform: scale(1.15);
 }
 
-/* Firefox */
 input[type="range"]::-moz-range-track {
   background-color: var(--slider-track);
   height: 6px;
@@ -221,7 +271,9 @@ input[type="range"]::-moz-range-thumb {
    REGLAS DE IMPRESIÓN PROFESIONAL (@media print)
 ============================================================================= */
 @media print {
-  html, body {
+
+  html,
+  body {
     background: #ffffff !important;
     color: #000000 !important;
     font-size: 10pt !important;
@@ -297,12 +349,10 @@ input[type="range"]::-moz-range-thumb {
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
 
-  /* Color de elementos activos */
   --accent: #e2e8f0;
   --accent-foreground: #0f172a;
 }
 
-/* Fondos principales de pantalla y lienzo */
 [data-theme="light"] body,
 [data-theme="light"] .bg-zinc-950,
 [data-theme="light"] .bg-zinc-950\/95,
@@ -322,7 +372,6 @@ input[type="range"]::-moz-range-thumb {
   background-color: transparent !important;
 }
 
-/* Tarjetas, modales y superficies glass */
 [data-theme="light"] .bg-zinc-900,
 [data-theme="light"] .bg-zinc-900\/90,
 [data-theme="light"] .bg-zinc-900\/80,
@@ -337,7 +386,6 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
 }
 
-/* Superficies secundarias e inputs */
 [data-theme="light"] .bg-zinc-800,
 [data-theme="light"] .bg-zinc-800\/60,
 [data-theme="light"] .bg-zinc-800\/50,
@@ -346,7 +394,6 @@ input[type="range"]::-moz-range-thumb {
   background-color: #f1f5f9 !important;
 }
 
-/* Bordes y divisores */
 [data-theme="light"] .border-zinc-800,
 [data-theme="light"] .border-zinc-800\/80,
 [data-theme="light"] .border-zinc-800\/60,
@@ -354,11 +401,10 @@ input[type="range"]::-moz-range-thumb {
 [data-theme="light"] .border-zinc-800\/40,
 [data-theme="light"] .border-zinc-700,
 [data-theme="light"] .border-zinc-700\/80,
-[data-theme="light"] .divide-zinc-800 > * + * {
+[data-theme="light"] .divide-zinc-800>*+* {
   border-color: #cbd5e1 !important;
 }
 
-/* Tipografía de Alto Contraste */
 [data-theme="light"] .text-zinc-100,
 [data-theme="light"] .text-zinc-200,
 [data-theme="light"] .text-white {
@@ -375,7 +421,6 @@ input[type="range"]::-moz-range-thumb {
   color: #64748b !important;
 }
 
-/* Estados Hover */
 [data-theme="light"] .hover\:bg-zinc-900:hover,
 [data-theme="light"] .hover\:bg-zinc-900\/80:hover,
 [data-theme="light"] .hover\:bg-zinc-800:hover,
@@ -398,7 +443,6 @@ input[type="range"]::-moz-range-thumb {
   border-color: #94a3b8 !important;
 }
 
-/* Píldoras activas y botones de modo */
 [data-theme="light"] .bg-zinc-100 {
   background-color: #0f172a !important;
   color: #ffffff !important;
@@ -422,7 +466,6 @@ input[type="range"]::-moz-range-thumb {
   color: #ffffff !important;
 }
 
-/* Controles de Entrada (Inputs, Selects, Textareas) */
 [data-theme="light"] input[type="text"],
 [data-theme="light"] input[type="number"],
 [data-theme="light"] select,
@@ -456,7 +499,7 @@ input[type="range"]::-moz-range-thumb {
   --popover-foreground: oklch(0.25 0.03 60);
   --border: oklch(0.85 0.03 80);
   --input: oklch(0.85 0.03 80);
-    --accent: #e2c99a;
+  --accent: #e2c99a;
   --accent-foreground: #453322;
 }
 
@@ -506,7 +549,7 @@ input[type="range"]::-moz-range-thumb {
 [data-theme="sepia"] .border-zinc-800\/50,
 [data-theme="sepia"] .border-zinc-800\/40,
 [data-theme="sepia"] .border-zinc-700,
-[data-theme="sepia"] .divide-zinc-800 > * + * {
+[data-theme="sepia"] .divide-zinc-800>*+* {
   border-color: #d6be92 !important;
 }
 
@@ -586,7 +629,7 @@ input[type="range"]::-moz-range-thumb {
   --popover-foreground: oklch(0.92 0.12 150);
   --border: oklch(0.3 0.15 150);
   --input: oklch(0.3 0.15 150);
-    --accent: #064e26;
+  --accent: #064e26;
   --accent-foreground: #ecfdf5;
 }
 
@@ -634,7 +677,7 @@ input[type="range"]::-moz-range-thumb {
 [data-theme="matrix"] .border-zinc-800\/60,
 [data-theme="matrix"] .border-zinc-800\/50,
 [data-theme="matrix"] .border-zinc-800\/40,
-[data-theme="matrix"] .divide-zinc-800 > * + * {
+[data-theme="matrix"] .divide-zinc-800>*+* {
   border-color: #059669 !important;
 }
 

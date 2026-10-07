@@ -44,7 +44,6 @@ import { AIContextProvider } from "@/lib/context/ai-context";
 // =============================================================================
 // IMPORTACIÓN DE VISTAS (ACTIVAS Y FUTURAS)
 // =============================================================================
-// --- MATEMÁTICAS I: BÁSICAS Y CÁLCULO ---
 import ArithmeticView from "@/components/modules/basic-math/arithmetic-view";
 import AlgebraView from "@/components/modules/basic-math/algebra-view";
 import GeometryView from "@/components/modules/basic-math/geometry-view";
@@ -53,18 +52,15 @@ import LimitsView from "@/components/modules/basic-math/limits-view";
 import DerivativesView from "@/components/modules/basic-math/derivatives-view";
 import IntegralsView from "@/components/modules/basic-math/integrals-view";
 
-// --- MATEMÁTICAS II: LÓGICA COMPUTACIONAL ---
 import PropositionsView from "@/components/modules/logic/propositions-view";
 import InferencesView from "@/components/modules/logic/inferences-view";
 import EquivalencesView from "@/components/modules/logic/equivalences-view";
 
-// --- MATEMÁTICAS III: MATEMÁTICAS FINANCIERAS ---
 import SimpleInterestView from "@/components/modules/finance/simple-interest-view";
 import CompoundInterestView from "@/components/modules/finance/compound-interest-view";
 import AnnuitiesView from "@/components/modules/finance/annuities-view";
 import AmortizationView from "@/components/modules/finance/amortization-view";
 
-// --- MATEMÁTICAS IV: MATEMÁTICAS COMPUTACIONALES ---
 import MatricesView from "@/components/modules/computational/matrices-view";
 import DeterminantsView from "@/components/modules/computational/determinants-view";
 import GaussJordanView from "@/components/modules/computational/gauss-jordan-view";
@@ -72,14 +68,12 @@ import NumericalRootsView from "@/components/modules/computational/numerical-roo
 import InterpolationView from "@/components/modules/computational/interpolation-view";
 import ErrorTheoryView from "@/components/modules/computational/error-theory-view";
 
-// --- MATEMÁTICAS V: PROBABILIDAD Y ESTADÍSTICA ---
 import DescriptiveStatsView from "@/components/modules/statistics/descriptive-stats-view";
 import FrequencyTableView from "@/components/modules/statistics/frequency-table-view";
 import ProbabilityView from "@/components/modules/statistics/probability-view";
 import DistributionsView from "@/components/modules/statistics/distributions-view";
 import RegressionView from "@/components/modules/statistics/regression-view";
 
-// --- MATEMÁTICAS VI: INVESTIGACIÓN DE OPERACIONES ---
 import LinearProgrammingView from "@/components/modules/optimization/linear-programming-view";
 import SimplexView from "@/components/modules/optimization/simplex-view";
 import AssignmentView from "@/components/modules/optimization/assignment-view";
@@ -177,7 +171,8 @@ function DashboardContent() {
 
   // --- Estados de Asistente IA (Visibilidad, Ancho y Maximizado) ---
   const [isAiOpen, setIsAiOpen] = useState<boolean>(true);
-  const [aiWidth, setAiWidth] = useState<number>(360);
+  // Ancho inicial reducido a 320px para liberar 40px al área central
+  const [aiWidth, setAiWidth] = useState<number>(320);
   const [isAiMaximized, setIsAiMaximized] = useState<boolean>(false);
   const isDraggingRef = useRef<boolean>(false);
 
@@ -406,7 +401,6 @@ function DashboardContent() {
 
         {/* PIE DEL MENÚ LATERAL */}
         <div className="p-3 border-t border-zinc-800/60 bg-zinc-950/40 shrink-0 space-y-2">
-          {/* Selector Rápido de Temas en Barra Lateral (Visible para todos) */}
           <div className="p-2 rounded-xl bg-zinc-900/40 border border-zinc-800/80 flex items-center justify-between">
             <span className="text-[10px] font-mono uppercase text-zinc-500 flex items-center gap-1.5">
               <Palette size={12} className="text-amber-400" /> Tema
@@ -500,7 +494,7 @@ function DashboardContent() {
 
       {/* 2. ÁREA CENTRAL */}
       <main className="relative z-10 flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <header className="px-6 lg:px-8 py-5 border-b border-zinc-800/60 bg-zinc-950/40 backdrop-blur-xl flex flex-col gap-4 shrink-0 print:hidden">
+        <header className="px-5 lg:px-7 py-3.5 border-b border-zinc-800/60 bg-zinc-950/40 backdrop-blur-xl flex flex-col gap-2.5 shrink-0 print:hidden">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               {!isSidebarOpen && (
@@ -529,9 +523,7 @@ function DashboardContent() {
               </div>
             </div>
 
-            {/* Acciones de la cabecera: Temas, Modos de Vista y Reabrir IA */}
             <div className="flex items-center gap-2 shrink-0">
-              {/* Selector de Temas con Dropdown (Accesible para todos) */}
               <div className="relative">
                 <button
                   type="button"
@@ -567,7 +559,6 @@ function DashboardContent() {
                 )}
               </div>
 
-              {/* Selector de Modos de Vista */}
               <div className="flex bg-zinc-900/60 border border-zinc-800/80 p-1 rounded-2xl gap-1 shrink-0 backdrop-blur">
                 {VIEW_MODES.map((vm) => {
                   const Icon = vm.icon;
@@ -596,7 +587,6 @@ function DashboardContent() {
                 })}
               </div>
 
-              {/* Botón para Reabrir IA cuando está oculta */}
               {!isAiOpen && (
                 <button
                   type="button"
@@ -611,7 +601,6 @@ function DashboardContent() {
             </div>
           </div>
 
-          {/* Barra de Subtemas Dinámica */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
             {currentSubtopics.map((item) => {
               const isActive = subTopic === item.id;
@@ -639,8 +628,8 @@ function DashboardContent() {
           </div>
         </header>
 
-        {/* CONTENEDOR DE VISTAS */}
-        <div className="flex-1 min-h-0 p-6 lg:p-8 overflow-y-auto">
+        {/* CONTENEDOR DE VISTAS CON CONTAINER QUERIES */}
+        <div className="flex-1 min-h-0 p-4 lg:p-6 overflow-y-auto @container">
           <AnimatePresence mode="wait">
             <motion.div
               key={`${activeModule}-${subTopic}-${viewMode}`}
@@ -650,7 +639,6 @@ function DashboardContent() {
               transition={{ duration: 0.25, ease: "easeOut" }}
               className="h-full"
             >
-              {/* RAMA 1: MATEMÁTICAS I */}
               {activeModule === "omni" ? (
                 <OmniSolverView onNavigateToModule={handleNavigateFromOmni} />
               ) : activeModule === "mat1" && subTopic === "aritmetica" ? (
@@ -667,16 +655,12 @@ function DashboardContent() {
                 <DerivativesView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat1" && subTopic === "integrales" ? (
                 <IntegralsView viewMode={viewMode} initialExpression={initialExpr} />
-
-              /* RAMA 2: MATEMÁTICAS II */
               ) : activeModule === "mat2" && subTopic === "proposiciones" ? (
                 <PropositionsView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat2" && subTopic === "equivalencias" ? (
                 <EquivalencesView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat2" && subTopic === "inferencias" ? (
                 <InferencesView viewMode={viewMode} initialExpression={initialExpr} />
-
-              /* RAMA 3: MATEMÁTICAS III */
               ) : activeModule === "mat3" && subTopic === "interes-simple" ? (
                 <SimpleInterestView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat3" && subTopic === "interes-compuesto" ? (
@@ -685,8 +669,6 @@ function DashboardContent() {
                 <AnnuitiesView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat3" && subTopic === "amortizacion" ? (
                 <AmortizationView viewMode={viewMode} initialExpression={initialExpr} />
-
-              /* RAMA 4: MATEMÁTICAS IV */
               ) : activeModule === "mat4" && subTopic === "matrices" ? (
                 <MatricesView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat4" && subTopic === "determinantes" ? (
@@ -699,8 +681,6 @@ function DashboardContent() {
                 <InterpolationView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat4" && subTopic === "errores" ? (
                 <ErrorTheoryView viewMode={viewMode} initialExpression={initialExpr} />
-
-              /* RAMA 5: MATEMÁTICAS V */
               ) : activeModule === "mat5" && subTopic === "descriptiva" ? (
                 <DescriptiveStatsView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat5" && subTopic === "tablas-frecuencia" ? (
@@ -711,8 +691,6 @@ function DashboardContent() {
                 <DistributionsView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat5" && subTopic === "regresion" ? (
                 <RegressionView viewMode={viewMode} initialExpression={initialExpr} />
-
-              /* RAMA 6: MATEMÁTICAS VI */
               ) : activeModule === "mat6" && subTopic === "prog-lineal" ? (
                 <LinearProgrammingView viewMode={viewMode} initialExpression={initialExpr} />
               ) : activeModule === "mat6" && subTopic === "simplex" ? (
@@ -788,7 +766,6 @@ function DashboardContent() {
                 )}
               </button>
 
-              {/* Botón para Ocultar / Colapsar Panel de IA */}
               <button
                 type="button"
                 onClick={() => {

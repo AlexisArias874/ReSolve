@@ -43,6 +43,9 @@ export interface LegendItem {
 
 export interface MathGrapherProps {
   expression: string;
+  paramA?: number;
+  paramB?: number;
+  paramC?: number;
   secondaryExpression?: string;
   points?: GraphPoint[];
   guideLines?: GuideLine[];
@@ -101,37 +104,87 @@ function getAdaptiveGridStep(scale: number): number {
 }
 
 // Evaluador matemático seguro
-function evaluateMath(expr: string, x: number): number {
+export function evaluateMath(
+  expr: string,
+  x: number,
+  a = 1,
+  b = 1,
+  c = 0
+): number {
   try {
     let s = expr.toLowerCase().replace(/\s+/g, "");
+
     if (!s) return NaN;
 
-    if (s === "gauss" || s.includes("campana")) s = "exp(-x^2)";
+    if (s === "gauss" || s.includes("campana")) {
+      s = "exp(-x^2)";
+    }
 
+    // Multiplicacion implicita
+    s = s.replace(
+      /([0-9])([xabc(]|sin|cos|tan|exp|ln|sqrt|abs)/g,
+      "$1*$2"
+    );
+
+    s = s.replace(
+      /([abc])([x(]|sin|cos|tan|exp|ln|sqrt|abs)/g,
+      "$1*$2"
+    );
+
+    s = s.replace(
+      /([x])([abc(]|sin|cos|tan|exp|ln|sqrt|abs)/g,
+      "$1*$2"
+    );
+
+    s = s.replace(
+      /\)([\d\w(]|sin|cos|tan|exp|ln|sqrt|abs)/g,
+      ")*$1"
+    );
+
+    // Notacion e^...
     s = s.replace(/e\s*\^\s*\(([^()]+)\)/g, "exp($1)");
     s = s.replace(/e\s*\^\s*([a-zA-Z0-9_.]+)/g, "exp($1)");
-    s = s.replace(/([0-9])([x(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "$1*$2");
-    s = s.replace(/\)([\d\w(]|sin|cos|tan|exp|ln|sqrt|abs)/g, ")*$1");
-    s = s.replace(/x([0-9(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "x*$1");
+
+    // Potencias negativas
     s = s.replace(
       /(^|[+\-*/,(])\s*-\s*([a-zA-Z0-9_.]+|\([^()]+\))\s*\^\s*([+-]?[a-zA-Z0-9_.]+|\([^()]+\))/g,
       "$1-(($2)^($3))"
     );
-    s = s.replace(/\^\s*-\s*([a-zA-Z0-9_.]+|\([^()]+\))/g, "^(-($1))");
+
+    s = s.replace(
+      /\^\s*-\s*([a-zA-Z0-9_.]+|\([^()]+\))/g,
+      "^(-($1))"
+    );
+
     s = s.replace(/\^/g, "**");
+
+    // Funciones matematicas
     s = s.replace(/sqrt/g, "Math.sqrt");
     s = s.replace(/sin/g, "Math.sin");
     s = s.replace(/cos/g, "Math.cos");
     s = s.replace(/tan/g, "Math.tan");
     s = s.replace(/abs/g, "Math.abs");
     s = s.replace(/ln/g, "Math.log");
+    s = s.replace(/log10/g, "Math.log10");
     s = s.replace(/exp/g, "Math.exp");
     s = s.replace(/pi/g, "Math.PI");
+    s = s.replace(/e\b/g, "Math.E");
 
-    // eslint-disable-next-line no-new-func
-    const fn = new Function("x", `"use strict"; return (${s});`);
-    const val = fn(x);
-    return typeof val === "number" && !isNaN(val) && isFinite(val) ? val : NaN;
+    const fn = new Function(
+      "x",
+      "a",
+      "b",
+      "c",
+      `"use strict"; return (${s});`
+    );
+
+    const val = fn(x, a, b, c);
+
+    return typeof val === "number" &&
+      !isNaN(val) &&
+      isFinite(val)
+      ? val
+      : NaN;
   } catch {
     return NaN;
   }
@@ -178,6 +231,9 @@ const THEME_GRAPH_COLORS: Record<
 
 export default function MathGrapher({
   expression,
+  paramA = 1,
+  paramB = 1,
+  paramC = 0,
   secondaryExpression,
   points = [],
   guideLines = [],
@@ -283,7 +339,7 @@ export default function MathGrapher({
 
     if (tangent && !isNaN(tangent.x0)) {
       keyXs.push(tangent.x0);
-      const yt = evaluateMath(expression, tangent.x0);
+      const yt = evaluateMath(expression, tangent.x0, paramA, paramB, paramC);
       if (!isNaN(yt) && isFinite(yt) && Math.abs(yt) < 50) keyYs.push(yt);
     }
 
@@ -291,14 +347,14 @@ export default function MathGrapher({
       keyXs.push(shadedArea.from, shadedArea.to);
     }
 
-    const y0 = evaluateMath(expression, 0);
+    const y0 = evaluateMath(expression, 0, paramA, paramB, paramC);
     if (!isNaN(y0) && isFinite(y0) && Math.abs(y0) < 30) {
       keyYs.push(y0);
     }
 
     const samplePoints: { x: number; y: number }[] = [];
     for (let x = -6; x <= 6; x += 0.2) {
-      const y = evaluateMath(expression, x);
+      const y = evaluateMath(expression, x, paramA, paramB, paramC);
       if (!isNaN(y) && isFinite(y) && Math.abs(y) <= 30) {
         samplePoints.push({ x, y });
       }
@@ -347,7 +403,7 @@ export default function MathGrapher({
     const cY = -(finalMinY + finalMaxY) / 2;
 
     return { cX, cY, spanX, spanY };
-  }, [points, expression, tangent, shadedArea]);
+  }, [points, expression, paramA, paramB, paramC, tangent, shadedArea]);
 
   const handleAutoFocus = (isModal = false) => {
     const canvas = isModal ? modalCanvasRef.current : canvasRef.current;
@@ -496,7 +552,7 @@ export default function MathGrapher({
         ctx.moveTo(pxa, originY);
         for (let px = pxa; px <= originX + shadedArea.to * scale; px += 2) {
           const xVal = (px - originX) / scale;
-          const yVal = evaluateMath(expression, xVal);
+          const yVal = evaluateMath(expression, xVal, paramA, paramB, paramC);
           if (!isNaN(yVal)) ctx.lineTo(px, originY - yVal * scale);
         }
         ctx.lineTo(originX + shadedArea.to * scale, originY);
@@ -506,7 +562,7 @@ export default function MathGrapher({
 
       // Recta Tangente
       if (tangent) {
-        const fX0 = evaluateMath(expression, tangent.x0);
+        const fX0 = evaluateMath(expression, tangent.x0, paramA, paramB, paramC);
         if (!isNaN(fX0)) {
           ctx.save();
           ctx.lineWidth = 1.5;
@@ -528,7 +584,7 @@ export default function MathGrapher({
       let isDrawing = false;
       for (let px = 0; px <= width; px += 2) {
         const xVal = (px - originX) / scale;
-        const yVal = evaluateMath(expression, xVal);
+        const yVal = evaluateMath(expression, xVal, paramA, paramB, paramC);
 
         if (!isNaN(yVal) && Math.abs(yVal) < 1500) {
           const py = originY - yVal * scale;
@@ -552,7 +608,7 @@ export default function MathGrapher({
         let isDrawingSec = false;
         for (let px = 0; px <= width; px += 2) {
           const xVal = (px - originX) / scale;
-          const yVal = evaluateMath(secondaryExpression, xVal);
+          const yVal = evaluateMath(secondaryExpression, xVal, paramA, paramB, paramC);
           if (!isNaN(yVal) && Math.abs(yVal) < 1500) {
             const py = originY - yVal * scale;
             if (!isDrawingSec) {
@@ -595,7 +651,7 @@ export default function MathGrapher({
         }
       });
     },
-    [viewState, expression, secondaryExpression, points, guideLines, shadedArea, tangent]
+    [viewState, expression, paramA, paramB, paramC, secondaryExpression, points, guideLines, shadedArea, tangent]
   );
 
   const redrawAll = useCallback(() => {
@@ -640,7 +696,7 @@ export default function MathGrapher({
     const originY = canvas.height / 2 - viewState.centerY * viewState.scale;
 
     const xMath = Number(((mousePxX - originX) / viewState.scale).toFixed(2));
-    const yMath = evaluateMath(expression, xMath);
+    const yMath = evaluateMath(expression, xMath, paramA, paramB, paramC);
 
     setMouseCoords({
       x: xMath,
@@ -784,7 +840,7 @@ const executeExportPNG = () => {
   let isDraw = false;
   for (let px = 0; px <= 1920; px += 2) {
     const xVal = (px - originX) / exportScale;
-    const yVal = evaluateMath(expression, xVal);
+    const yVal = evaluateMath(expression, xVal, paramA, paramB, paramC);
     if (!isNaN(yVal) && Math.abs(yVal) < 1500) {
       const py = originY - yVal * exportScale;
       if (!isDraw) {
@@ -804,14 +860,14 @@ const executeExportPNG = () => {
     let exportPoints: GraphPoint[] = [...points];
 
     if (exportPoints.length === 0) {
-      let prevY = evaluateMath(expression, -20);
+      let prevY = evaluateMath(expression, -20, paramA, paramB, paramC);
       for (let x = -20; x <= 20; x += 0.1) {
-        const currY = evaluateMath(expression, x);
+        const currY = evaluateMath(expression, x, paramA, paramB, paramC);
         if (!isNaN(prevY) && !isNaN(currY) && prevY * currY <= 0 && Math.abs(currY - prevY) < 15) {
           let left = x - 0.1, right = x;
           for (let k = 0; k < 8; k++) {
             const mid = (left + right) / 2;
-            if (evaluateMath(expression, left) * evaluateMath(expression, mid) <= 0) right = mid;
+            if (evaluateMath(expression, left, paramA, paramB, paramC) * evaluateMath(expression, mid, paramA, paramB, paramC) <= 0) right = mid;
             else left = mid;
           }
           const rootX = Number(((left + right) / 2).toFixed(3));
