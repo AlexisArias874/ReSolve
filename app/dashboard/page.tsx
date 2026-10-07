@@ -780,7 +780,7 @@ function DashboardContent() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 flex flex-col" data-ai-chat>
+          <div className="flex-1 min-h-0 flex flex-col">
             <AIAssistant />
           </div>
         </aside>

@@ -161,7 +161,7 @@ export default function AIAssistant() {
   };
 
   return (
-    <div className="flex-1 min-h-0 border border-zinc-800/60 rounded-3xl bg-zinc-900/30 backdrop-blur-md p-4 flex flex-col justify-between shadow-xl shadow-black/20">
+    <div data-ai-chat className="flex-1 min-h-0 border border-zinc-800/60 rounded-3xl bg-zinc-900/30 backdrop-blur-md p-4 flex flex-col justify-between shadow-xl shadow-black/20">
       
       {/* Selector de Motor de IA */}
       <div className="mb-2.5 flex items-center justify-between gap-2 shrink-0">
