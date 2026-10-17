@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Calculator, BrainCircuit, LineChart, ArrowRight, LogIn, User } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo, useEffect, useRef, memo } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 // --- Pool de símbolos matemáticos ---
 const SYMBOL_POOL = [
@@ -182,7 +183,16 @@ const BackgroundSymbols = () => {
 
 // --- Landing Page ---
 export default function LandingPage() {
-  const [isLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => setIsLoggedIn(!!user));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-zinc-950 selection:bg-zinc-800 selection:text-zinc-100">
@@ -212,9 +222,12 @@ export default function LandingPage() {
           <Link href="/historial" className="hover:text-zinc-100 transition-colors whitespace-nowrap">
             Historial
           </Link>
-          <button className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-zinc-800 hover:bg-zinc-900 text-zinc-100 transition-all whitespace-nowrap">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-zinc-800 hover:bg-zinc-900 text-zinc-100 transition-all whitespace-nowrap"
+          >
             <User size={14} /> Perfil
-          </button>
+          </Link>
         </div>
       ) : (
         <div className="flex items-center gap-4 text-sm font-medium">

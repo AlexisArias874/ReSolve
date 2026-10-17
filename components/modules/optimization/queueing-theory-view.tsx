@@ -140,8 +140,10 @@ function computeQueueModel(
 ): QueueAnalysis {
   const safeLambda = Math.max(0.001, lambda);
   const safeMu = Math.max(0.001, mu);
-  const servers = Math.max(1, Math.floor(c));
-  const capacityK = Math.max(servers, Math.floor(K));
+  // En M/M/1 y M/M/1/K solo existe un servidor; `c` únicamente aplica a M/M/c.
+  const servers = modelType === "MMc" ? Math.max(1, Math.floor(c)) : 1;
+  // K es independiente de `servers` (antes se forzaba K >= servers, corrompiendo M/M/1/K).
+  const capacityK = Math.max(1, Math.floor(K));
 
   let rho = 0;
   let isStable = true;
@@ -381,7 +383,7 @@ export default function QueueingTheoryView({
 
     // 3. Medidas en Cola (Lq y Wq)
     steps.push({
-      stage: `${id++}. Medidas de Desempeño en Cola (L_q y W_q)`,
+      stage: `${id++}. Medidas de Desempeño en Cola (Lq y Wq)`,
       desc: "Número promedio de clientes esperando servicio y tiempo medio de espera antes de ser atendido.",
       math: `L_q = ${analysis.lq} \\text{ clientes}, \\quad W_q = \\frac{L_q}{\\lambda} = \\frac{${analysis.lq}}{${analysis.effectiveLambda}} = ${analysis.wq} \\text{ unidades de tiempo}`,
       rule: "Ley de Little en Cola",
@@ -397,7 +399,7 @@ export default function QueueingTheoryView({
 
     if (analysis.modelType === "MM1K") {
       steps.push({
-        stage: `${id++}. Probabilidad de Bloqueo y Pérdida (P_K)`,
+        stage: `${id++}. Probabilidad de Bloqueo y Pérdida (Pₖ)`,
         desc: "Probabilidad de que la capacidad K del búfer esté llena al llegar un paquete/cliente.",
         math: `P_{\\text{pérdida}} = P_{${analysis.capacityK}} = ${analysis.lossProb} \\implies \\lambda_{\\text{efectiva}} = ${analysis.effectiveLambda}`,
         rule: "Capacidad Finita M/M/1/K",
@@ -407,9 +409,19 @@ export default function QueueingTheoryView({
     return steps;
   }, [analysis]);
 
+  // Cierra la guía con la tecla Escape
+  useEffect(() => {
+    if (!isHelpOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsHelpOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isHelpOpen]);
+
   return (
     // REGLA 1 & 2: Ancestro raíz con relative explícito y cadena de alturas resuelta
-    <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
+    <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto custom-scrollbar pr-1">
           {/* BARRA DE SELECCIÓN DE MODELO DE KENDALL */}
@@ -420,6 +432,7 @@ export default function QueueingTheoryView({
                   key={m}
                   type="button"
                   onClick={() => setModelType(m)}
+                  aria-pressed={modelType === m}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-mono transition-all flex items-center gap-1.5 ${
                     modelType === m
                       ? "bg-zinc-100 text-zinc-950 font-bold shadow-md"
@@ -435,9 +448,9 @@ export default function QueueingTheoryView({
             <button
               type="button"
               onClick={() => setIsHelpOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 transition-colors flex items-center gap-1.5 shadow-sm ml-auto"
+              className="h-11 px-4 rounded-xl bg-zinc-900/40 border border-zinc-800/80 hover:bg-zinc-800 hover:text-zinc-100 text-[11px] font-mono uppercase tracking-[0.15em] text-zinc-300 transition-colors flex items-center gap-2 shadow-sm ml-auto active:scale-95"
             >
-              <Sparkles size={13} className="text-amber-400" />
+              <Sparkles size={14} className="text-amber-400" />
               <span>Casos Reales</span>
             </button>
           </div>
@@ -445,14 +458,16 @@ export default function QueueingTheoryView({
           {/* SECCIÓN SUPERIOR: CONFIGURACIÓN DE PARÁMETROS + HERO CARD */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 shrink-0">
             {/* Panel Izquierdo: Consola de Parámetros */}
-            <div className="xl:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 space-y-5 overflow-hidden">
-              <div className="space-y-4">
+            <div className="xl:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 space-y-5 overflow-hidden">
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
+
+              <div className="relative z-10 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/60 pb-3">
-                  <span className="text-xs font-mono font-semibold text-zinc-300 flex items-center gap-2">
-                    <Sliders size={14} className="text-emerald-400" />
+                  <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
+                    <Sliders size={13} className="text-zinc-500" />
                     Parámetros Operativos del Sistema ({modelType})
                   </span>
-                  <span className={`text-[11px] font-mono px-2.5 py-0.5 rounded-full border ${
+                  <span className={`text-[10px] font-mono uppercase tracking-[0.15em] px-2.5 py-1 rounded-full border ${
                     analysis.isStable ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-rose-500/10 border-rose-500/20 text-rose-400"
                   }`}>
                     {analysis.isStable ? "Sistema Estable (ρ < 1)" : "Sistema Saturado (ρ ≥ 1)"}
@@ -466,7 +481,11 @@ export default function QueueingTheoryView({
                       <span>Tasa de Llegada (λ):</span>
                       <strong className="text-emerald-400">{lambda} clientes/u.t.</strong>
                     </div>
+                    <label htmlFor="tasa-llegada-lambda" className="sr-only">
+                      Tasa de llegada (λ)
+                    </label>
                     <input
+                      id="tasa-llegada-lambda"
                       type="number"
                       step="1"
                       min="0.1"
@@ -482,7 +501,11 @@ export default function QueueingTheoryView({
                       <span>Tasa de Servicio (μ por servidor):</span>
                       <strong className="text-sky-400">{mu} clientes/u.t.</strong>
                     </div>
+                    <label htmlFor="tasa-servicio-mu" className="sr-only">
+                      Tasa de servicio (μ por servidor)
+                    </label>
                     <input
+                      id="tasa-servicio-mu"
                       type="number"
                       step="1"
                       min="0.1"
@@ -499,7 +522,11 @@ export default function QueueingTheoryView({
                         <span>Número de Servidores (c):</span>
                         <strong className="text-amber-400">{servers} canales en paralelo</strong>
                       </div>
+                      <label htmlFor="numero-servidores" className="sr-only">
+                        Número de servidores (c)
+                      </label>
                       <input
+                        id="numero-servidores"
                         type="range"
                         min="1"
                         max="16"
@@ -517,7 +544,11 @@ export default function QueueingTheoryView({
                         <span>Capacidad Total del Sistema (K = cola + servicio):</span>
                         <strong className="text-purple-400">{capacityK} lugares</strong>
                       </div>
+                      <label htmlFor="capacidad-maxima-k" className="sr-only">
+                        Capacidad total del sistema (K)
+                      </label>
                       <input
+                        id="capacidad-maxima-k"
                         type="range"
                         min="2"
                         max="25"
@@ -556,23 +587,23 @@ export default function QueueingTheoryView({
               </div>
 
               {/* Botón Guardar */}
-              <div className="pt-3 border-t border-zinc-800/60 flex items-center justify-between">
-                <span className="text-[10px] font-mono text-zinc-500">
+              <div className="relative z-10 pt-3 border-t border-zinc-800/60 flex items-center justify-between gap-3">
+                <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500">
                   Persistencia ReSolve · Notación de Kendall
                 </span>
                 <button
                   type="button"
                   onClick={saveCalculation}
-                  className="px-5 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-semibold text-xs rounded-xl shadow-md transition-all active:scale-95"
+                  className="h-11 px-6 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] shadow-lg shadow-zinc-100/5 active:scale-95 flex items-center gap-2 transition-all"
                 >
-                  Guardar en Historial
+                  <CheckCircle2 size={14} /> Guardar en Historial
                 </button>
               </div>
             </div>
 
             {/* Panel Derecho: Hero Card con Tiempo en Sistema (W) */}
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden relative">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-52 h-52 bg-emerald-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
@@ -580,8 +611,9 @@ export default function QueueingTheoryView({
                     Tiempo en el Sistema (W)
                   </span>
                   <button
+                    type="button"
                     onClick={handleCopy}
-                    className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                    className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                   >
                     {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                     {copied ? "Copiado" : "Copiar"}
@@ -589,12 +621,21 @@ export default function QueueingTheoryView({
                 </div>
 
                 <div className="py-2 text-center">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 block mb-1">
                     Estancia Media Total (Cola + Servicio)
                   </span>
-                  <div className={`text-5xl font-serif font-bold tracking-tight ${analysis.isStable ? "text-emerald-400" : "text-rose-400"}`}>
-                    {analysis.isStable ? analysis.w : "∞"}
-                  </div>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={analysis.isStable ? analysis.w : "inf"}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.05 }}
+                      transition={{ duration: 0.2 }}
+                      className={`text-5xl lg:text-7xl font-serif font-bold tracking-tight ${analysis.isStable ? "text-zinc-100" : "text-rose-400"}`}
+                    >
+                      {analysis.isStable ? analysis.w : "∞"}
+                    </motion.div>
+                  </AnimatePresence>
                   <span className="text-[11px] font-mono text-zinc-400 mt-2 block">
                     {analysis.isStable
                       ? `Tiempo en espera de cola Wq = ${analysis.wq}`
@@ -621,7 +662,7 @@ export default function QueueingTheoryView({
 
                   <div className="p-2.5 rounded-xl bg-zinc-950/70 border border-zinc-800/70">
                     <span className="text-[10px] text-zinc-500 block">
-                      {modelType === "MM1K" ? "Pérdida (P_K)" : "Tiempo en Cola (Wq)"}
+                      {modelType === "MM1K" ? "Pérdida (Pₖ)" : "Tiempo en Cola (Wq)"}
                     </span>
                     <strong className="text-purple-400 text-sm">
                       {modelType === "MM1K" && analysis.lossProb !== undefined
@@ -655,6 +696,7 @@ export default function QueueingTheoryView({
                   <button
                     type="button"
                     onClick={() => setActiveTab("topology")}
+                    aria-pressed={activeTab === "topology"}
                     className={`px-3 py-1.5 rounded-xl text-xs font-mono transition-all flex items-center gap-1.5 ${
                       activeTab === "topology"
                         ? "bg-zinc-100 text-zinc-950 font-bold shadow-md"
@@ -667,6 +709,7 @@ export default function QueueingTheoryView({
                   <button
                     type="button"
                     onClick={() => setActiveTab("probabilities")}
+                    aria-pressed={activeTab === "probabilities"}
                     className={`px-3 py-1.5 rounded-xl text-xs font-mono transition-all flex items-center gap-1.5 ${
                       activeTab === "probabilities"
                         ? "bg-zinc-100 text-zinc-950 font-bold shadow-md"
@@ -765,7 +808,7 @@ export default function QueueingTheoryView({
                     <div className="flex items-center gap-1 w-full shrink-0 pt-2 border-t border-zinc-800">
                       {analysis.pnStates.map((s) => (
                         <div key={s.n} className="flex-1 min-w-0 text-center">
-                          <span className="text-[9px] font-mono text-zinc-500 block truncate">
+                          <span className="text-[10px] font-mono text-zinc-500 block truncate">
                             n={s.n}
                           </span>
                         </div>
@@ -779,24 +822,29 @@ export default function QueueingTheoryView({
             {/* Panel Historial */}
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
-                  <History size={15} className="text-zinc-400" /> Historial de Colas
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                  <History size={15} className="text-zinc-400" /> Historial
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
                 )}
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pt-4 pr-1 custom-scrollbar">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin análisis guardados.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin análisis guardados</p>
+                    <p className="text-[11px] text-zinc-500">
                       Guarda configuraciones de tráfico para comparar SLAs.
                     </p>
                   </div>
@@ -804,7 +852,8 @@ export default function QueueingTheoryView({
                   history.map((item) => (
                     <div
                       key={item.id}
-                      className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 transition-all flex items-center justify-between text-xs"
+                      title={item.expression}
+                      className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">{item.expression}</div>
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
@@ -821,38 +870,57 @@ export default function QueueingTheoryView({
 
       {/* MODO 2: PROCEDIMIENTO ANALÍTICO PASO A PASO */}
       {viewMode === "steps" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+        <div className="relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+          <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 bg-zinc-700/10 rounded-full blur-3xl" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/60 pb-5 shrink-0">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <Compass size={12} /> Deducción Analítica
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento y Deducción Analítica del Sistema de Colas
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
                 Modelo {analysis.modelType} (λ = {analysis.lambda}, μ = {analysis.mu})
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300">
-              Ocupación: <strong className="text-emerald-400 font-serif">{(analysis.rho * 100).toFixed(1)}%</strong>
+            <div className="shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 shadow-inner">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                Ocupación
+              </span>
+              <span className="text-sm font-serif font-bold text-emerald-400">
+                {(analysis.rho * 100).toFixed(1)}%
+              </span>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+          <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pt-6 pr-2 custom-scrollbar">
             {analyticalSteps.map((st, i) => (
-              <div
-                key={i}
-                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-zinc-200 font-mono">{st.stage}</span>
-                  <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900/80 px-2 py-0.5 rounded-md border border-zinc-800">
-                    {st.rule}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed">{st.desc}</p>
-                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto whitespace-pre-line">
-                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                    {`$$${st.math}$$`}
-                  </ReactMarkdown>
+              <div key={i} className="relative pl-11 pb-5 last:pb-0">
+                <span
+                  className="absolute left-0 top-0 w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                  aria-hidden="true"
+                >
+                  {i + 1}
+                </span>
+                {i < analyticalSteps.length - 1 && (
+                  <span className="absolute left-[13px] top-9 bottom-0 w-px bg-zinc-800/70" aria-hidden="true" />
+                )}
+
+                <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-zinc-100 font-mono">{st.stage}</span>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                      {st.rule}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-300 leading-relaxed mt-1.5">{st.desc}</p>
+                  <div className="p-3 mt-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto whitespace-pre-line">
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {`\n$$\n${st.math}\n$$\n`}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             ))}
@@ -867,7 +935,7 @@ export default function QueueingTheoryView({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Procesos de Nacimiento y Muerte (Markov)
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Teoría de Colas, Notación de Kendall y la Ley de Little
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -901,13 +969,16 @@ export default function QueueingTheoryView({
         {isHelpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Guía de Teoría de Colas y Modelos de Tráfico"
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
-              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 relative z-10">
                 <div className="flex items-center gap-2.5">
@@ -924,8 +995,11 @@ export default function QueueingTheoryView({
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsHelpOpen(false)}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
+                  aria-label="Cerrar"
+                  title="Cerrar"
+                  className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors active:scale-95"
                 >
                   <X size={16} />
                 </button>

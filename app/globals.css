@@ -506,6 +506,98 @@ input[type="range"]::-moz-range-thumb {
   color: #94a3b8 !important;
 }
 
+/* Acentos de resultado legibles sobre papel (WCAG AA).
+   Oscurece emerald/amber/red/rose/sky/cyan/purple que en tema oscuro
+   van a 300/400 y quedarían ilegibles sobre fondo blanco. */
+[data-theme="light"] .text-emerald-300,
+[data-theme="light"] .text-emerald-400 {
+  color: #047857 !important;
+}
+[data-theme="light"] .text-amber-200,
+[data-theme="light"] .text-amber-300,
+[data-theme="light"] .text-amber-400,
+[data-theme="light"] .text-amber-500,
+[data-theme="light"] .text-amber-600 {
+  color: #b45309 !important;
+}
+[data-theme="light"] .text-red-300,
+[data-theme="light"] .text-red-400,
+[data-theme="light"] .text-red-600 {
+  color: #b91c1c !important;
+}
+[data-theme="light"] .text-rose-300,
+[data-theme="light"] .text-rose-400 {
+  color: #be123c !important;
+}
+[data-theme="light"] .text-sky-300,
+[data-theme="light"] .text-sky-400 {
+  color: #0369a1 !important;
+}
+[data-theme="light"] .text-cyan-300,
+[data-theme="light"] .text-cyan-400 {
+  color: #0e7490 !important;
+}
+[data-theme="light"] .text-purple-400 {
+  color: #7e22ce !important;
+}
+[data-theme="light"] .hover\:text-red-200:hover,
+[data-theme="light"] .hover\:text-red-300:hover,
+[data-theme="light"] .hover\:text-red-400:hover {
+  color: #b91c1c !important;
+}
+[data-theme="light"] .hover\:text-amber-300:hover {
+  color: #b45309 !important;
+}
+[data-theme="light"] .hover\:text-rose-400:hover {
+  color: #be123c !important;
+}
+
+/* --- 1.b Fondos de acento sólidos ------------------------------------------
+   En oscuro text-zinc-950 (casi negro) queda legible sobre amarillo/esmeralda
+   vivos. En claro text-zinc-950 se fuerza a blanco, por lo que oscurecemos
+   el acento para conservar contraste AA con el texto. */
+[data-theme="light"] .bg-amber-300,
+[data-theme="light"] .bg-amber-400 { background-color: #b45309 !important; }
+[data-theme="light"] .bg-amber-500 { background-color: #d97706 !important; }
+[data-theme="light"] .bg-amber-400\/60,
+[data-theme="light"] .bg-amber-400\/80 { background-color: rgba(180, 83, 9, 0.65) !important; }
+[data-theme="light"] .hover\:bg-amber-300:hover { background-color: #92400e !important; }
+[data-theme="light"] .bg-emerald-400,
+[data-theme="light"] .bg-emerald-500 { background-color: #047857 !important; }
+[data-theme="light"] .hover\:bg-emerald-400:hover { background-color: #065f46 !important; }
+
+/* --- 1.c Texto de acento con opacidad (etiquetas /90, /70) --- */
+[data-theme="light"] .text-emerald-400\/90 { color: #047857 !important; }
+[data-theme="light"] .text-amber-400\/90,
+[data-theme="light"] .text-amber-500\/70 { color: #b45309 !important; }
+[data-theme="light"] .text-red-400\/90 { color: #b91c1c !important; }
+[data-theme="light"] .text-sky-400\/90 { color: #0369a1 !important; }
+
+/* --- 1.d Fondos tintados 950 (chips V/F, alertas) → tinte claro legible --- */
+[data-theme="light"] .bg-emerald-950\/10 { background-color: rgba(16, 185, 129, 0.10) !important; }
+[data-theme="light"] .bg-emerald-950\/20 { background-color: rgba(16, 185, 129, 0.14) !important; }
+[data-theme="light"] .bg-emerald-950\/30 { background-color: rgba(16, 185, 129, 0.18) !important; }
+[data-theme="light"] .bg-emerald-950\/50 { background-color: rgba(16, 185, 129, 0.24) !important; }
+[data-theme="light"] .bg-red-950\/20 { background-color: rgba(239, 68, 68, 0.12) !important; }
+[data-theme="light"] .bg-red-950\/30 { background-color: rgba(239, 68, 68, 0.16) !important; }
+[data-theme="light"] .bg-red-950\/40 { background-color: rgba(239, 68, 68, 0.20) !important; }
+[data-theme="light"] .bg-red-950\/50 { background-color: rgba(239, 68, 68, 0.24) !important; }
+[data-theme="light"] .bg-amber-950\/10 { background-color: rgba(245, 158, 11, 0.14) !important; }
+[data-theme="light"] .bg-amber-950\/20 { background-color: rgba(245, 158, 11, 0.20) !important; }
+[data-theme="light"] .bg-amber-950\/30 { background-color: rgba(245, 158, 11, 0.24) !important; }
+[data-theme="light"] .bg-amber-950\/40 { background-color: rgba(245, 158, 11, 0.28) !important; }
+[data-theme="light"] .bg-sky-950\/40 { background-color: rgba(14, 165, 233, 0.14) !important; }
+[data-theme="light"] .bg-cyan-950\/40 { background-color: rgba(6, 182, 212, 0.14) !important; }
+
+/* --- 1.e Bordes tintados 900 (chips V/F, alertas) --- */
+[data-theme="light"] .border-emerald-900\/40,
+[data-theme="light"] .border-emerald-900\/50,
+[data-theme="light"] .border-emerald-900\/60 { border-color: rgba(16, 185, 129, 0.40) !important; }
+[data-theme="light"] .border-red-900\/40,
+[data-theme="light"] .border-red-900\/50 { border-color: rgba(239, 68, 68, 0.38) !important; }
+[data-theme="light"] .border-sky-900\/40 { border-color: rgba(14, 165, 233, 0.38) !important; }
+[data-theme="light"] .border-amber-900\/40 { border-color: rgba(245, 158, 11, 0.45) !important; }
+
 /* =============================================================================
    2. TEMA SEPIA (LECTURA ACADÉMICA / PERGAMINO)
 ============================================================================= */
@@ -636,6 +728,93 @@ input[type="range"]::-moz-range-thumb {
   color: #9c8364 !important;
 }
 
+/* Acentos de resultado legibles sobre pergamino (WCAG AA). */
+[data-theme="sepia"] .text-emerald-300,
+[data-theme="sepia"] .text-emerald-400 {
+  color: #065f46 !important;
+}
+[data-theme="sepia"] .text-amber-200,
+[data-theme="sepia"] .text-amber-300,
+[data-theme="sepia"] .text-amber-400,
+[data-theme="sepia"] .text-amber-500,
+[data-theme="sepia"] .text-amber-600 {
+  color: #92400e !important;
+}
+[data-theme="sepia"] .text-red-300,
+[data-theme="sepia"] .text-red-400,
+[data-theme="sepia"] .text-red-600 {
+  color: #991b1b !important;
+}
+[data-theme="sepia"] .text-rose-300,
+[data-theme="sepia"] .text-rose-400 {
+  color: #9f1239 !important;
+}
+[data-theme="sepia"] .text-sky-300,
+[data-theme="sepia"] .text-sky-400 {
+  color: #075985 !important;
+}
+[data-theme="sepia"] .text-cyan-300,
+[data-theme="sepia"] .text-cyan-400 {
+  color: #155e75 !important;
+}
+[data-theme="sepia"] .text-purple-400 {
+  color: #6b21a8 !important;
+}
+[data-theme="sepia"] .hover\:text-red-200:hover,
+[data-theme="sepia"] .hover\:text-red-300:hover,
+[data-theme="sepia"] .hover\:text-red-400:hover {
+  color: #991b1b !important;
+}
+[data-theme="sepia"] .hover\:text-amber-300:hover {
+  color: #92400e !important;
+}
+[data-theme="sepia"] .hover\:text-rose-400:hover {
+  color: #9f1239 !important;
+}
+
+/* --- 2.b Fondos de acento sólidos (text-zinc-950 → claro en sepia) --- */
+[data-theme="sepia"] .bg-amber-300,
+[data-theme="sepia"] .bg-amber-400 { background-color: #92400e !important; }
+[data-theme="sepia"] .bg-amber-500 { background-color: #b45309 !important; }
+[data-theme="sepia"] .bg-amber-400\/60,
+[data-theme="sepia"] .bg-amber-400\/80 { background-color: rgba(146, 64, 14, 0.65) !important; }
+[data-theme="sepia"] .hover\:bg-amber-300:hover { background-color: #78350f !important; }
+[data-theme="sepia"] .bg-emerald-400,
+[data-theme="sepia"] .bg-emerald-500 { background-color: #065f46 !important; }
+[data-theme="sepia"] .hover\:bg-emerald-400:hover { background-color: #064e3b !important; }
+
+/* --- 2.c Texto de acento con opacidad --- */
+[data-theme="sepia"] .text-emerald-400\/90 { color: #065f46 !important; }
+[data-theme="sepia"] .text-amber-400\/90,
+[data-theme="sepia"] .text-amber-500\/70 { color: #92400e !important; }
+[data-theme="sepia"] .text-red-400\/90 { color: #991b1b !important; }
+[data-theme="sepia"] .text-sky-400\/90 { color: #075985 !important; }
+
+/* --- 2.d Fondos tintados 950 (chips V/F, alertas) → tinte claro legible --- */
+[data-theme="sepia"] .bg-emerald-950\/10 { background-color: rgba(16, 185, 129, 0.10) !important; }
+[data-theme="sepia"] .bg-emerald-950\/20 { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="sepia"] .bg-emerald-950\/30 { background-color: rgba(16, 185, 129, 0.19) !important; }
+[data-theme="sepia"] .bg-emerald-950\/50 { background-color: rgba(16, 185, 129, 0.25) !important; }
+[data-theme="sepia"] .bg-red-950\/20 { background-color: rgba(239, 68, 68, 0.13) !important; }
+[data-theme="sepia"] .bg-red-950\/30 { background-color: rgba(239, 68, 68, 0.17) !important; }
+[data-theme="sepia"] .bg-red-950\/40 { background-color: rgba(239, 68, 68, 0.21) !important; }
+[data-theme="sepia"] .bg-red-950\/50 { background-color: rgba(239, 68, 68, 0.25) !important; }
+[data-theme="sepia"] .bg-amber-950\/10 { background-color: rgba(217, 119, 6, 0.14) !important; }
+[data-theme="sepia"] .bg-amber-950\/20 { background-color: rgba(217, 119, 6, 0.20) !important; }
+[data-theme="sepia"] .bg-amber-950\/30 { background-color: rgba(217, 119, 6, 0.24) !important; }
+[data-theme="sepia"] .bg-amber-950\/40 { background-color: rgba(217, 119, 6, 0.28) !important; }
+[data-theme="sepia"] .bg-sky-950\/40 { background-color: rgba(14, 165, 233, 0.15) !important; }
+[data-theme="sepia"] .bg-cyan-950\/40 { background-color: rgba(6, 182, 212, 0.15) !important; }
+
+/* --- 2.e Bordes tintados 900 --- */
+[data-theme="sepia"] .border-emerald-900\/40,
+[data-theme="sepia"] .border-emerald-900\/50,
+[data-theme="sepia"] .border-emerald-900\/60 { border-color: rgba(5, 150, 105, 0.42) !important; }
+[data-theme="sepia"] .border-red-900\/40,
+[data-theme="sepia"] .border-red-900\/50 { border-color: rgba(220, 38, 38, 0.40) !important; }
+[data-theme="sepia"] .border-sky-900\/40 { border-color: rgba(14, 165, 233, 0.40) !important; }
+[data-theme="sepia"] .border-amber-900\/40 { border-color: rgba(217, 119, 6, 0.48) !important; }
+
 /* =============================================================================
    3. TEMA MATRIX (TERMINAL CIBERNÉTICA)
 ============================================================================= */
@@ -726,3 +905,11 @@ input[type="range"]::-moz-range-thumb {
 [data-theme="matrix"] .text-zinc-950 {
   color: #020804 !important;
 }
+
+/* =============================================================================
+   4. MÍNIMO TIPOGRÁFICO LEGIBLE
+   Sube las etiquetas más pequeñas (9px/10px) para evitar texto ilegible
+   en paneles densos (tablas, ejes de gráficas, tarjetas de estadísticos).
+============================================================================= */
+.text-\[9px\] { font-size: 11px !important; }
+.text-\[10px\] { font-size: 11px !important; }

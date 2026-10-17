@@ -17,7 +17,12 @@ export function printDocumentById(elementId: string, fileName: string) {
   document.body.appendChild(iframe);
 
   const doc = iframe.contentWindow?.document;
-  if (!doc) return;
+  if (!doc) {
+    // Evita dejar un iframe huérfano y el título alterado si falla el acceso al documento.
+    if (iframe.parentNode) document.body.removeChild(iframe);
+    document.title = originalTitle;
+    return;
+  }
 
   // ✅ @page SIN márgenes de header/footer (los márgenes sí se respetan)
   // ✅ El header/footer nativo se quita desde el diálogo de impresión,

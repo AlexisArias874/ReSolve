@@ -1,9 +1,11 @@
-# Omni-Solver
+# Calculadora Universal (antes Omni-Solver)
 
 ## Propósito
 
 Entrada universal: interpretar un problema en lenguaje natural o generar un ejercicio de práctica,
-clasificarlo por materia, mostrar su resolución y trasladarlo al módulo especializado.
+clasificarlo por materia, mostrar su resolución y trasladarlo al módulo especializado. Garantiza
+**siempre** una respuesta: primero resuelve con un motor local determinista y, si no reconoce el
+método, delega en la IA y, como último recurso, ofrece una interpretación general.
 
 ## Responsabilidades
 
@@ -59,7 +61,10 @@ Esquema JSON exigido al modelo (en el prompt): `targetModule` (`mat1`…`mat6`),
 
 ## Estado
 
-**Activo**. Es el punto de entrada destacado del dashboard (botón ámbar "ReSolve Solver").
+**Activo**. Es el punto de entrada destacado del dashboard (botón ámbar "Calculadora Universal").
+Internamente conserva el id `omni` y la ruta `/api/ai/omni-solve`. Cuenta con un motor local
+determinista (`lib/math/universal-engine.ts`) que resuelve aritmética, ecuaciones, derivadas,
+integrales, límites, sistemas y determinantes antes de recurrir a la IA.
 
 - Solo cubre temas que existen como subtemas (`TOPICS_LIST` no incluye todos los módulos).
 - `targetSubtopic` debe coincidir exactamente con un id de `SUBTOPICS_BY_MODULE`; si no, el

@@ -25,6 +25,10 @@ import {
   CheckCircle2,
   AlertTriangle
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import MathGrapher from "@/components/shared/math-grapher";
 import { useAIContext } from "@/lib/context/ai-context";
 import {
@@ -35,6 +39,18 @@ import {
 } from "@/lib/supabase/history";
 
 export type RootMethod = "bisection" | "newton" | "secant" | "fixed_point";
+
+// Convierte una expresión de entrada (p. ej. "sqrt(2*x + 3)") a una forma
+// tipográficamente correcta para KaTeX: multiplicación con \cdot y nombres de
+// función en romana (\operatorname) en lugar de cursiva.
+const MATH_FUNCTIONS = ["sqrt", "sin", "cos", "tan", "exp", "ln", "log", "abs"];
+const toLatexExpression = (expr: string): string => {
+  let out = expr.replace(/\*/g, " \\cdot ");
+  for (const fn of MATH_FUNCTIONS) {
+    out = out.replace(new RegExp(`\\b${fn}\\b`, "g"), `\\operatorname{${fn}}`);
+  }
+  return out;
+};
 
 interface ModuleExample {
   category: string;
@@ -220,7 +236,7 @@ export default function NumericalRootsView({
       steps.push({
         stage: `${stepId++}. Validación del Teorema de Bolzano en [a, b]`,
         desc: `Verificamos cambio de signo f(a) · f(b) < 0 en el intervalo [${a}, ${b}]`,
-        math: `f(${a}) = ${Number(fa.toFixed(4))} ,  f(${b}) = ${Number(fb.toFixed(4))}\n⟹ f(a) · f(b) = ${Number((fa * fb).toFixed(4))} ${fa * fb < 0 ? "< 0  (¡Raíz garantizada en el intervalo!)" : "≥ 0  (No se garantiza cambio de signo)"}`,
+        math: `f(${a}) = ${Number(fa.toFixed(4))}, \\quad f(${b}) = ${Number(fb.toFixed(4))} \\\\[4pt] \\Longrightarrow \\quad f(a) \\cdot f(b) = ${Number((fa * fb).toFixed(4))} ${fa * fb < 0 ? "\\;<\\;0 \\quad \\text{(¡Raíz garantizada en el intervalo!)}" : "\\;\\ge\\;0 \\quad \\text{(No se garantiza cambio de signo)}"}`,
       });
 
       if (fa * fb >= 0) {
@@ -288,7 +304,7 @@ export default function NumericalRootsView({
 
       steps.push({
         stage: `${stepId++}. Fórmula de Recurrencia Cuadrática`,
-        desc: "x_{i+1} = x_i - f(x_i) / f'(x_i)",
+        desc: "xᵢ₊₁ = xᵢ − f(xᵢ) / f'(xᵢ)",
         math: `x_{i+1} = x_i - \\frac{f(x_i)}{f'(x_i)} \\quad\\text{con punto semilla } x_0 = ${x}`,
       });
 
@@ -349,7 +365,7 @@ export default function NumericalRootsView({
 
       steps.push({
         stage: `${stepId++}. Fórmula de la Secante`,
-        desc: "x_{i+1} = x_i - f(x_i) · (x_i - x_{i-1}) / [f(x_i) - f(x_{i-1})]",
+        desc: "xᵢ₊₁ = xᵢ − f(xᵢ) · (xᵢ − xᵢ₋₁) / [f(xᵢ) − f(xᵢ₋₁)]",
         math: `x_{i+1} = x_i - \\frac{f(x_i)(x_i - x_{i-1})}{f(x_i) - f(x_{i-1})}`,
       });
 
@@ -399,8 +415,8 @@ export default function NumericalRootsView({
 
       steps.push({
         stage: `${stepId++}. Ecuación Despejada x = g(x)`,
-        desc: `Iteramos x_{i+1} = g(x_i) a partir de x₀ = ${x}`,
-        math: `x_{i+1} = g(x_i) = ${clean}`,
+        desc: `Iteramos xᵢ₊₁ = g(xᵢ) a partir de x₀ = ${x}`,
+        math: `x_{i+1} = g(x_i) = ${toLatexExpression(clean)}`,
       });
 
       for (let i = 1; i <= maxN; i++) {
@@ -505,6 +521,19 @@ export default function NumericalRootsView({
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // Escape cierra los modales de información y de casos de estudio
+  useEffect(() => {
+    if (!isMethodInfoOpen && !isHelpOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMethodInfoOpen(false);
+        setIsHelpOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isMethodInfoOpen, isHelpOpen]);
+
   const ROOT_KEYS = [
     { label: "x", val: "x" },
     { label: "^2", val: "^2" },
@@ -521,7 +550,7 @@ export default function NumericalRootsView({
   ];
 
   return (
-    <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
+    <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto custom-scrollbar pr-1">
           
@@ -529,18 +558,21 @@ export default function NumericalRootsView({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0">
             
             {/* Consola de Entrada del Método */}
-            <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20">
-              <div className="space-y-4">
+            <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
+
+              <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <Target size={14} className="text-zinc-500" />
+                    <Target size={13} className="text-zinc-500" />
                     Consola de Aproximación de Raíces Numéricas
                   </span>
 
                   <button
                     type="button"
                     onClick={() => setIsHelpOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 transition-colors flex items-center gap-1 shadow-sm"
+                    aria-label="Abrir casos de estudio"
+                    className="px-3 py-1.5 rounded-lg bg-zinc-950/60 border border-zinc-800/60 hover:bg-zinc-800/60 text-[11px] font-mono text-zinc-300 transition-colors flex items-center gap-1.5 shadow-sm"
                   >
                     <HelpCircle size={13} className="text-amber-400" />
                     <span>Casos de Estudio</span>
@@ -572,16 +604,18 @@ export default function NumericalRootsView({
 
                 {/* Input de la Función */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
+                  <label htmlFor="roots-func-input" className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
                     <span>{method === "fixed_point" ? "Función Despejada g(x):" : "Función f(x) = 0:"}</span>
                     <span className="text-[10px] text-amber-400 font-mono">
                       {method === "fixed_point" ? "x = g(x)" : "f(x) = 0"}
                     </span>
                   </label>
                   <input
+                    id="roots-func-input"
                     type="text"
                     value={funcInput}
                     onChange={(e) => setFuncInput(e.target.value)}
+                    aria-label={method === "fixed_point" ? "Función despejada g de x" : "Función f de x igual a cero"}
                     placeholder="Ej: x^2 - 5   o   x^3 - 2*x - 5   o   cos(x) - x"
                     className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-2xl px-5 py-3.5 font-mono text-base lg:text-lg text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all shadow-inner"
                   />
@@ -591,14 +625,16 @@ export default function NumericalRootsView({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                   {/* Parámetro 1 */}
                   <div className="p-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/80">
-                    <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block mb-1">
+                    <label htmlFor="roots-param1" className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block mb-1">
                       {method === "bisection" ? "Límite Inferior (a):" : "Punto Semilla (x₀):"}
                     </label>
                     <input
+                      id="roots-param1"
                       type="number"
                       step="any"
                       value={param1}
                       onChange={(e) => setParam1(e.target.value)}
+                      aria-label={method === "bisection" ? "Límite inferior del intervalo" : "Punto semilla"}
                       className="w-full bg-transparent font-mono text-sm text-zinc-100 outline-none"
                     />
                   </div>
@@ -606,14 +642,16 @@ export default function NumericalRootsView({
                   {/* Parámetro 2 (solo en Bisección y Secante) */}
                   {method === "bisection" || method === "secant" ? (
                     <div className="p-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/80">
-                      <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block mb-1">
+                      <label htmlFor="roots-param2" className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block mb-1">
                         {method === "bisection" ? "Límite Superior (b):" : "Segundo Punto (x₁):"}
                       </label>
                       <input
+                        id="roots-param2"
                         type="number"
                         step="any"
                         value={param2}
                         onChange={(e) => setParam2(e.target.value)}
+                        aria-label={method === "bisection" ? "Límite superior del intervalo" : "Segundo punto de la secante"}
                         className="w-full bg-transparent font-mono text-sm text-zinc-100 outline-none"
                       />
                     </div>
@@ -625,12 +663,14 @@ export default function NumericalRootsView({
 
                   {/* Tolerancia y Max Iteraciones */}
                   <div className="p-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/80">
-                    <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block mb-1">
+                    <label htmlFor="roots-tolerance" className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block mb-1">
                       Tolerancia (εs):
                     </label>
                     <select
+                      id="roots-tolerance"
                       value={tolerance}
                       onChange={(e) => setTolerance(e.target.value)}
+                      aria-label="Tolerancia de convergencia"
                       className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs font-mono text-zinc-300 outline-none cursor-pointer"
                     >
                       <option value="0.01">1% (0.01)</option>
@@ -646,23 +686,28 @@ export default function NumericalRootsView({
                 {ROOT_KEYS.map((k) => (
                   <button
                     key={k.label}
+                    type="button"
                     onClick={() => setFuncInput((prev) => prev + k.val)}
-                    className="h-10 min-w-[42px] px-3 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/80 text-zinc-200 rounded-xl font-mono text-sm font-medium transition-all active:scale-95 shadow-sm backdrop-blur-sm flex items-center justify-center"
+                    aria-label={`Insertar ${k.label}`}
+                    title={`Insertar ${k.label}`}
+                    className="h-10 min-w-[46px] px-3.5 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/60 text-zinc-200 rounded-xl font-mono text-sm font-medium transition-all active:scale-95 flex items-center justify-center"
                   >
                     {k.label}
                   </button>
                 ))}
 
                 <button
+                  type="button"
                   onClick={() => void saveCalculation()}
-                  className="h-10 px-5 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 ml-auto active:scale-95"
+                  className="h-11 px-6 ml-auto bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 active:scale-95"
                 >
                   <CornerDownLeft size={14} /> Calcular Raíz
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setFuncInput("")}
-                  className="h-10 px-3.5 bg-zinc-900/50 border border-zinc-800/80 text-zinc-400 hover:text-red-400 hover:border-red-900/40 rounded-xl text-xs font-medium transition-colors"
+                  className="h-11 px-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 text-zinc-400 hover:text-red-400 hover:border-red-900/40 text-xs font-medium transition-colors flex items-center gap-2 active:scale-95"
                 >
                   Limpiar
                 </button>
@@ -671,7 +716,7 @@ export default function NumericalRootsView({
 
             {/* Caja Derecha: Raíz Calculada y Convergencia */}
             <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
@@ -680,8 +725,10 @@ export default function NumericalRootsView({
                   </span>
                   {calculation.root !== null && (
                     <button
+                      type="button"
                       onClick={handleCopy}
-                      className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                      aria-label="Copiar raíz aproximada"
+                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       {copied ? "Copiado" : "Copiar"}
@@ -689,18 +736,33 @@ export default function NumericalRootsView({
                   )}
                 </div>
 
-                <div className="py-4 text-center">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
+                <div className="py-6 text-center">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 block mb-2">
                     Valor de Convergencia
                   </span>
-                  <div className="text-4xl lg:text-5xl font-serif font-bold text-emerald-400 tracking-tight">
-                    {calculation.root !== null ? calculation.root : "--"}
-                  </div>
-                  <span className="text-[11px] font-mono text-zinc-400 mt-2 block">
-                    {calculation.converged
-                      ? `✓ Convergencia en ${calculation.iterations} iteraciones`
-                      : calculation.error || "Aproximando solución..."}
-                  </span>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={calculation.root}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.05 }}
+                      transition={{ duration: 0.2 }}
+                      className={`text-5xl lg:text-7xl font-serif font-bold tracking-tight transition-colors ${
+                        calculation.root === null ? "text-zinc-600" : "text-zinc-100"
+                      }`}
+                    >
+                      {calculation.root !== null ? calculation.root : "--"}
+                    </motion.div>
+                  </AnimatePresence>
+                  {calculation.converged ? (
+                    <span className="text-[11px] font-mono text-emerald-400 mt-3 flex items-center justify-center gap-1.5">
+                      <CheckCircle2 size={13} /> Convergencia en {calculation.iterations} iteraciones
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-mono text-zinc-400 mt-3 block">
+                      {calculation.error || "Aproximando solución..."}
+                    </span>
+                  )}
                 </div>
 
                 {/* Métricas de Error y Función */}
@@ -745,12 +807,12 @@ export default function NumericalRootsView({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
             
             {/* Panel Izquierdo: Tabla de Iteraciones y Graficador */}
-            <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+            <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <ListOrdered size={15} className="text-zinc-400" /> Tabla de Convergencia Iterativa ({calculation.methodName})
                 </span>
-                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-full">
+                <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
                   {calculation.tableRows.length} Pasos Iterados
                 </span>
               </div>
@@ -768,11 +830,11 @@ export default function NumericalRootsView({
                       )}
                       {method === "secant" && (
                         <>
-                          <th className="p-3">x_{"{i-1}"}</th>
-                          <th className="p-3">x_i</th>
+                          <th className="p-3">x<sub>i-1</sub></th>
+                          <th className="p-3">x<sub>i</sub></th>
                         </>
                       )}
-                      <th className="p-3 text-sky-400 font-bold">x* (Aprox)</th>
+                      <th className="p-3 text-zinc-300 font-bold">x* (Aprox)</th>
                       <th className="p-3">f(x*)</th>
                       <th className="p-3 text-right text-amber-400 font-bold">Error εa (%)</th>
                     </tr>
@@ -806,37 +868,43 @@ export default function NumericalRootsView({
             </div>
 
             {/* Panel Derecho: Historial */}
-            <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+            <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Raíces
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
                 )}
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto pt-4 pr-1 space-y-2">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin aproximaciones guardadas.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Guarda raíces para auditar iteraciones.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin aproximaciones guardadas</p>
+                    <p className="text-[11px] text-zinc-500">Guarda raíces para auditar iteraciones</p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
-                      className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 transition-all flex items-center justify-between text-xs"
+                      title={item.expression}
+                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-default transition-colors flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">
                         {item.expression}
                       </div>
-                      <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px]">
+                      <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[110px]">
                         {item.result}
                       </div>
                     </div>
@@ -851,31 +919,52 @@ export default function NumericalRootsView({
 
       {/* MODO 2: PASO A PASO */}
       {viewMode === "steps" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
-          <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+        <div className="relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+          <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 bg-zinc-700/10 rounded-full blur-3xl" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-800/60 shrink-0">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento y Criterios de Convergencia
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
                 Función: {funcInput} | Método: {calculation.methodName}
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
-              Raíz: <strong className="text-emerald-400 text-sm font-serif">{calculation.root}</strong>
+            <div className="shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 shadow-inner">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Raíz</span>
+              <span className="text-sm font-serif font-bold text-emerald-400">{calculation.root}</span>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+          <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pt-6 pr-2">
             {calculation.steps.map((st, i) => (
-              <div
-                key={i}
-                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-2.5"
-              >
-                <span className="text-sm font-semibold text-zinc-200 font-mono">{st.stage}</span>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed">{st.desc}</p>
-                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold whitespace-pre-line">
-                  {st.math}
+              <div key={i} className="relative pl-13 pb-5 last:pb-0">
+                <span
+                  className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                  aria-hidden="true"
+                >
+                  {i + 1}
+                </span>
+                {i < calculation.steps.length - 1 && (
+                  <span
+                    className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70"
+                    aria-hidden="true"
+                  />
+                )}
+                <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-2.5">
+                  <span className="text-sm font-semibold text-zinc-200 font-mono">
+                    {st.stage.replace(/^\d+\.\s*/, "")}
+                  </span>
+                  <p className="text-xs text-zinc-300 font-sans leading-relaxed">{st.desc}</p>
+                  <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold whitespace-pre-line">
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {`\n$$\n${st.math}\n$$\n`}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             ))}
@@ -887,10 +976,10 @@ export default function NumericalRootsView({
       {viewMode === "theory" && (
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto shadow-xl shadow-black/20 custom-scrollbar">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Análisis Numérico y Convergencia Algorítmica
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Métodos de Aproximación de Raíces de Ecuaciones No Lineales
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -943,13 +1032,16 @@ export default function NumericalRootsView({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Órdenes de convergencia"
               className="relative w-full max-w-md border border-zinc-800 bg-zinc-950 rounded-3xl p-6 shadow-2xl"
             >
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                 <h4 className="text-sm font-serif font-bold text-zinc-100 flex items-center gap-2">
                   <Cpu size={15} className="text-amber-400" /> Órdenes de Convergencia
                 </h4>
-                <button onClick={() => setIsMethodInfoOpen(false)} className="p-1 text-zinc-400 hover:text-zinc-100">
+                <button type="button" onClick={() => setIsMethodInfoOpen(false)} aria-label="Cerrar" className="p-1 text-zinc-400 hover:text-zinc-100">
                   <X size={16} />
                 </button>
               </div>
@@ -972,6 +1064,9 @@ export default function NumericalRootsView({
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Catálogo de raíces numéricas"
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
@@ -979,7 +1074,7 @@ export default function NumericalRootsView({
                   <Target size={16} className="text-amber-400" />
                   <h3 className="text-base font-serif font-bold text-zinc-100">Catálogo de Raíces Numéricas</h3>
                 </div>
-                <button onClick={() => setIsHelpOpen(false)} className="p-2 text-zinc-400 hover:text-zinc-100">
+                <button type="button" onClick={() => setIsHelpOpen(false)} aria-label="Cerrar" className="p-2 text-zinc-400 hover:text-zinc-100">
                   <X size={16} />
                 </button>
               </div>

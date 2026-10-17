@@ -72,8 +72,10 @@ export function evaluateUniversalMath(
     s = s.replace(/sin/g, "Math.sin");
     s = s.replace(/cos/g, "Math.cos");
     s = s.replace(/tan/g, "Math.tan");
-    s = s.replace(/ln/g, "Math.log");
     s = s.replace(/log10/g, "Math.log10");
+    // `log(...)` sin base = logaritmo decimal (convención universitaria)
+    s = s.replace(/\blog\b/g, "Math.log10");
+    s = s.replace(/ln/g, "Math.log");
     s = s.replace(/exp/g, "Math.exp");
     s = s.replace(/\bpi\b/g, "Math.PI");
     s = s.replace(/\be\b/g, "Math.E");

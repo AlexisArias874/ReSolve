@@ -462,6 +462,18 @@ export default function LimitsView({
     return rows;
   }, [funcInput, limitPoint]);
 
+  // Cierre de modales con la tecla Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsHelpOpen(false);
+        setIsMethodInfoOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
@@ -472,12 +484,12 @@ export default function LimitsView({
             
             {/* Caja Izquierda: Consola de Límites */}
             <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -top-16 -left-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <Variable size={14} className="text-zinc-500" />
+                    <Variable size={13} className="text-zinc-500" />
                     Consola de Cálculo de Límites
                   </span>
 
@@ -493,8 +505,9 @@ export default function LimitsView({
 
                 {/* Input de la Función f(x) */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono text-zinc-400">Función f(x):</label>
+                  <label htmlFor="limite-funcion" className="text-[11px] font-mono text-zinc-400">Función f(x):</label>
                   <input
+                    id="limite-funcion"
                     type="text"
                     value={funcInput}
                     onChange={(e) => setFuncInput(e.target.value)}
@@ -509,12 +522,13 @@ export default function LimitsView({
                 {/* Parámetros del Límite: Punto y Dirección */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
+                    <label htmlFor="limite-punto" className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
                       <span>Punto al que tiende x (x → c):</span>
                       <span className="text-[10px] text-zinc-500 font-mono">Usa 'inf' para ∞</span>
                     </label>
                     <div className="flex gap-2">
                       <input
+                        id="limite-punto"
                         type="text"
                         value={limitPoint}
                         onChange={(e) => setLimitPoint(e.target.value)}
@@ -576,36 +590,48 @@ export default function LimitsView({
               </div>
 
               {/* Botones de Teclado Rápido */}
-              <div className="relative z-10 flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-zinc-800/60">
-                {LIMIT_KEYS.map((k) => (
+              <div className="relative z-10 mt-5 pt-4 border-t border-zinc-800/60">
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-600 mb-2 block">
+                  Insertar Símbolos
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {LIMIT_KEYS.map((k) => (
+                    <button
+                      key={k.label}
+                      onClick={() => setFuncInput((prev) => prev + k.val)}
+                      aria-label={`Insertar ${k.label}`}
+                      title={`Insertar ${k.label}`}
+                      className="h-10 min-w-[46px] px-3.5 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/60 text-zinc-200 rounded-xl font-mono text-sm font-medium transition-all active:scale-95 flex items-center justify-center"
+                    >
+                      {k.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex items-center gap-2.5">
                   <button
-                    key={k.label}
-                    onClick={() => setFuncInput((prev) => prev + k.val)}
-                    className="h-10 min-w-[42px] px-3 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/80 text-zinc-200 rounded-xl font-mono text-sm font-medium transition-all active:scale-95 shadow-sm backdrop-blur-sm flex items-center justify-center"
+                    onClick={() => setFuncInput("")}
+                    className="h-11 px-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 text-zinc-400 hover:text-red-400 hover:border-red-900/40 text-xs font-medium transition-colors active:scale-95 flex items-center gap-2"
                   >
-                    {k.label}
+                    <X size={14} /> Limpiar
                   </button>
-                ))}
 
-                <button
-                  onClick={() => void saveCalculation()}
-                  className="h-10 px-5 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 ml-auto active:scale-95"
-                >
-                  <CornerDownLeft size={14} /> Calcular Límite
-                </button>
-
-                <button
-                  onClick={() => setFuncInput("")}
-                  className="h-10 px-3.5 bg-zinc-900/50 border border-zinc-800/80 text-zinc-400 hover:text-red-400 hover:border-red-900/40 rounded-xl text-xs font-medium transition-colors"
-                >
-                  Limpiar
-                </button>
+                  <button
+                    onClick={() => void saveCalculation()}
+                    className="h-11 px-6 ml-auto bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 active:scale-95"
+                  >
+                    <CornerDownLeft size={14} /> Calcular Límite
+                    <span className="ml-1 hidden sm:inline-flex items-center rounded-md border border-zinc-950/20 px-1.5 py-0.5 font-mono text-[9px] tracking-wider opacity-70">
+                      ENTER
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Caja Derecha: Resultado del Límite */}
             <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
@@ -615,7 +641,7 @@ export default function LimitsView({
                   {calculation.limitValue !== "--" && (
                     <button
                       onClick={handleCopy}
-                      className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50 hover:bg-zinc-800/60"
+                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       {copied ? "Copiado" : "Copiar"}
@@ -623,7 +649,7 @@ export default function LimitsView({
                   )}
                 </div>
 
-                <div className="py-5 text-center">
+                <div className="py-6 text-center">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={calculation.limitValue}
@@ -631,9 +657,14 @@ export default function LimitsView({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 1.05 }}
                       transition={{ duration: 0.2 }}
-                      className="text-4xl lg:text-5xl font-serif font-bold text-zinc-100 tracking-tight"
+                      className={`font-serif font-bold tracking-tight transition-colors flex items-center justify-center gap-3 ${
+                        !isNaN(Number(calculation.limitValue)) ? "text-5xl lg:text-7xl" : "text-4xl lg:text-5xl"
+                      } ${calculation.limitValue === "--" ? "text-zinc-600" : "text-zinc-100"}`}
                     >
-                      {calculation.limitValue}
+                      {isNaN(Number(calculation.limitValue)) && calculation.limitValue.includes("∞") && (
+                        <InfinityIcon size={28} className="text-zinc-500 shrink-0" />
+                      )}
+                      <span>{calculation.limitValue}</span>
                     </motion.div>
                   </AnimatePresence>
                 </div>
@@ -678,27 +709,27 @@ export default function LimitsView({
                   <button
                     type="button"
                     onClick={() => setBottomView("graph")}
-                    className={`px-3 py-1 rounded-xl text-xs font-mono transition-colors ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-mono transition-colors flex items-center gap-1.5 border ${
                       bottomView === "graph"
-                        ? "bg-zinc-100 text-zinc-950 font-bold"
-                        : "text-zinc-400 hover:text-zinc-200"
+                        ? "bg-zinc-100 text-zinc-950 font-bold border-transparent"
+                        : "text-zinc-400 hover:text-zinc-200 border-zinc-800/80"
                     }`}
                   >
-                    📈 Gráfica del Límite
+                    <Activity size={13} /> Gráfica del Límite
                   </button>
                   <button
                     type="button"
                     onClick={() => setBottomView("steps")}
-                    className={`px-3 py-1 rounded-xl text-xs font-mono transition-colors ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-mono transition-colors flex items-center gap-1.5 border ${
                       bottomView === "steps"
-                        ? "bg-zinc-100 text-zinc-950 font-bold"
-                        : "text-zinc-400 hover:text-zinc-200"
+                        ? "bg-zinc-100 text-zinc-950 font-bold border-transparent"
+                        : "text-zinc-400 hover:text-zinc-200 border-zinc-800/80"
                     }`}
                   >
-                    📝 Procedimiento
+                    <ListOrdered size={13} /> Procedimiento
                   </button>
                 </div>
-                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-full">
+                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
                   {calculation.methodName}
                 </span>
               </div>
@@ -709,7 +740,7 @@ export default function LimitsView({
                     <MathGrapher
                       expression={funcInput}
                       initialScale={55}
-                      height="h-[280px]"
+                      height="flex-1 min-h-[280px]"
                       // Dibuja el punto límite con agujero hueco si fue indeterminación 0/0
                       points={
                         !isNaN(parseFloat(limitPoint)) && calculation.numericApproximation !== null
@@ -735,18 +766,45 @@ export default function LimitsView({
                       }
                     />
                     <div className="pt-2 text-[11px] font-mono text-zinc-500 flex items-center justify-between">
-                      <span>🔵 Círculo hueco = Discontinuidad evitable (hueco en la curva)</span>
-                      <span>Líneas punteadas = Coordenadas límite (x → c, y → L)</span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block w-2 h-2 rounded-full border border-zinc-400" aria-hidden="true" />
+                        Círculo hueco = Discontinuidad evitable
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block w-3 border-t border-dashed border-zinc-500" aria-hidden="true" />
+                        Líneas punteadas = Coordenadas límite (x → c, y → L)
+                      </span>
                     </div>
                   </div>
                 ) : (
                   /* Lista de pasos existente */
-                  <div className="space-y-3">
-                    {calculation.steps.map((step) => (
-                      <div key={step.id} className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-1">
-                        <span className="text-xs font-mono font-semibold text-zinc-200">{step.stage}</span>
-                        <p className="text-[11px] text-zinc-400 font-sans">{step.description}</p>
-                        <div className="p-2 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400">{step.expression}</div>
+                  <div>
+                    {calculation.steps.map((step, index) => (
+                      <div key={step.id} className="relative pl-11 pb-4 last:pb-0">
+                        <span
+                          className="absolute left-0 top-0 w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                          aria-hidden="true"
+                        >
+                          {step.id}
+                        </span>
+                        {index < calculation.steps.length - 1 && (
+                          <span
+                            className="absolute left-[13px] top-9 bottom-0 w-px bg-zinc-800/70"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-1">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm text-zinc-200 font-medium truncate">{step.stage}</span>
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                              {step.rule}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 font-sans mt-0.5">{step.description}</p>
+                          <div className="mt-2 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-zinc-100 whitespace-pre-line">
+                            {step.expression}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -757,29 +815,37 @@ export default function LimitsView({
             {/* Panel Derecho: Historial */}
             <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial
                 </span>
                 {history.length > 0 && (
                   <button
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
                 )}
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto pt-5 pr-1 space-y-2">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin límites guardados.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Presiona Calcular para registrar.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin límites guardados</p>
+                    <p className="text-[11px] text-zinc-500">
+                      Presiona <span className="font-mono">Enter</span> o Calcular para registrar
+                    </p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
                         const m = item.expression.match(/lim\s*\[x\s*→\s*([^\]]+)\]\s*\((.*)\)/);
                         if (m) {
@@ -787,14 +853,15 @@ export default function LimitsView({
                           setFuncInput(m[2]);
                         }
                       }}
-                      className="group p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 cursor-pointer transition-all flex items-center justify-between text-xs"
+                      title={`Recargar: ${item.expression}`}
+                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
                     >
-                      <div className="truncate pr-2 font-mono text-zinc-300 group-hover:text-zinc-100 transition-colors">
+                      <span className="truncate pr-2 font-mono text-[13px] text-zinc-300 group-hover:text-zinc-100 transition-colors">
                         {item.expression}
-                      </div>
-                      <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px]">
+                      </span>
+                      <span className="font-mono font-bold text-emerald-400 shrink-0">
                         = {item.result}
-                      </div>
+                      </span>
                     </div>
                   ))
                 )}
@@ -809,39 +876,49 @@ export default function LimitsView({
       {viewMode === "steps" && (
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
           <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento Detallado de Resolución de Límites
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
                 Límite evaluado: lim [x → {limitPoint}] ({funcInput})
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
-              Resultado: <strong className="text-emerald-400 text-sm font-serif">{calculation.limitValue}</strong>
+            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner shrink-0">
+              Resultado: <strong className="text-zinc-100 text-sm font-serif">{calculation.limitValue}</strong>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-            {calculation.steps.map((step) => (
-              <div
-                key={step.id}
-                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-zinc-200 flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner">
-                      {step.id}
+          <div className="flex-1 min-h-0 overflow-y-auto pt-1 pr-2">
+            {calculation.steps.map((step, index) => (
+              <div key={step.id} className="relative pl-13 pb-5 last:pb-0">
+                <span
+                  className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                  aria-hidden="true"
+                >
+                  {step.id}
+                </span>
+                {index < calculation.steps.length - 1 && (
+                  <span
+                    className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70"
+                    aria-hidden="true"
+                  />
+                )}
+
+                <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-zinc-100">{step.stage}</span>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                      {step.rule}
                     </span>
-                    {step.stage}
-                  </span>
-                  <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900/80 px-2 py-0.5 rounded-md border border-zinc-800">
-                    {step.rule}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed">{step.description}</p>
-                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold whitespace-pre-line">
-                  {step.expression}
+                  </div>
+                  <p className="text-xs text-zinc-300 font-sans leading-relaxed mt-1.5">{step.description}</p>
+                  <div className="mt-3 p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-zinc-100 whitespace-pre-line">
+                    {step.expression}
+                  </div>
                 </div>
               </div>
             ))}
@@ -856,7 +933,7 @@ export default function LimitsView({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Fundamentos de Cálculo Diferencial
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Concepto Riguroso de Límite y Análisis Asintótico
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -909,13 +986,20 @@ export default function LimitsView({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Información del método ${calculation.methodName}`}
               className="relative w-full max-w-md border border-zinc-800 bg-zinc-950 rounded-3xl p-6 shadow-2xl"
             >
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                 <h4 className="text-sm font-serif font-bold text-zinc-100 flex items-center gap-2">
                   <Cpu size={15} className="text-amber-400" /> {calculation.methodName}
                 </h4>
-                <button onClick={() => setIsMethodInfoOpen(false)} className="p-1 text-zinc-400 hover:text-zinc-100">
+                <button
+                  onClick={() => setIsMethodInfoOpen(false)}
+                  aria-label="Cerrar"
+                  className="p-1 text-zinc-400 hover:text-zinc-100"
+                >
                   <X size={16} />
                 </button>
               </div>
@@ -939,9 +1023,12 @@ export default function LimitsView({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Guía de cálculo de límites"
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
-              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-amber-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 relative z-10">
                 <div className="flex items-center gap-2.5">
@@ -955,6 +1042,7 @@ export default function LimitsView({
                 </div>
                 <button
                   onClick={() => setIsHelpOpen(false)}
+                  aria-label="Cerrar guía"
                   className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
                 >
                   <X size={16} />
@@ -1007,7 +1095,7 @@ export default function LimitsView({
                     <Activity size={13} className="text-emerald-400" /> Relevancia en Ciencias de la Computación
                   </h4>
                   <ul className="list-disc pl-4 space-y-1.5 text-zinc-400 leading-relaxed">
-                    <li><strong>Análisis Asintótico de Algoritmos:</strong> La Notación Big-O ($O(n \log n)$, $O(n^2)$) se fundamenta rigurosamente en el límite al infinito del cociente de operaciones frente a recursos de CPU.</li>
+                    <li><strong>Análisis Asintótico de Algoritmos:</strong> La Notación Big-O (<code className="text-zinc-200 font-mono">O(n log n)</code>, <code className="text-zinc-200 font-mono">O(n²)</code>) se fundamenta rigurosamente en el límite al infinito del cociente de operaciones frente a recursos de CPU.</li>
                     <li><strong>Detección de Singularidades y División por Cero:</strong> Los motores de renderizado 3D y simulaciones de física emplean aproximaciones por límites para prevenir excepciones de hardware como NaNs en colisiones.</li>
                     <li><strong>Estabilidad en Redes Neuronales:</strong> La convergencia de funciones de activación softmax o normalizaciones por lote (Batch Normalization) se verifica analizando límites asintóticos.</li>
                   </ul>

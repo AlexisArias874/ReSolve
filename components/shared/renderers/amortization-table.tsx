@@ -29,11 +29,12 @@ export interface AmortizationTableProps {
 }
 
 function fmt(n: number, currency?: string): string {
-  const abs = Math.abs(n).toLocaleString("es-MX", {
+  // Conserva el signo (saldos/ajustes negativos) en lugar de forzar el valor absoluto.
+  const str = n.toLocaleString("es-MX", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return currency ? `${currency} ${abs}` : abs;
+  return currency ? `${currency} ${str}` : str;
 }
 
 export default function AmortizationTable({

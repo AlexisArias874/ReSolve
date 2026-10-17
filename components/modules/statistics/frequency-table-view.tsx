@@ -376,17 +376,31 @@ export default function FrequencyView({
     return steps;
   }, [analysis, method]);
 
+  // Cierre de modales con la tecla Escape (accesibilidad)
+  useEffect(() => {
+    if (!isGroupedMetricsOpen && !isHelpOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsGroupedMetricsOpen(false);
+        setIsHelpOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isGroupedMetricsOpen, isHelpOpen]);
+
   return (
-    <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
+    <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="relative flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto custom-scrollbar pr-1">
           {/* SECCIÓN SUPERIOR */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 shrink-0">
-            <div className="xl:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 space-y-5">
-              <div className="space-y-4">
+            <div className="xl:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 space-y-5 overflow-hidden">
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="relative z-10 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/60 pb-3">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <TableIcon size={14} className="text-zinc-500" />
+                    <TableIcon size={13} className="text-zinc-500" />
                     Consola de Distribución y Frecuencias
                   </span>
 
@@ -419,6 +433,7 @@ export default function FrequencyView({
                     </span>
                   </div>
                   <textarea
+                    aria-label="Datos continuos para tabular"
                     rows={4}
                     value={dataInput}
                     onChange={(e) => setDataInput(e.target.value)}
@@ -471,6 +486,7 @@ export default function FrequencyView({
                     <div className="md:col-span-6 flex items-center gap-3">
                       <span className="text-zinc-400 text-[11px] whitespace-nowrap">Clases (k={manualK}):</span>
                       <input
+                        aria-label="Número de clases"
                         type="range"
                         min="3"
                         max="15"
@@ -500,25 +516,27 @@ export default function FrequencyView({
                   type="button"
                   onClick={saveCalculation}
                   disabled={!analysis}
-                  className="px-5 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-semibold text-xs rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-40"
+                  className="h-11 px-6 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] shadow-lg shadow-zinc-100/5 transition-all active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
                 >
                   Guardar en Historial
                 </button>
               </div>
             </div>
 
-            <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden relative">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-52 h-52 bg-emerald-500/10 rounded-full blur-3xl" />
+            <div className="xl:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
+              <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold">
+                  <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
+                    <TableIcon size={13} className="text-zinc-500" />
                     Media Agrupada (x̄)
                   </span>
                   {analysis && (
                     <button
+                      type="button"
                       onClick={handleCopy}
-                      className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       {copied ? "Copiado" : "Copiar"}
@@ -530,9 +548,20 @@ export default function FrequencyView({
                   <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
                     Centroide Ponderado por Frecuencia
                   </span>
-                  <div className="text-5xl font-serif font-bold text-emerald-400 tracking-tight">
-                    {analysis ? analysis.groupedMean : "—"}
-                  </div>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={analysis ? analysis.groupedMean : "empty"}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.05 }}
+                      transition={{ duration: 0.2 }}
+                      className={`text-5xl lg:text-7xl font-serif font-bold tracking-tight transition-colors ${
+                        analysis ? "text-zinc-100" : "text-zinc-600"
+                      }`}
+                    >
+                      {analysis ? analysis.groupedMean : "—"}
+                    </motion.div>
+                  </AnimatePresence>
                   <span className="text-[11px] font-mono text-zinc-400 mt-2 block">
                     {analysis
                       ? `Mediana = ${analysis.groupedMedian} | Moda Czuber = ${analysis.groupedMode}`
@@ -545,7 +574,7 @@ export default function FrequencyView({
                     <div className="p-2.5 rounded-xl bg-zinc-950/70 border border-zinc-800/70">
                       <span className="text-[10px] text-zinc-500 block">Número de Clases (k)</span>
                       <strong className="text-sm text-emerald-400">{analysis.k} Intervalos</strong>
-                      <span className="text-[9px] text-zinc-500 block mt-0.5">
+                      <span className="text-[10px] text-zinc-500 block mt-0.5">
                         {method === "sturges" ? "Fórmula de Sturges" : method === "sqrt" ? "Raíz de n" : "Ajuste Personalizado"}
                       </span>
                     </div>
@@ -553,19 +582,19 @@ export default function FrequencyView({
                     <div className="p-2.5 rounded-xl bg-zinc-950/70 border border-zinc-800/70">
                       <span className="text-[10px] text-zinc-500 block">Ancho de Intervalo (c)</span>
                       <strong className="text-sm text-sky-400">{analysis.classWidth}</strong>
-                      <span className="text-[9px] text-zinc-500 block mt-0.5">Amplitud uniforme</span>
+                      <span className="text-[10px] text-zinc-500 block mt-0.5">Amplitud uniforme</span>
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-zinc-950/70 border border-zinc-800/70">
                       <span className="text-[10px] text-zinc-500 block">Clase Mediana</span>
                       <strong className="text-sm text-amber-400">Clase #{analysis.medianClassIndex}</strong>
-                      <span className="text-[9px] text-zinc-500 block mt-0.5">Contiene n/2 ({analysis.n / 2})</span>
+                      <span className="text-[10px] text-zinc-500 block mt-0.5">Contiene n/2 ({analysis.n / 2})</span>
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-zinc-950/70 border border-zinc-800/70">
                       <span className="text-[10px] text-zinc-500 block">Clase Modal</span>
                       <strong className="text-sm text-purple-400">Clase #{analysis.modalClassIndex}</strong>
-                      <span className="text-[9px] text-zinc-500 block mt-0.5">Máxima densidad</span>
+                      <span className="text-[10px] text-zinc-500 block mt-0.5">Máxima densidad</span>
                     </div>
                   </div>
                 )}
@@ -653,14 +682,14 @@ export default function FrequencyView({
                       <thead className="bg-zinc-900/80 text-zinc-400 sticky top-0 z-10">
                         <tr>
                           <th className="p-3">Clase</th>
-                          <th className="p-3">Intervalo [L_i, U_i)</th>
-                          <th className="p-3">Marca (x_i)</th>
-                          <th className="p-3">f_i (Abs)</th>
-                          <th className="p-3">h_i (Rel)</th>
-                          <th className="p-3">h_i %</th>
-                          <th className="p-3">F_i (Asc)</th>
-                          <th className="p-3">H_i %</th>
-                          <th className="p-3">F_i* (Desc)</th>
+                          <th className="p-3">Intervalo [L<sub>i</sub>, U<sub>i</sub>)</th>
+                          <th className="p-3">Marca (x<sub>i</sub>)</th>
+                          <th className="p-3">f<sub>i</sub> (Abs)</th>
+                          <th className="p-3">h<sub>i</sub> (Rel)</th>
+                          <th className="p-3">h<sub>i</sub> %</th>
+                          <th className="p-3">F<sub>i</sub> (Asc)</th>
+                          <th className="p-3">H<sub>i</sub> %</th>
+                          <th className="p-3">F<sub>i</sub>* (Desc)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-800/40 text-zinc-300">
@@ -726,7 +755,7 @@ export default function FrequencyView({
                         {analysis.rows.map((r) => (
                           <span
                             key={`lbl-${r.index}`}
-                            className="flex-1 min-w-0 text-[9px] font-mono text-zinc-400 text-center leading-tight"
+                            className="flex-1 min-w-0 text-[10px] font-mono text-zinc-400 text-center leading-tight"
                             title={`Marca de clase x̄ = ${r.classMark}`}
                           >
                             <span className="block truncate">x̄={r.classMark}</span>
@@ -775,7 +804,7 @@ export default function FrequencyView({
                         {analysis.rows.map((r) => (
                           <span
                             key={`lbl-${r.index}`}
-                            className="flex-1 min-w-0 text-[9px] font-mono text-zinc-400 text-center leading-tight"
+                            className="flex-1 min-w-0 text-[10px] font-mono text-zinc-400 text-center leading-tight"
                             title={`Acumulado hasta < ${r.upper}`}
                           >
                             <span className="block truncate">&lt; {r.upper}</span>
@@ -794,7 +823,7 @@ export default function FrequencyView({
 
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Tabulaciones
                 </span>
                 {history.length > 0 && (
@@ -809,21 +838,27 @@ export default function FrequencyView({
 
               <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin tabulaciones guardadas.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Guarda frecuencias para auditar.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin tabulaciones guardadas</p>
+                    <p className="text-[11px] text-zinc-500">Guarda frecuencias para auditarlas</p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setDataInput(item.expression)}
-                      className="group p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 cursor-pointer transition-all flex items-center justify-between text-xs"
+                      title={`Recargar: ${item.expression}`}
+                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300 group-hover:text-zinc-100">
                         {item.expression}
                       </div>
-                      <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px]">
+                      <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
                       </div>
                     </div>
@@ -839,7 +874,7 @@ export default function FrequencyView({
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
           <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
             <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento Riguroso de Tabulación y Agrupamiento
               </h3>
               <p className="text-xs text-zinc-400 mt-1 font-mono">
@@ -851,23 +886,36 @@ export default function FrequencyView({
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+          <div className="flex-1 min-h-0 overflow-y-auto pt-1 pr-2 custom-scrollbar">
             {analyticalSteps.map((st, i) => (
-              <div
-                key={i}
-                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-zinc-200 font-mono">{st.stage}</span>
-                  <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900/80 px-2 py-0.5 rounded-md border border-zinc-800">
-                    {st.rule}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed">{st.desc}</p>
-                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto whitespace-pre-line">
-                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                    {`$$${st.math}$$`}
-                  </ReactMarkdown>
+              <div key={i} className="relative pl-11 pb-5 last:pb-0">
+                <span
+                  className="absolute left-0 top-0 w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                  aria-hidden="true"
+                >
+                  {i + 1}
+                </span>
+                {i < analyticalSteps.length - 1 && (
+                  <span
+                    className="absolute left-[13px] top-9 bottom-0 w-px bg-zinc-800/70"
+                    aria-hidden="true"
+                  />
+                )}
+                <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-zinc-100 font-mono">
+                      {st.stage.replace(/^\d+\.\s*/, "")}
+                    </span>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 bg-zinc-900/60 px-2 py-0.5 rounded-md border border-zinc-800/60 shrink-0">
+                      {st.rule}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400 font-sans leading-relaxed">{st.desc}</p>
+                  <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto whitespace-pre-line">
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {`\n$$\n${st.math}\n$$\n`}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             ))}
@@ -881,7 +929,7 @@ export default function FrequencyView({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Fundamentos de Agrupamiento Estadístico
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Distribuciones de Frecuencia, Densidad y Compresión de Información
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -914,10 +962,13 @@ export default function FrequencyView({
         {isGroupedMetricsOpen && analysis && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Fórmulas interpoladas para datos agrupados"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-lg border border-zinc-800 bg-zinc-950 rounded-3xl p-6 shadow-2xl"
+              className="relative w-full max-w-lg border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl"
             >
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                 <h4 className="text-sm font-serif font-bold text-zinc-100 flex items-center gap-2">
@@ -964,13 +1015,16 @@ export default function FrequencyView({
         {isHelpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Guía de distribuciones de frecuencia"
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
-              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 relative z-10">
                 <div className="flex items-center gap-2.5">

@@ -34,6 +34,7 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import { toSubscript as toSub, toSuperscript as toSup } from "@/lib/math/unicode-math";
 
 // -----------------------------------------------------------------------------
 // CATÁLOGO DE EJEMPLOS DE DETERMINANTES (NIVEL SUPERIOR TS)
@@ -252,8 +253,8 @@ export default function DeterminantsView({
 
           if (steps.length < 7) {
             steps.push({
-              stage: `${stepId++}. Menor y Cofactor C_{1${j + 1}}`,
-              desc: `Elemento a_{1${j + 1}} = ${val}. Signo de posición: (-1)¹⁺${j + 1} = ${sign}`,
+              stage: `${stepId++}. Menor y Cofactor C₁${toSub(j + 1)}`,
+              desc: `Elemento a₁${toSub(j + 1)} = ${val}. Signo de posición: (-1)¹⁺${toSup(j + 1)} = ${sign}`,
               math: `C_{1${j + 1}} = (${sign}) \\cdot \\det${matrixToLaTeX(minor)} = (${sign})(${Number(minorDet.toFixed(3))}) = ${Number((sign * minorDet).toFixed(3))}`,
             });
           }
@@ -391,8 +392,20 @@ export default function DeterminantsView({
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // Accesibilidad: cerrar modales con la tecla Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsHelpOpen(false);
+        setIsMethodInfoOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
-    <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
+    <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto custom-scrollbar pr-1">
           
@@ -400,20 +413,21 @@ export default function DeterminantsView({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0">
             
             {/* Caja Izquierda: Editor de la Matriz Cuadrada */}
-            <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20">
-              <div className="space-y-5">
-                
+            <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="relative z-10 space-y-5">
+
                 {/* Cabecera */}
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <Grid size={14} className="text-zinc-500" />
+                    <Grid size={15} className="text-zinc-500" />
                     Matriz Cuadrada de Entrada (|A|)
                   </span>
 
                   <button
                     type="button"
                     onClick={() => setIsHelpOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 transition-colors flex items-center gap-1 shadow-sm"
+                    className="px-3 py-1.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 text-[11px] font-mono text-zinc-400 hover:text-zinc-100 transition-colors flex items-center gap-1.5"
                   >
                     <HelpCircle size={13} className="text-amber-400" />
                     <span>Casos de Estudio</span>
@@ -495,8 +509,9 @@ export default function DeterminantsView({
                             key={`${rIdx}-${cIdx}`}
                             type="number"
                             value={val}
+                            aria-label={`Elemento a${rIdx + 1}${cIdx + 1} de la matriz A`}
                             onChange={(e) => updateCell(rIdx, cIdx, parseFloat(e.target.value))}
-                            className="h-12 bg-zinc-900 border border-zinc-800 rounded-xl font-mono text-sm text-center text-zinc-100 focus:outline-none focus:border-amber-400/80 transition-colors"
+                            className="h-12 bg-zinc-900 border border-zinc-800/60 rounded-xl font-mono text-sm text-center text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors"
                           />
                         ))
                       )}
@@ -536,14 +551,14 @@ export default function DeterminantsView({
               </div>
 
               {/* Botón Guardar */}
-              <div className="mt-5 pt-4 border-t border-zinc-800/60 flex items-center justify-between">
+              <div className="relative z-10 mt-5 pt-4 border-t border-zinc-800/60 flex items-center justify-between">
                 <span className="text-[10px] font-mono text-zinc-500">
                   Respaldo automático en Supabase
                 </span>
                 <button
                   type="button"
                   onClick={saveCalculation}
-                  className="px-5 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-semibold text-xs rounded-xl shadow-md transition-all active:scale-95"
+                  className="h-11 px-6 bg-zinc-100 hover:bg-zinc-200 hover:scale-[1.02] text-zinc-950 font-semibold text-xs rounded-xl shadow-lg shadow-zinc-100/5 transition-all active:scale-95"
                 >
                   Guardar en Historial
                 </button>
@@ -552,7 +567,7 @@ export default function DeterminantsView({
 
             {/* Caja Derecha: Resultado del Determinante */}
             <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
@@ -561,7 +576,8 @@ export default function DeterminantsView({
                   </span>
                   <button
                     onClick={handleCopy}
-                    className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                    aria-label="Copiar el valor del determinante"
+                    className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                   >
                     {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                     {copied ? "Copiado" : "Copiar"}
@@ -572,13 +588,30 @@ export default function DeterminantsView({
                   <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
                     Valor Escalar |A|
                   </span>
-                  <div className={`text-5xl font-serif font-bold tracking-tight ${calculation.isSingular ? "text-red-400" : "text-emerald-400"}`}>
-                    {calculation.detValue}
-                  </div>
-                  <span className="text-[11px] font-mono text-zinc-400 mt-2 block">
-                    {calculation.isSingular
-                      ? "⚠️ Matriz Singular (det = 0, Sin Inversa)"
-                      : "✓ Matriz Regular (Invertible / No Singular)"}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={calculation.detValue}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.05 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-5xl lg:text-7xl font-serif font-bold tracking-tight text-zinc-100"
+                    >
+                      {calculation.detValue}
+                    </motion.div>
+                  </AnimatePresence>
+                  <span className="text-[11px] font-mono text-zinc-400 mt-2 flex items-center justify-center gap-1.5">
+                    {calculation.isSingular ? (
+                      <>
+                        <AlertTriangle size={13} className="text-red-400" />
+                        Matriz Singular (det = 0, Sin Inversa)
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck size={13} className="text-emerald-400" />
+                        Matriz Regular (Invertible / No Singular)
+                      </>
+                    )}
                   </span>
                 </div>
 
@@ -618,26 +651,37 @@ export default function DeterminantsView({
             {/* Panel Izquierdo: Pasos del Método Seleccionado */}
             <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <ListOrdered size={15} className="text-zinc-400" /> Deducción por Método: {method.toUpperCase()}
                 </span>
-                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-full">
+                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
                   {calculation.steps.length} Pasos
                 </span>
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-2 mt-4 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto pt-4 pr-2">
                 {calculation.steps.map((st, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-1.5"
-                  >
-                    <span className="text-xs font-mono font-semibold text-zinc-200">{st.stage}</span>
-                    <p className="text-[11px] text-zinc-400 font-sans">{st.desc}</p>
-                    <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto whitespace-pre-line">
-                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                        {`$$${st.math}$$`}
-                      </ReactMarkdown>
+                  <div key={idx} className="relative pl-11 pb-4 last:pb-0">
+                    <span
+                      className="absolute left-0 top-0 w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                      aria-hidden="true"
+                    >
+                      {idx + 1}
+                    </span>
+                    {idx < calculation.steps.length - 1 && (
+                      <span
+                        className="absolute left-[13px] top-9 bottom-0 w-px bg-zinc-800/70"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-1.5">
+                      <span className="text-xs font-mono font-semibold text-zinc-200">{st.stage.replace(/^\d+\.\s*/, "")}</span>
+                      <p className="text-[11px] text-zinc-400 font-sans">{st.desc}</p>
+                      <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto whitespace-pre-line">
+                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                          {`\n$$\n${st.math}\n$$\n`}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -647,13 +691,15 @@ export default function DeterminantsView({
             {/* Panel Derecho: Historial */}
             <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Determinantes
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
@@ -662,15 +708,21 @@ export default function DeterminantsView({
 
               <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin determinantes guardados.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Guarda operaciones para auditar.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin determinantes guardados</p>
+                    <p className="text-[11px] text-zinc-500">
+                      Guarda operaciones para auditar el cálculo
+                    </p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
-                      className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 transition-all flex items-center justify-between text-xs"
+                      title={item.expression}
+                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-default transition-colors flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">
                         {item.expression}
@@ -692,31 +744,46 @@ export default function DeterminantsView({
       {viewMode === "steps" && (
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
           <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento Detallado del Determinante
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
+              <p className="text-xs text-zinc-400 mt-1 font-mono truncate">
                 Orden: {matrixSize}×{matrixSize} | Método: {method.toUpperCase()}
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
-              |A| = <strong className="text-emerald-400 text-sm font-serif">{calculation.detValue}</strong>
+            <div className="shrink-0 flex items-center gap-2.5 text-xs font-mono px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">|A|</span>
+              <strong className="text-sm font-serif font-bold text-zinc-100">{calculation.detValue}</strong>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+          <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pt-6 pr-2">
             {calculation.steps.map((st, i) => (
-              <div
-                key={i}
-                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-2.5"
-              >
-                <span className="text-sm font-semibold text-zinc-200 font-mono">{st.stage}</span>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed">{st.desc}</p>
-                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto whitespace-pre-line">
-                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                    {`$$${st.math}$$`}
-                  </ReactMarkdown>
+              <div key={i} className="relative pl-13 pb-5 last:pb-0">
+                <span
+                  className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                  aria-hidden="true"
+                >
+                  {i + 1}
+                </span>
+                {i < calculation.steps.length - 1 && (
+                  <span
+                    className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70"
+                    aria-hidden="true"
+                  />
+                )}
+                <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-2.5">
+                  <span className="text-sm font-semibold text-zinc-200 font-mono">{st.stage.replace(/^\d+\.\s*/, "")}</span>
+                  <p className="text-xs text-zinc-300 font-sans leading-relaxed">{st.desc}</p>
+                  <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto whitespace-pre-line">
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {`\n$$\n${st.math}\n$$\n`}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             ))}
@@ -731,7 +798,7 @@ export default function DeterminantsView({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Álgebra Lineal y Computación Gráfica
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               El Determinante como Factor de Escala y Orientación
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -784,13 +851,21 @@ export default function DeterminantsView({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Matriz adjunta y propiedades del determinante"
               className="relative w-full max-w-lg border border-zinc-800 bg-zinc-950 rounded-3xl p-6 shadow-2xl"
             >
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                 <h4 className="text-sm font-serif font-bold text-zinc-100 flex items-center gap-2">
                   <Cpu size={15} className="text-amber-400" /> Matriz Adjunta y Propiedades
                 </h4>
-                <button onClick={() => setIsMethodInfoOpen(false)} className="p-1 text-zinc-400 hover:text-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setIsMethodInfoOpen(false)}
+                  aria-label="Cerrar"
+                  className="p-1 text-zinc-400 hover:text-zinc-100 transition-colors"
+                >
                   <X size={16} />
                 </button>
               </div>
@@ -803,7 +878,7 @@ export default function DeterminantsView({
                     </span>
                     <div className="py-2 text-emerald-400 text-sm">
                       <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                        {`$$\\text{Adj}(A) = ${matrixToLaTeX(calculation.adjugateMatrix)}$$`}
+                        {`\n$$\n\\text{Adj}(A) = ${matrixToLaTeX(calculation.adjugateMatrix)}\n$$\n`}
                       </ReactMarkdown>
                     </div>
                   </div>
@@ -829,6 +904,9 @@ export default function DeterminantsView({
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Casos notables de determinantes"
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
@@ -836,7 +914,12 @@ export default function DeterminantsView({
                   <Scale size={16} className="text-amber-400" />
                   <h3 className="text-base font-serif font-bold text-zinc-100">Casos Notables de Determinantes</h3>
                 </div>
-                <button onClick={() => setIsHelpOpen(false)} className="p-2 text-zinc-400 hover:text-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setIsHelpOpen(false)}
+                  aria-label="Cerrar"
+                  className="p-2 text-zinc-400 hover:text-zinc-100 transition-colors"
+                >
                   <X size={16} />
                 </button>
               </div>

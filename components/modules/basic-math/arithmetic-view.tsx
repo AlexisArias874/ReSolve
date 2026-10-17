@@ -189,6 +189,19 @@ function evaluateSubExpression(
   return current;
 }
 
+// --- Mapa tipográfico del teclado de operadores (se inserta el símbolo crudo,
+//     se muestra el glifo matemático) ---
+const ARITHMETIC_KEYS = [
+  { insert: "+", glyph: "+", label: "Sumar" },
+  { insert: "-", glyph: "−", label: "Restar" },
+  { insert: "*", glyph: "×", label: "Multiplicar" },
+  { insert: "/", glyph: "÷", label: "Dividir" },
+  { insert: "^", glyph: "^", label: "Potencia" },
+  { insert: "(", glyph: "(", label: "Abrir paréntesis" },
+  { insert: ")", glyph: ")", label: "Cerrar paréntesis" },
+  { insert: ".", glyph: ".", label: "Punto decimal" },
+] as const;
+
 export default function ArithmeticView({
   viewMode,
   initialExpression = "",
@@ -261,85 +274,105 @@ export default function ArithmeticView({
 
   return (
     <div className="h-full flex flex-col gap-6 min-h-0">
-      
+
       {/* =========================================================
-          MODO 1: CALCULAR (BENTO ESTILO LANDING)
+          MODO 1: CALCULAR (BENTO PREMIUM · REFERENCIA DE ESTILO)
       ========================================================== */}
       {viewMode === "calc" && (
         <div className="flex-1 flex flex-col gap-6 min-h-0">
-          
-          {/* FILA SUPERIOR: CONSOLA Y RESULTADO */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0">
-            
-            {/* Caja Izquierda: Entrada y Teclado */}
-            <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -top-16 -left-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
 
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-3">
+          {/* FILA SUPERIOR: CONSOLA + RESULTADO */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0">
+
+            {/* Caja Izquierda: Entrada y Teclado */}
+            <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col shadow-xl shadow-black/20 overflow-hidden">
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
+
+              <div className="relative z-10 flex flex-1 flex-col">
+                <div className="flex items-center justify-between mb-4">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
                     <Calculator size={13} className="text-zinc-500" />
                     Expresión Matemática
                   </span>
-                  <span className="text-[11px] text-zinc-500 font-mono">Modo Aritmético</span>
+                  <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-lg">
+                    Jerarquía PEMDAS
+                  </span>
                 </div>
 
-                {/* Input Grande y Nítido */}
-                <div className="relative group">
-                  <input
-                    type="text"
-                    value={expression}
-                    onChange={(e) => setExpression(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") void saveCalculation(expression, calculation.finalResult);
-                    }}
-                    placeholder="Ingresa una expresión, ej: ((3 + 5) * 2) + 12 / 4"
-                    className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-2xl px-5 py-4 font-mono text-base lg:text-lg text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/20 transition-all shadow-inner"
-                  />
-                </div>
-              </div>
+                <label htmlFor="expresion-matematica" className="sr-only">
+                  Expresión matemática
+                </label>
+                <input
+                  id="expresion-matematica"
+                  type="text"
+                  value={expression}
+                  onChange={(e) => setExpression(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void saveCalculation(expression, calculation.finalResult);
+                  }}
+                  placeholder="Ingresa una expresión, ej: ((3 + 5) * 2) + 12 / 4"
+                  className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-2xl px-5 py-4 font-mono text-lg lg:text-2xl text-zinc-100 placeholder:text-zinc-600 placeholder:text-sm lg:placeholder:text-base focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/20 transition-all shadow-inner selection:bg-emerald-500/30"
+                />
 
-              {/* Botones de Operadores */}
-              <div className="relative z-10 flex flex-wrap items-center gap-2.5 mt-6 pt-5 border-t border-zinc-800/60">
-                {["+", "-", "*", "/", "^", "(", ")", "."].map((sym) => (
+                {/* Teclado de operadores */}
+                <div className="mt-5">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-600 mb-2 block">
+                    Insertar Operadores
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {ARITHMETIC_KEYS.map((sym) => (
+                      <button
+                        key={sym.insert}
+                        type="button"
+                        onClick={() => setExpression((prev) => prev + sym.insert)}
+                        aria-label={sym.label}
+                        title={sym.label}
+                        className="h-10 min-w-[46px] px-3.5 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/60 text-zinc-200 rounded-xl font-mono text-base font-medium transition-all active:scale-95 flex items-center justify-center"
+                      >
+                        {sym.glyph}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Acciones */}
+                <div className="mt-auto pt-5 border-t border-zinc-800/60 flex items-center gap-2.5">
                   <button
-                    key={sym}
-                    onClick={() => setExpression((prev) => prev + sym)}
-                    className="h-11 min-w-[48px] px-3.5 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/80 text-zinc-200 rounded-xl font-mono text-base font-medium transition-all active:scale-95 shadow-sm backdrop-blur-sm flex items-center justify-center"
+                    type="button"
+                    onClick={() => setExpression("")}
+                    className="h-11 px-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 text-zinc-400 hover:text-red-400 hover:border-red-900/40 text-xs font-medium transition-colors flex items-center gap-2 active:scale-95"
                   >
-                    {sym}
+                    <RotateCcw size={14} /> Limpiar
                   </button>
-                ))}
 
-                <button
-                  onClick={() => void saveCalculation(expression, calculation.finalResult)}
-                  className="h-11 px-5 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 ml-auto active:scale-95"
-                >
-                  <CornerDownLeft size={14} /> Calcular
-                </button>
-
-                <button
-                  onClick={() => setExpression("")}
-                  className="h-11 px-4 bg-zinc-900/50 border border-zinc-800/80 text-zinc-400 hover:text-red-400 hover:border-red-900/40 rounded-xl text-xs font-medium transition-colors"
-                >
-                  Limpiar
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => void saveCalculation(expression, calculation.finalResult)}
+                    className="h-11 px-6 ml-auto bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 active:scale-95"
+                  >
+                    <CornerDownLeft size={14} /> Calcular
+                    <span className="ml-1 hidden sm:inline-flex items-center rounded-md border border-zinc-950/20 px-1.5 py-0.5 font-mono text-[9px] tracking-wider opacity-70">
+                      ENTER
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Caja Derecha: Resultado */}
-            <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+            <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col shadow-xl shadow-black/20 overflow-hidden">
+              <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
-              <div className="relative z-10">
+              <div className="relative z-10 flex flex-1 flex-col">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold">
                     Resultado
                   </span>
                   {calculation.finalResult !== "--" && (
                     <button
+                      type="button"
                       onClick={handleCopy}
-                      className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50 hover:bg-zinc-800/60"
+                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       {copied ? "Copiado" : "Copiar"}
@@ -347,8 +380,8 @@ export default function ArithmeticView({
                   )}
                 </div>
 
-                {/* Número Destacado con Animación */}
-                <div className="py-7 text-center">
+                {/* Número Destacado */}
+                <div className="flex-1 flex flex-col items-center justify-center gap-4 py-6 text-center">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={calculation.finalResult}
@@ -356,111 +389,141 @@ export default function ArithmeticView({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 1.05 }}
                       transition={{ duration: 0.2 }}
-                      className="text-5xl lg:text-6xl font-serif font-bold text-zinc-100 tracking-tight"
+                      className={`text-5xl lg:text-7xl font-serif font-bold tracking-tight transition-colors ${
+                        calculation.finalResult === "--" ? "text-zinc-600" : "text-zinc-100"
+                      }`}
                     >
                       {calculation.finalResult}
                     </motion.div>
                   </AnimatePresence>
                 </div>
-              </div>
 
-              <div className="relative z-10 text-[11px] text-zinc-400 font-mono text-center border-t border-zinc-800/60 pt-3.5 flex items-center justify-center gap-2">
-                {calculation.error ? (
-                  <span className="text-red-400 font-sans">{calculation.error}</span>
-                ) : (
-                  <>
-                    <Sparkles size={13} className="text-amber-400" />
-                    <span>{calculation.steps.length} operaciones intermedias</span>
-                  </>
-                )}
+                <div className="relative z-10 text-[11px] font-mono text-zinc-400 text-center border-t border-zinc-800/60 pt-3.5 flex items-center justify-center gap-2">
+                  {calculation.error ? (
+                    <span className="text-red-400 font-sans">{calculation.error}</span>
+                  ) : (
+                    <>
+                      <Sparkles size={13} className="text-amber-400" />
+                      <span>
+                        {calculation.steps.length}{" "}
+                        {calculation.steps.length === 1 ? "operación intermedia" : "operaciones intermedias"}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* FILA INFERIOR: PASO A PASO EN VIVO + HISTORIAL */}
+          {/* FILA INFERIOR: DESGLOSE EN VIVO + HISTORIAL */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
-            
-            {/* Panel Izquierdo: Desglose de Pasos (8 Cols) */}
-            <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+
+            {/* Panel Izquierdo: Línea de Tiempo de Pasos */}
+            <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <ListOrdered size={15} className="text-zinc-400" /> Desglose Paso a Paso
                 </span>
-                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-full">
-                  Jerarquía PEMDAS
+                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
+                  {calculation.steps.length} pasos
                 </span>
               </div>
 
-              {/* Lista Scrollable */}
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-2 mt-4">
+              <div className="flex-1 min-h-0 overflow-y-auto pt-5 pr-2">
                 {calculation.steps.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-xs text-zinc-500 text-center p-6">
-                    <Calculator size={24} className="text-zinc-600 mb-2" />
-                    Ingresa una operación para ver el desglose secuencial.
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <Calculator size={20} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">
+                      Ingresa una operación para ver el desglose
+                    </p>
+                    <p className="text-[11px] text-zinc-500 font-mono">
+                      Cada operación se resuelve en orden PEMDAS
+                    </p>
                   </div>
                 ) : (
-                  calculation.steps.map((step) => (
-                    <div
-                      key={step.id}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex items-center justify-between gap-4"
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <span className="w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shrink-0 shadow-inner">
+                  <div>
+                    {calculation.steps.map((step, index) => (
+                      <div key={step.id} className="relative pl-11 pb-4 last:pb-0">
+                        {/* Nodo + raíl de la línea de tiempo */}
+                        <span
+                          className="absolute left-0 top-0 w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                          aria-hidden="true"
+                        >
                           {step.id}
                         </span>
-                        <span className="text-sm text-zinc-200 font-medium truncate">
-                          {step.explanation}
-                        </span>
+                        {index < calculation.steps.length - 1 && (
+                          <span
+                            className="absolute left-[13px] top-9 bottom-0 w-px bg-zinc-800/70"
+                            aria-hidden="true"
+                          />
+                        )}
+
+                        <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                          <p className="text-sm text-zinc-200 font-medium truncate">
+                            {step.explanation}
+                          </p>
+                          <div className="mt-2.5 flex items-center gap-2 font-mono text-xs min-w-0">
+                            <span className="text-zinc-500 truncate">{step.before}</span>
+                            <ArrowRight size={12} className="text-zinc-600 shrink-0" />
+                            <span className="text-zinc-100 font-semibold bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-lg truncate">
+                              {step.after}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2.5 text-zinc-400 shrink-0 font-mono text-sm">
-                        <ArrowRight size={13} className="text-zinc-600" />
-                        <span className="text-zinc-100 font-semibold bg-zinc-900/80 px-3 py-1 rounded-xl border border-zinc-800/80 shadow-sm">
-                          {step.after}
-                        </span>
-                      </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Panel Derecho: Historial de Usuario (4 Cols) */}
-            <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+            {/* Panel Derecho: Historial */}
+            <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
                 )}
               </div>
 
-              {/* Lista de Cálculos */}
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1">
+              <div className="flex-1 min-h-0 overflow-y-auto pt-5 pr-1 space-y-2">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <RotateCcw size={20} className="text-zinc-600 mb-2" />
-                    <p>Sin operaciones guardadas.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Presiona Enter o Calcular para registrar.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <RotateCcw size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin operaciones guardadas</p>
+                    <p className="text-[11px] text-zinc-500">
+                      Presiona <span className="font-mono">Enter</span> o Calcular para registrar
+                    </p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setExpression(item.expression)}
-                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 cursor-pointer transition-all flex items-center justify-between text-sm"
+                      title={`Recargar: ${item.expression}`}
+                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
                     >
-                      <div className="truncate pr-2 font-mono text-zinc-300 group-hover:text-zinc-100 transition-colors">
+                      <span className="truncate pr-2 font-mono text-[13px] text-zinc-300 group-hover:text-zinc-100 transition-colors">
                         {item.expression}
-                      </div>
-                      <div className="font-mono font-bold text-emerald-400 shrink-0">
+                      </span>
+                      <span className="font-mono font-bold text-emerald-400 shrink-0">
                         = {item.result}
-                      </div>
+                      </span>
                     </div>
                   ))
                 )}
@@ -475,52 +538,91 @@ export default function ArithmeticView({
           MODO 2: PASO A PASO EXPANDIDO (DESDE CABECERA)
       ========================================================== */}
       {viewMode === "steps" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
-          <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+        <div className="relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+          <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 bg-zinc-700/10 rounded-full blur-3xl" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-800/60 shrink-0">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento Detallado de Resolución
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
-                Expresión evaluada: <span className="text-zinc-200 font-semibold">{expression || "--"}</span>
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
+                Expresión evaluada:{" "}
+                <span className="text-zinc-200 font-semibold">{expression || "--"}</span>
+                {calculation.error && (
+                  <span className="ml-2 text-red-400">· {calculation.error}</span>
+                )}
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
-              Resultado final: <strong className="text-emerald-400 text-sm font-serif">{calculation.finalResult}</strong>
+
+            <div className="shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 shadow-inner">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                Resultado
+              </span>
+              <span className="text-sm font-serif font-bold text-zinc-100">
+                {calculation.finalResult}
+              </span>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2">
+          <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pt-6 pr-2">
             {calculation.steps.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-xs text-zinc-500">
-                Ingresa una expresión en la pestaña "Calcular" para consultar el procedimiento detallado.
+              <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                  <Calculator size={20} className="text-zinc-600" />
+                </span>
+                <p className="text-sm text-zinc-300 font-medium">
+                  Sin procedimiento disponible
+                </p>
+                <p className="text-[11px] text-zinc-500">
+                  Ingresa una expresión en la pestaña Calcular para consultar el procedimiento
+                </p>
               </div>
             ) : (
-              calculation.steps.map((step) => (
-                <div
-                  key={step.id}
-                  className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-zinc-200 flex items-center gap-3">
-                      <span className="w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner">
-                        {step.id}
-                      </span>
-                      {step.operation}
+              <div>
+                {calculation.steps.map((step, index) => (
+                  <div key={step.id} className="relative pl-13 pb-5 last:pb-0">
+                    <span
+                      className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                      aria-hidden="true"
+                    >
+                      {step.id}
                     </span>
-                  </div>
+                    {index < calculation.steps.length - 1 && (
+                      <span
+                        className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70"
+                        aria-hidden="true"
+                      />
+                    )}
 
-                  <p className="text-xs text-zinc-300 font-sans leading-relaxed">{step.explanation}</p>
+                    <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-zinc-100">
+                          {step.operation}
+                        </span>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                          Paso {step.id}
+                        </span>
+                      </div>
 
-                  <div className="flex items-center gap-3 pt-3 border-t border-zinc-800/60 font-mono text-xs">
-                    <span className="text-zinc-500 line-through">{step.before}</span>
-                    <ArrowRight size={13} className="text-zinc-600" />
-                    <span className="text-emerald-400 font-bold bg-zinc-900/60 border border-zinc-800 px-2 py-0.5 rounded-lg">
-                      {step.after}
-                    </span>
+                      <p className="text-xs text-zinc-300 leading-relaxed mt-1.5">
+                        {step.explanation}
+                      </p>
+
+                      <div className="flex items-center gap-3 pt-3 mt-3 border-t border-zinc-800/60 font-mono text-xs min-w-0">
+                        <span className="text-zinc-500 line-through truncate">{step.before}</span>
+                        <ArrowRight size={13} className="text-zinc-600 shrink-0" />
+                        <span className="text-emerald-400 font-bold bg-zinc-900/60 border border-zinc-800 px-2 py-0.5 rounded-lg truncate">
+                          {step.after}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </div>
@@ -530,52 +632,75 @@ export default function ArithmeticView({
           MODO 3: TEORÍA Y FUNDAMENTOS
       ========================================================== */}
       {viewMode === "theory" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto shadow-xl shadow-black/20">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
+        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 overflow-y-auto shadow-xl shadow-black/20">
+          <div className="pb-5 border-b border-zinc-800/60">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Fundamentos Aritméticos
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Jerarquía de Operaciones (PEMDAS)
             </h3>
-            <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
-              Establece el orden determinista en el que deben resolverse los operadores matemáticos para evitar ambigüedades en compiladores y motores algebraicos.
+            <p className="text-xs text-zinc-400 mt-2.5 leading-relaxed max-w-3xl">
+              Establece el orden determinista en el que deben resolverse los operadores matemáticos
+              para evitar ambigüedades en compiladores y motores algebraicos.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                1. Paréntesis ( )
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Poseen la máxima prioridad de cálculo. Se resuelven de los más anidados internamente hacia afuera.
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                2. Exponentes y Raíces ( ^ )
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Potencias y radicales se computan antes que cualquier multiplicación o división.
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                3. Multiplicación y División (*, /)
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Mismo nivel de precedencia. Se resuelven estrictamente de izquierda a derecha.
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                4. Suma y Resta (+, -)
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Nivel final de reducción una vez que los términos previos han sido simplificados.
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
+            {[
+              {
+                priority: "1",
+                title: "Paréntesis ( )",
+                rationale:
+                  "Poseen la máxima prioridad de cálculo. Se resuelven de los más anidados internamente hacia afuera.",
+                example: "((3 + 5) * 2) → 16",
+              },
+              {
+                priority: "2",
+                title: "Exponentes y Raíces ( ^ )",
+                rationale:
+                  "Potencias y radicales se computan antes que cualquier multiplicación o división.",
+                example: "2^3 → 8 · √25 → 5",
+              },
+              {
+                priority: "3",
+                title: "Multiplicación y División (×, ÷)",
+                rationale:
+                  "Mismo nivel de precedencia. Se resuelven estrictamente de izquierda a derecha.",
+                example: "12 / 4 * 2 → 6",
+              },
+              {
+                priority: "4",
+                title: "Suma y Resta (+, −)",
+                rationale:
+                  "Nivel final de reducción una vez que los términos previos han sido simplificados.",
+                example: "12 + 4 − 2 → 14",
+              },
+            ].map((rule) => (
+              <div
+                key={rule.priority}
+                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors"
+              >
+                <div className="flex items-start gap-3.5">
+                  <span
+                    className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center font-mono text-xs font-bold shrink-0 shadow-inner"
+                    aria-hidden="true"
+                  >
+                    {rule.priority}
+                  </span>
+                  <div className="min-w-0">
+                    <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
+                      {rule.title}
+                    </strong>
+                    <p className="text-xs text-zinc-400 leading-relaxed">{rule.rationale}</p>
+                    <span className="flex items-center gap-1.5 mt-2.5 font-mono text-[10px] text-zinc-500">
+                      <ArrowRight size={11} className="text-zinc-600 shrink-0" />
+                      {rule.example}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

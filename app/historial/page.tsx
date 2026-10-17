@@ -26,6 +26,19 @@ interface FullHistoryRecord {
   created_at: string;
 }
 
+// Mapa subtema → módulo para poder navegar correctamente desde el historial.
+const SUBTOPIC_TO_MODULE: Record<string, string> = {
+  aritmetica: "mat1", algebra: "mat1", geometria: "mat1", funciones: "mat1",
+  limites: "mat1", derivadas: "mat1", integrales: "mat1",
+  proposiciones: "mat2", equivalencias: "mat2", inferencias: "mat2",
+  "interes-simple": "mat3", "interes-compuesto": "mat3", anualidades: "mat3", amortizacion: "mat3",
+  matrices: "mat4", determinantes: "mat4", "sistemas-gauss": "mat4",
+  "raices-metodos": "mat4", interpolacion: "mat4", errores: "mat4",
+  descriptiva: "mat5", "tablas-frecuencia": "mat5", probabilidad: "mat5",
+  distribuciones: "mat5", regresion: "mat5",
+  "prog-lineal": "mat6", simplex: "mat6", asignacion: "mat6", "teoria-colas": "mat6",
+};
+
 export default function GlobalHistoryPage() {
   const router = useRouter();
   const [records, setRecords] = useState<FullHistoryRecord[]>([]);
@@ -40,22 +53,28 @@ export default function GlobalHistoryPage() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      // Cargar desde localStorage si es invitado
+      // Cargar desde localStorage si es invitado: recorre TODAS las ramas
+      // (claves resolve_history_<subtema>), no solo aritmética.
       try {
-        const local = localStorage.getItem("resolve_history_aritmetica");
-        if (local) {
-          const parsed = JSON.parse(local);
-          setRecords(
-            parsed.map((item: any) => ({
-              id: item.id,
-              module: "mat1",
-              subtopic: "aritmetica",
-              expression: item.expression,
-              result: item.result,
+        const all: FullHistoryRecord[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (!key || !key.startsWith("resolve_history_")) continue;
+          const subtopic = key.replace("resolve_history_", "");
+          const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+          if (!Array.isArray(parsed)) continue;
+          parsed.forEach((item: { id?: string; expression?: string; result?: string }) => {
+            all.push({
+              id: item.id ?? `${key}-${item.expression}`,
+              module: SUBTOPIC_TO_MODULE[subtopic] ?? "mat1",
+              subtopic,
+              expression: item.expression ?? "",
+              result: item.result ?? "",
               created_at: new Date().toISOString(),
-            }))
-          );
+            });
+          });
         }
+        setRecords(all);
       } catch {}
       setLoading(false);
       return;
@@ -96,14 +115,24 @@ export default function GlobalHistoryPage() {
     if (user) {
       await supabase.from("user_history").delete().neq("id", "00000000-0000-0000-0000-000000000000");
     } else {
-      localStorage.removeItem("resolve_history_aritmetica");
+      // Invitado: elimina todas las claves de historial local
+      const keys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("resolve_history_")) keys.push(key);
+      }
+      keys.forEach((key) => localStorage.removeItem(key));
     }
     setRecords([]);
   };
 
   const handleRepeat = (record: FullHistoryRecord) => {
-    // Redirige al Dashboard cargando la expresión en la URL
-    router.push(`/dashboard?expr=${encodeURIComponent(record.expression)}`);
+    // Redirige al Dashboard cargando módulo, subtema y expresión
+    const query = new URLSearchParams();
+    query.set("module", record.module);
+    query.set("subtopic", record.subtopic);
+    query.set("expr", record.expression);
+    router.push(`/dashboard?${query.toString()}`);
   };
 
   const handleCopy = (text: string, id: string) => {
@@ -120,8 +149,11 @@ export default function GlobalHistoryPage() {
     return matchSearch && matchTopic;
   });
 
+  // Subtopics presentes en los registros para poblar el filtro dinámicamente
+  const availableSubtopics = Array.from(new Set(records.map((r) => r.subtopic))).sort();
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans select-none">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans">
       
       {/* Barra Superior */}
       <header className="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-20">
@@ -172,9 +204,11 @@ export default function GlobalHistoryPage() {
               className="bg-zinc-900/60 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:border-zinc-600"
             >
               <option value="all">Todas las ramas</option>
-              <option value="aritmetica">Aritmética (Mat I)</option>
-              <option value="algebra">Álgebra (Mat I)</option>
-              <option value="matrices">Matrices (Mat IV)</option>
+              {availableSubtopics.map((st) => (
+                <option key={st} value={st}>
+                  {st.charAt(0).toUpperCase() + st.slice(1).replace(/-/g, " ")}
+                </option>
+              ))}
             </select>
           </div>
         </div>

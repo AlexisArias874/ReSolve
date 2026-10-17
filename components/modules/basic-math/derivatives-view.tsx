@@ -368,6 +368,18 @@ export default function DerivativesView({
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // Cierre de modales con la tecla Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsHelpOpen(false);
+        setIsMethodInfoOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const DERIVATIVE_KEYS = [
     { label: "x", val: "x" },
     { label: "^2", val: "^2" },
@@ -393,19 +405,19 @@ export default function DerivativesView({
             
             {/* Consola de Entrada */}
             <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -top-16 -left-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <Variable size={14} className="text-zinc-500" />
+                    <Variable size={13} className="text-zinc-500" />
                     Consola de Derivación y Tangentes
                   </span>
 
                   <button
                     type="button"
                     onClick={() => setIsHelpOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 text-[11px] font-mono text-zinc-300 hover:text-zinc-100 transition-colors flex items-center gap-1.5 shadow-sm"
+                    className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-lg hover:text-zinc-300 hover:border-zinc-700 transition-colors flex items-center gap-1.5"
                   >
                     <HelpCircle size={13} className="text-amber-400" />
                     <span>Guía del Módulo</span>
@@ -414,11 +426,12 @@ export default function DerivativesView({
 
                 {/* Input de Función f(x) */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
+                  <label htmlFor="derivada-funcion" className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
                     <span>Función a Derivar f(x):</span>
                     <span className="text-[10px] text-zinc-500 font-mono">d/dx [ f(x) ]</span>
                   </label>
                   <input
+                    id="derivada-funcion"
                     type="text"
                     value={funcInput}
                     onChange={(e) => setFuncInput(e.target.value)}
@@ -426,19 +439,20 @@ export default function DerivativesView({
                       if (e.key === "Enter") void saveCalculation();
                     }}
                     placeholder="Ej: x^3 - 3*x   o   sin(3*x^2 + 1)   o   exp(-x^2)"
-                    className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-2xl px-5 py-3.5 font-mono text-base lg:text-lg text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all shadow-inner"
+                    className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-2xl px-5 py-3.5 font-mono text-lg lg:text-2xl text-zinc-100 placeholder:text-zinc-600 placeholder:text-sm lg:placeholder:text-base focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/20 transition-all shadow-inner selection:bg-emerald-500/30"
                   />
                 </div>
 
                 {/* Punto de Evaluación x0 */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
+                    <label htmlFor="derivada-x0" className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
                       <span>Punto de Evaluación x₀ (Tangente):</span>
                       <strong className="text-amber-400 font-mono">x₀ = {evalX0}</strong>
                     </label>
                     <div className="flex gap-2">
                       <input
+                        id="derivada-x0"
                         type="text"
                         value={evalX0}
                         onChange={(e) => setEvalX0(e.target.value)}
@@ -449,11 +463,12 @@ export default function DerivativesView({
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-mono text-zinc-400">Opciones de Visualización:</label>
+                    <span className="text-[11px] font-mono text-zinc-400">Opciones de Visualización:</span>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => setShowDerivativeGraph(!showDerivativeGraph)}
+                        aria-pressed={showDerivativeGraph}
                         className={`flex-1 py-2 px-3 rounded-xl border text-xs font-mono transition-colors flex items-center justify-center gap-1.5 ${
                           showDerivativeGraph
                             ? "bg-rose-500/10 border-rose-500/30 text-rose-300 font-semibold"
@@ -468,37 +483,53 @@ export default function DerivativesView({
                 </div>
               </div>
 
-              {/* Botones de Teclado Rápido */}
-              <div className="relative z-10 flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-zinc-800/60">
-                {DERIVATIVE_KEYS.map((k) => (
+              {/* Teclado de funciones */}
+              <div className="relative z-10 mt-5 pt-4 border-t border-zinc-800/60">
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-600 mb-2 block">
+                  Insertar Funciones
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {DERIVATIVE_KEYS.map((k) => (
+                    <button
+                      key={k.label}
+                      type="button"
+                      onClick={() => setFuncInput((prev) => prev + k.val)}
+                      aria-label={k.label}
+                      title={k.label}
+                      className="h-10 min-w-[46px] px-3.5 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/60 text-zinc-200 rounded-xl font-mono text-base font-medium transition-all active:scale-95 flex items-center justify-center"
+                    >
+                      {k.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Acciones */}
+                <div className="mt-5 pt-4 border-t border-zinc-800/60 flex items-center gap-2.5">
                   <button
-                    key={k.label}
-                    onClick={() => setFuncInput((prev) => prev + k.val)}
-                    className="h-10 min-w-[42px] px-3 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/80 text-zinc-200 rounded-xl font-mono text-sm font-medium transition-all active:scale-95 shadow-sm backdrop-blur-sm flex items-center justify-center"
+                    type="button"
+                    onClick={() => setFuncInput("")}
+                    className="h-11 px-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 text-zinc-400 hover:text-red-400 hover:border-red-900/40 text-xs font-medium transition-colors flex items-center gap-2 active:scale-95"
                   >
-                    {k.label}
+                    <X size={14} /> Limpiar
                   </button>
-                ))}
 
-                <button
-                  onClick={() => void saveCalculation()}
-                  className="h-10 px-5 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 ml-auto active:scale-95"
-                >
-                  <CornerDownLeft size={14} /> Derivar y Evaluar
-                </button>
-
-                <button
-                  onClick={() => setFuncInput("")}
-                  className="h-10 px-3.5 bg-zinc-900/50 border border-zinc-800/80 text-zinc-400 hover:text-red-400 hover:border-red-900/40 rounded-xl text-xs font-medium transition-colors"
-                >
-                  Limpiar
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => void saveCalculation()}
+                    className="h-11 px-6 ml-auto bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 active:scale-95"
+                  >
+                    <CornerDownLeft size={14} /> Derivar y Evaluar
+                    <span className="ml-1 hidden sm:inline-flex items-center rounded-md border border-zinc-950/20 px-1.5 py-0.5 font-mono text-[9px] tracking-wider opacity-70">
+                      ENTER
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Caja Derecha: Pendiente y Recta Tangente */}
             <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
@@ -507,8 +538,9 @@ export default function DerivativesView({
                   </span>
                   {calculation.slopeAtX0 !== null && (
                     <button
+                      type="button"
                       onClick={handleCopy}
-                      className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       {copied ? "Copiado" : "Copiar"}
@@ -524,7 +556,9 @@ export default function DerivativesView({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 1.05 }}
                       transition={{ duration: 0.2 }}
-                      className="text-5xl font-serif font-bold text-emerald-400 tracking-tight"
+                      className={`text-5xl lg:text-7xl font-serif font-bold tracking-tight transition-colors ${
+                        calculation.slopeAtX0 !== null ? "text-zinc-100" : "text-zinc-600"
+                      }`}
                     >
                       m = {calculation.slopeAtX0 !== null ? calculation.slopeAtX0 : "--"}
                     </motion.div>
@@ -567,10 +601,10 @@ export default function DerivativesView({
             {/* Panel Izquierdo: Graficador con Recta Tangente y f'(x) */}
             <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <Activity size={15} className="text-zinc-400" /> Representación Gráfica y Tangente
                 </span>
-                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-full">
+                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
                   Tangente en x₀ = {evalX0}
                 </span>
               </div>
@@ -592,42 +626,57 @@ export default function DerivativesView({
                       type: "solid",
                     }))
                   }
-                  height="h-[280px]"
+                  height="flex-1"
                   initialScale={55}
                 />
                 <div className="pt-2 text-[11px] font-mono text-zinc-500 flex items-center justify-between">
-                  <span>🟡 Línea Amarilla = Recta Tangente en x₀</span>
-                  <span>🔴/🔵 Puntos = Extremos Locales (f'(x) = 0)</span>
+                  <span className="flex items-center gap-1.5">
+                    <TrendingUp size={12} className="text-amber-400" />
+                    Línea = Recta Tangente en x₀
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Activity size={12} className="text-zinc-400" />
+                    Puntos = Extremos Locales (f'(x) = 0)
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Panel Derecho: Historial */}
-            <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+            <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
                 )}
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto pt-5 pr-1 space-y-2 custom-scrollbar">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin derivadas guardadas.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Presiona Derivar para registrar.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin derivadas guardadas</p>
+                    <p className="text-[11px] text-zinc-500">
+                      Presiona <span className="font-mono">Derivar</span> para registrar
+                    </p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
                         const m = item.expression.match(/d\/dx\s*\[(.*)\]\s*en\s*x₀=([0-9.-]+)/);
                         if (m) {
@@ -635,14 +684,15 @@ export default function DerivativesView({
                           setEvalX0(m[2]);
                         }
                       }}
-                      className="group p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 cursor-pointer transition-all flex items-center justify-between text-xs"
+                      title={`Recargar: ${item.expression}`}
+                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
                     >
-                      <div className="truncate pr-2 font-mono text-zinc-300 group-hover:text-zinc-100 transition-colors">
+                      <span className="min-w-0 truncate pr-2 font-mono text-[13px] text-zinc-300 group-hover:text-zinc-100 transition-colors">
                         {item.expression}
-                      </div>
-                      <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
+                      </span>
+                      <span className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
-                      </div>
+                      </span>
                     </div>
                   ))
                 )}
@@ -655,96 +705,151 @@ export default function DerivativesView({
 
       {/* MODO 2: PASO A PASO */}
       {viewMode === "steps" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
-          <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+        <div className="relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+          <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 bg-zinc-700/10 rounded-full blur-3xl" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-800/60 shrink-0">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento Analítico de Derivación
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
-                d/dx [ {funcInput} ] evaluada en x₀ = {evalX0}
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
+                d/dx [ <span className="text-zinc-200 font-semibold">{funcInput || "--"}</span> ] evaluada en x₀ = {evalX0}
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
-              Regla: <strong className="text-emerald-400 text-sm font-serif">{calculation.detectedRule}</strong>
+
+            <div className="shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 shadow-inner">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                Regla
+              </span>
+              <span className="text-sm font-serif font-bold text-zinc-100">
+                {calculation.detectedRule}
+              </span>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-            {calculation.steps.map((step) => (
-              <div
-                key={step.id}
-                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-zinc-200 flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner">
+          <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pt-6 pr-2 custom-scrollbar">
+            {calculation.steps.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                  <Variable size={20} className="text-zinc-600" />
+                </span>
+                <p className="text-sm text-zinc-300 font-medium">Sin procedimiento disponible</p>
+                <p className="text-[11px] text-zinc-500">
+                  Ingresa una función en la pestaña Calcular para consultar la derivación
+                </p>
+              </div>
+            ) : (
+              <div>
+                {calculation.steps.map((step, index) => (
+                  <div key={step.id} className="relative pl-13 pb-5 last:pb-0">
+                    <span
+                      className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                      aria-hidden="true"
+                    >
                       {step.id}
                     </span>
-                    {step.stage}
-                  </span>
-                  <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900/80 px-2 py-0.5 rounded-md border border-zinc-800">
-                    {step.rule}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed">{step.description}</p>
-                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold whitespace-pre-line">
-                  {step.expression}
-                </div>
+                    {index < calculation.steps.length - 1 && (
+                      <span
+                        className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70"
+                        aria-hidden="true"
+                      />
+                    )}
+
+                    <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-zinc-100">{step.stage}</span>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                          Paso {step.id}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-zinc-300 leading-relaxed mt-1.5">
+                        {step.description}
+                      </p>
+
+                      <div className="flex items-center justify-between gap-3 pt-3 mt-3 border-t border-zinc-800/60 min-w-0">
+                        <div className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 font-mono text-xs text-emerald-400 whitespace-pre-line truncate min-w-0 flex-1">
+                          {step.expression}
+                        </div>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                          {step.rule}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         </div>
       )}
 
       {/* MODO 3: TEORÍA */}
       {viewMode === "theory" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto shadow-xl shadow-black/20 custom-scrollbar">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
+        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 overflow-y-auto shadow-xl shadow-black/20 custom-scrollbar">
+          <div className="pb-5 border-b border-zinc-800/60">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Cálculo Diferencial y Optimización
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               La Derivada como Tasa Instantánea de Cambio
             </h3>
-            <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
+            <p className="text-xs text-zinc-400 mt-2.5 leading-relaxed max-w-3xl">
               La derivada de una función modela la tasa a la que cambia el valor de salida con respecto a una variación infinitesimal en la entrada, pilar fundamental de la física matemática y el aprendizaje automático (Machine Learning).
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                1. Definición por Cociente de Newton
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                f'(x) = lim [h → 0] [f(x + h) - f(x)] / h. Representa el límite de la pendiente de las rectas secantes a medida que los puntos convergen al punto de tangencia.
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                2. Regla de la Cadena y Composición
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                d/dx [f(g(x))] = f'(g(x)) · g'(x). Permite descomponer funciones compuestas complejas multiplicando las tasas de cambio de cada etapa funcional interna.
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                3. Descenso de Gradiente en Inteligencia Artificial
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                El entrenamiento de redes neuronales (Backpropagation) utiliza derivadas parciales (gradientes) para ajustar los pesos en dirección opuesta a la derivada de la función de coste.
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                4. Criterio de Extremos y Puntos Críticos
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Si f'(x) = 0 y f''(x) &gt; 0, la función alcanza un mínimo relativo. Si f''(x) &lt; 0, alcanza un máximo relativo. Es la base analítica de los problemas de optimización.
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
+            {[
+              {
+                priority: "1",
+                title: "Definición por Cociente de Newton",
+                rationale:
+                  "f'(x) = lim [h → 0] [f(x + h) - f(x)] / h. Representa el límite de la pendiente de las rectas secantes a medida que los puntos convergen al punto de tangencia.",
+              },
+              {
+                priority: "2",
+                title: "Regla de la Cadena y Composición",
+                rationale:
+                  "d/dx [f(g(x))] = f'(g(x)) · g'(x). Permite descomponer funciones compuestas complejas multiplicando las tasas de cambio de cada etapa funcional interna.",
+              },
+              {
+                priority: "3",
+                title: "Descenso de Gradiente en Inteligencia Artificial",
+                rationale:
+                  "El entrenamiento de redes neuronales (Backpropagation) utiliza derivadas parciales (gradientes) para ajustar los pesos en dirección opuesta a la derivada de la función de coste.",
+              },
+              {
+                priority: "4",
+                title: "Criterio de Extremos y Puntos Críticos",
+                rationale:
+                  "Si f'(x) = 0 y f''(x) > 0, la función alcanza un mínimo relativo. Si f''(x) < 0, alcanza un máximo relativo. Es la base analítica de los problemas de optimización.",
+              },
+            ].map((rule) => (
+              <div
+                key={rule.priority}
+                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors"
+              >
+                <div className="flex items-start gap-3.5">
+                  <span
+                    className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center font-mono text-xs font-bold shrink-0 shadow-inner"
+                    aria-hidden="true"
+                  >
+                    {rule.priority}
+                  </span>
+                  <div className="min-w-0">
+                    <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
+                      {rule.title}
+                    </strong>
+                    <p className="text-xs text-zinc-400 leading-relaxed">{rule.rationale}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -757,6 +862,9 @@ export default function DerivativesView({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label={calculation.detectedRule}
               className="relative w-full max-w-md border border-zinc-800 bg-zinc-950 rounded-3xl p-6 shadow-2xl"
             >
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
@@ -787,9 +895,12 @@ export default function DerivativesView({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Guía de Derivadas y Rectas Tangentes"
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
-              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-amber-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 relative z-10">
                 <div className="flex items-center gap-2.5">
@@ -855,7 +966,7 @@ export default function DerivativesView({
                   </h4>
                   <ul className="list-disc pl-4 space-y-1.5 text-zinc-400 leading-relaxed">
                     <li><strong>Descenso del Gradiente (Gradient Descent):</strong> El algoritmo central de optimización de redes neuronales (como GPT o Llama) calcula derivadas para minimizar el error de predicción.</li>
-                    <li><strong>Cinemática y Simulación en Motores Físicos:</strong> La velocidad instantánea es la primera derivada de la posición ($v = dx/dt$) y la aceleración es la segunda derivada ($a = d²x/dt²$).</li>
+                    <li><strong>Cinemática y Simulación en Motores Físicos:</strong> La velocidad instantánea es la primera derivada de la posición (<code className="text-zinc-200 font-mono">v = dx/dt</code>) y la aceleración es la segunda derivada (<code className="text-zinc-200 font-mono">a = d²x/dt²</code>).</li>
                     <li><strong>Procesamiento de Imágenes y Detección de Bordes:</strong> Filtros como Sobel y Laplacian aproximan derivadas espaciales para detectar cambios bruscos de intensidad en píxeles.</li>
                   </ul>
                 </div>

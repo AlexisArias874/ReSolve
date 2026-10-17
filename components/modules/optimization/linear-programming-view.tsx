@@ -735,7 +735,7 @@ export default function LinearProgrammingView({
     const pts: GraphPoint[] = [];
 
     model.constraints.forEach((c, idx) => {
-      const color = idx === 0 ? "#38bdf8" : idx === 1 ? "#f97316" : "#ec4899";
+      const color = idx === 0 ? "#38bdf8" : idx === 1 ? "#f43f5e" : "#ec4899";
       const a1 = c.coefficients[0] || 0;
       const a2 = c.coefficients[1] || 0;
 
@@ -826,6 +826,11 @@ export default function LinearProgrammingView({
   }
 
   useEffect(() => {
+    // Si el modelo deja de ser 2D, la pestaña "graph" desaparece: evita el panel en blanco.
+    if (!calculation.is2D && activeTab === "graph") setActiveTab("simplex");
+  }, [calculation.is2D, activeTab]);
+
+  useEffect(() => {
     const solStr =
       calculation.simplexRes.status === "optimal"
         ? calculation.simplexRes.solution.map((val, i) => `${model.varNames[i]}=${val}`).join(", ")
@@ -889,8 +894,19 @@ export default function LinearProgrammingView({
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // Accesibilidad: cierre de modales con la tecla Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (isHelpOpen) setIsHelpOpen(false);
+      if (isSensitivityOpen) setIsSensitivityOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isHelpOpen, isSensitivityOpen]);
+
   return (
-    <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
+    <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="relative flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto custom-scrollbar pr-1">
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 shrink-0">
@@ -899,10 +915,10 @@ export default function LinearProgrammingView({
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/60 pb-4">
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                      <Scale size={14} className="text-zinc-500" />
+                      <Scale size={15} className="text-zinc-500" />
                       Modelo de Optimización Lineal
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono">
+                    <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
                       {model.varNames.length} Variables · {model.constraints.length} Restricciones
                     </span>
                   </div>
@@ -911,10 +927,10 @@ export default function LinearProgrammingView({
                     <button
                       type="button"
                       onClick={() => setIsHelpOpen(true)}
-                      className="px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 transition-colors flex items-center gap-1.5 shadow-sm"
+                      className="px-3 py-1.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:bg-zinc-800 hover:border-zinc-700 text-[11px] font-mono text-zinc-300 transition-colors flex items-center gap-1.5 active:scale-95"
                     >
                       <Sparkles size={13} className="text-amber-400" />
-                      <span>Modelos Modelo</span>
+                      <span>Modelos de Prueba</span>
                     </button>
 
                     <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl p-0.5">
@@ -997,7 +1013,7 @@ export default function LinearProgrammingView({
                     <button
                       type="button"
                       onClick={handleAddConstraint}
-                      className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs font-mono text-zinc-300 flex items-center gap-1 transition-colors"
+                      className="px-2.5 py-1 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:bg-zinc-800 hover:border-zinc-700 text-xs font-mono text-zinc-300 flex items-center gap-1 transition-colors active:scale-95"
                     >
                       <Plus size={12} className="text-emerald-400" /> Añadir Restricción
                     </button>
@@ -1047,7 +1063,9 @@ export default function LinearProgrammingView({
                           type="button"
                           onClick={() => handleRemoveConstraint(c.id)}
                           disabled={model.constraints.length <= 1}
-                          className="p-1 text-zinc-600 hover:text-rose-400 disabled:opacity-20 ml-auto"
+                          title="Eliminar restricción"
+                          aria-label="Eliminar restricción"
+                          className="p-1 text-zinc-600 hover:text-red-400 disabled:opacity-20 disabled:cursor-not-allowed ml-auto"
                         >
                           <X size={14} />
                         </button>
@@ -1061,22 +1079,23 @@ export default function LinearProgrammingView({
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-zinc-800/60 flex items-center justify-between">
-                <span className="text-[10px] font-mono text-zinc-500">
+              <div className="pt-4 border-t border-zinc-800/60 flex items-center justify-between gap-3">
+                <span className="text-[10px] font-mono text-zinc-500 truncate">
                   Persistencia ReSolve · Motor Simplex 2-Fases
                 </span>
                 <button
                   type="button"
                   onClick={saveCalculation}
-                  className="px-5 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-semibold text-xs rounded-xl shadow-md transition-all active:scale-95"
+                  className="h-11 px-6 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] shadow-lg shadow-zinc-100/5 active:scale-95 flex items-center gap-2 shrink-0"
                 >
                   Guardar en Historial
+                  <ArrowRight size={14} />
                 </button>
               </div>
             </div>
 
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden relative">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-52 h-52 bg-emerald-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-16 -right-16 w-52 h-52 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
@@ -1084,8 +1103,9 @@ export default function LinearProgrammingView({
                     Valor Óptimo Z*
                   </span>
                   <button
+                    type="button"
                     onClick={handleCopy}
-                    className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                    className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                   >
                     {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                     {copied ? "Copiado" : "Copiar"}
@@ -1096,27 +1116,45 @@ export default function LinearProgrammingView({
                   <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
                     {model.type === "max" ? "Máxima Utilidad" : "Mínimo Costo"}
                   </span>
-                  <div
-                    className={`text-5xl font-serif font-bold tracking-tight ${
-                      calculation.simplexRes.status === "optimal"
-                        ? "text-emerald-400"
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={calculation.simplexRes.status}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.05 }}
+                      transition={{ duration: 0.2 }}
+                      className={`font-serif font-bold tracking-tight ${
+                        calculation.simplexRes.status === "optimal"
+                          ? "text-5xl lg:text-7xl text-zinc-100"
+                          : calculation.simplexRes.status === "unbounded"
+                          ? "text-4xl lg:text-5xl text-amber-400"
+                          : "text-4xl lg:text-5xl text-red-400"
+                      }`}
+                    >
+                      {calculation.simplexRes.status === "optimal"
+                        ? calculation.simplexRes.optimalZ
                         : calculation.simplexRes.status === "unbounded"
-                        ? "text-amber-400"
-                        : "text-rose-400"
-                    }`}
-                  >
-                    {calculation.simplexRes.status === "optimal"
-                      ? calculation.simplexRes.optimalZ
-                      : calculation.simplexRes.status === "unbounded"
-                      ? "∞ (No Acot.)"
-                      : "Infactible"}
-                  </div>
-                  <span className="text-[11px] font-mono text-zinc-400 mt-2 block">
-                    {calculation.simplexRes.status === "optimal"
-                      ? "✓ Solución Básica Factible Óptima (SBF)"
-                      : calculation.simplexRes.status === "unbounded"
-                      ? "⚠️ Región No Acotada en Dirección Z"
-                      : "❌ Restricciones Incompatibles (Fase 1 > 0)"}
+                        ? "∞ (No Acot.)"
+                        : "Infactible"}
+                    </motion.div>
+                  </AnimatePresence>
+                  <span className="text-[11px] font-mono text-zinc-400 mt-2 flex items-center justify-center gap-1.5">
+                    {calculation.simplexRes.status === "optimal" ? (
+                      <>
+                        <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+                        Solución Básica Factible Óptima (SBF)
+                      </>
+                    ) : calculation.simplexRes.status === "unbounded" ? (
+                      <>
+                        <AlertTriangle size={13} className="text-amber-400 shrink-0" />
+                        Región No Acotada en Dirección Z
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle size={13} className="text-red-400 shrink-0" />
+                        Restricciones Incompatibles (Fase 1 &gt; 0)
+                      </>
+                    )}
                   </span>
                 </div>
 
@@ -1367,13 +1405,15 @@ export default function LinearProgrammingView({
 
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Optimización
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
@@ -1382,20 +1422,24 @@ export default function LinearProgrammingView({
 
               <div className="flex-1 min-h-[640px] overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin modelos guardados.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Guarda ejecuciones para auditar.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin modelos guardados</p>
+                    <p className="text-[11px] text-zinc-500">Guarda ejecuciones para auditar</p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
-                      className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 transition-all flex items-center justify-between text-xs"
+                      title={item.expression}
+                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-sm"
                     >
-                      <div className="truncate pr-2 font-mono text-zinc-300">{item.expression}</div>
-                      <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[110px]">
+                      <span className="truncate pr-2 font-mono text-[13px] text-zinc-300">{item.expression}</span>
+                      <span className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
-                      </div>
+                      </span>
                     </div>
                   ))
                 )}
@@ -1409,7 +1453,10 @@ export default function LinearProgrammingView({
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
           <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
             <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento Riguroso del Método Simplex
               </h3>
               <p className="text-xs text-zinc-400 mt-1 font-mono">
@@ -1431,7 +1478,7 @@ export default function LinearProgrammingView({
                 <p className="text-xs text-zinc-300 font-sans leading-relaxed">{st.desc}</p>
                 <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto whitespace-pre-line">
                   <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                    {`$$${st.math}$$`}
+                    {`\n$$\n${st.math}\n$$\n`}
                   </ReactMarkdown>
                 </div>
               </div>
@@ -1446,7 +1493,7 @@ export default function LinearProgrammingView({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Fundamentos de Investigación Operativa
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Programación Lineal, Convexidad y el Algoritmo Simplex
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -1468,7 +1515,7 @@ export default function LinearProgrammingView({
                 2. Dualidad y Teorema de Holguras Complementarias
               </strong>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                A cada problema Primal le corresponde un problema Dual idéntico en valor óptimo ($Z^* = W^*$). Los precios sombra representan el multiplicador de Lagrange del recurso, indicando cuánto incrementaría el beneficio si se añade una unidad adicional de capacidad.
+                A cada problema Primal le corresponde un problema Dual idéntico en valor óptimo (Z* = W*). Los precios sombra representan el multiplicador de Lagrange del recurso, indicando cuánto incrementaría el beneficio si se añade una unidad adicional de capacidad.
               </p>
             </div>
           </div>
@@ -1479,6 +1526,9 @@ export default function LinearProgrammingView({
         {isHelpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="lp-help-title"
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -1487,13 +1537,15 @@ export default function LinearProgrammingView({
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
                 <div className="flex items-center gap-2">
                   <Sparkles size={16} className="text-amber-400" />
-                  <h3 className="text-base font-serif font-bold text-zinc-100">
+                  <h3 id="lp-help-title" className="text-base font-serif font-bold text-zinc-100">
                     Modelos Universitarios de Programación Lineal
                   </h3>
                 </div>
                 <button
+                  type="button"
+                  aria-label="Cerrar"
                   onClick={() => setIsHelpOpen(false)}
-                  className="p-2 text-zinc-400 hover:text-zinc-100"
+                  className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
                 >
                   <X size={16} />
                 </button>
@@ -1533,18 +1585,23 @@ export default function LinearProgrammingView({
         {isSensitivityOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="lp-sensitivity-title"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative w-full max-w-xl border border-zinc-800 bg-zinc-950 rounded-3xl p-6 shadow-2xl"
             >
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
-                <h4 className="text-sm font-serif font-bold text-zinc-100 flex items-center gap-2">
+                <h4 id="lp-sensitivity-title" className="text-sm font-serif font-bold text-zinc-100 flex items-center gap-2">
                   <Compass size={15} className="text-amber-400" /> Análisis Dual y Sensibilidad
                 </h4>
                 <button
+                  type="button"
+                  aria-label="Cerrar"
                   onClick={() => setIsSensitivityOpen(false)}
-                  className="p-1 text-zinc-400 hover:text-zinc-100"
+                  className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
                 >
                   <X size={16} />
                 </button>
@@ -1560,14 +1617,14 @@ export default function LinearProgrammingView({
                     {model.constraints.map((c, i) => `${c.rhs}y${i + 1}`).join(" + ")}
                   </div>
                   <p className="text-[11px] text-zinc-400">
-                    Las variables duales $y_i$ equivalen a los precios sombra de los recursos primales.
+                    Las variables duales yᵢ equivalen a los precios sombra de los recursos primales.
                   </p>
                 </div>
 
                 <div className="p-3 rounded-xl bg-zinc-900/40 border border-zinc-800/80 text-[11px] font-mono text-zinc-400 space-y-1.5">
-                  <p>• Un precio sombra positivo ($y_i &gt; 0$) indica un recurso agotado (recurso escaso).</p>
-                  <p>• Un precio sombra nulo ($y_i = 0$) indica recurso sobrante (holgura estricta).</p>
-                  <p>• La igualdad $Z^* = W^*$ verifica el Teorema Fuerte de Dualidad de Von Neumann.</p>
+                  <p>• Un precio sombra positivo (<code className="text-zinc-200 font-mono">yᵢ &gt; 0</code>) indica un recurso agotado (recurso escaso).</p>
+                  <p>• Un precio sombra nulo (<code className="text-zinc-200 font-mono">yᵢ = 0</code>) indica recurso sobrante (holgura estricta).</p>
+                  <p>• La igualdad <code className="text-zinc-200 font-mono">Z* = W*</code> verifica el Teorema Fuerte de Dualidad de Von Neumann.</p>
                 </div>
               </div>
             </motion.div>

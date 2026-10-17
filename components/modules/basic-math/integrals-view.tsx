@@ -363,6 +363,18 @@ export default function IntegralsView({
     { label: "*", val: " * " },
   ];
 
+  // Cierre de modales con la tecla Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsHelpOpen(false);
+        setIsMethodInfoOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
@@ -373,12 +385,12 @@ export default function IntegralsView({
             
             {/* Consola de Entrada */}
             <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -top-16 -left-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <Variable size={14} className="text-zinc-500" />
+                    <Variable size={13} className="text-zinc-500" />
                     Consola de Integración y Áreas
                   </span>
 
@@ -394,11 +406,12 @@ export default function IntegralsView({
 
                 {/* Input de Función Integrando f(x) */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
+                  <label htmlFor="integral-funcion" className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
                     <span>Función Integrando f(x):</span>
                     <span className="text-[10px] text-zinc-500 font-mono">∫ [ f(x) ] dx</span>
                   </label>
                   <input
+                    id="integral-funcion"
                     type="text"
                     value={funcInput}
                     onChange={(e) => setFuncInput(e.target.value)}
@@ -445,6 +458,7 @@ export default function IntegralsView({
                       <div className="flex gap-2">
                         <input
                           type="text"
+                          aria-label="Límite inferior a"
                           value={limitA}
                           onChange={(e) => setLimitA(e.target.value)}
                           placeholder="a (Inferior)"
@@ -452,6 +466,7 @@ export default function IntegralsView({
                         />
                         <input
                           type="text"
+                          aria-label="Límite superior b"
                           value={limitB}
                           onChange={(e) => setLimitB(e.target.value)}
                           placeholder="b (Superior)"
@@ -464,36 +479,48 @@ export default function IntegralsView({
               </div>
 
               {/* Botones Rápidos de Teclado */}
-              <div className="relative z-10 flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-zinc-800/60">
-                {INTEGRAL_KEYS.map((k) => (
+              <div className="relative z-10 mt-5 pt-4 border-t border-zinc-800/60">
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-600 mb-2 block">
+                  Insertar Símbolos
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {INTEGRAL_KEYS.map((k) => (
+                    <button
+                      key={k.label}
+                      onClick={() => setFuncInput((prev) => prev + k.val)}
+                      aria-label={`Insertar ${k.label}`}
+                      title={`Insertar ${k.label}`}
+                      className="h-10 min-w-[46px] px-3.5 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/60 text-zinc-200 rounded-xl font-mono text-sm font-medium transition-all active:scale-95 flex items-center justify-center"
+                    >
+                      {k.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex items-center gap-2.5">
                   <button
-                    key={k.label}
-                    onClick={() => setFuncInput((prev) => prev + k.val)}
-                    className="h-10 min-w-[42px] px-3 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/80 text-zinc-200 rounded-xl font-mono text-sm font-medium transition-all active:scale-95 shadow-sm backdrop-blur-sm flex items-center justify-center"
+                    onClick={() => setFuncInput("")}
+                    className="h-11 px-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 text-zinc-400 hover:text-red-400 hover:border-red-900/40 text-xs font-medium transition-colors active:scale-95 flex items-center gap-2"
                   >
-                    {k.label}
+                    <X size={14} /> Limpiar
                   </button>
-                ))}
 
-                <button
-                  onClick={() => void saveCalculation()}
-                  className="h-10 px-5 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 ml-auto active:scale-95"
-                >
-                  <CornerDownLeft size={14} /> Integrar
-                </button>
-
-                <button
-                  onClick={() => setFuncInput("")}
-                  className="h-10 px-3.5 bg-zinc-900/50 border border-zinc-800/80 text-zinc-400 hover:text-red-400 hover:border-red-900/40 rounded-xl text-xs font-medium transition-colors"
-                >
-                  Limpiar
-                </button>
+                  <button
+                    onClick={() => void saveCalculation()}
+                    className="h-11 px-6 ml-auto bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 active:scale-95"
+                  >
+                    <CornerDownLeft size={14} /> Integrar
+                    <span className="ml-1 hidden sm:inline-flex items-center rounded-md border border-zinc-950/20 px-1.5 py-0.5 font-mono text-[9px] tracking-wider opacity-70">
+                      ENTER
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Caja Derecha: Resultado del Área o Antiderivada */}
             <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
@@ -503,7 +530,7 @@ export default function IntegralsView({
                   {calculation.antiderivative !== "--" && (
                     <button
                       onClick={handleCopy}
-                      className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       {copied ? "Copiado" : "Copiar"}
@@ -511,7 +538,7 @@ export default function IntegralsView({
                   )}
                 </div>
 
-                <div className="py-4 text-center">
+                <div className="py-6 text-center">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={isDefinite ? calculation.areaString : calculation.antiderivative}
@@ -519,9 +546,16 @@ export default function IntegralsView({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 1.05 }}
                       transition={{ duration: 0.2 }}
-                      className="text-4xl lg:text-5xl font-serif font-bold text-emerald-400 tracking-tight"
+                      className={`font-serif font-bold tracking-tight transition-colors flex items-center justify-center gap-3 ${
+                        isDefinite ? "text-5xl lg:text-7xl" : "text-4xl lg:text-5xl"
+                      } ${
+                        (isDefinite ? calculation.areaString : calculation.antiderivative) === "--"
+                          ? "text-zinc-600"
+                          : "text-zinc-100"
+                      }`}
                     >
-                      {isDefinite ? calculation.areaString : calculation.antiderivative}
+                      {!isDefinite && <Variable size={28} className="text-zinc-500 shrink-0" />}
+                      <span>{isDefinite ? calculation.areaString : calculation.antiderivative}</span>
                     </motion.div>
                   </AnimatePresence>
                 </div>
@@ -529,7 +563,7 @@ export default function IntegralsView({
                 <div className="space-y-2 mt-2 font-mono text-xs">
                   <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60 text-center">
                     <span className="text-[10px] text-zinc-500 block">Primitiva Simbólica</span>
-                    <strong className="text-amber-400">{calculation.antiderivative}</strong>
+                    <strong className="text-zinc-200">{calculation.antiderivative}</strong>
                   </div>
                   {isDefinite && (
                     <div className="p-2 rounded-xl bg-zinc-950/60 border border-zinc-800/60 text-center text-[11px]">
@@ -563,10 +597,10 @@ export default function IntegralsView({
             {/* Panel Izquierdo: Graficador del Área Riemann */}
             <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <Activity size={15} className="text-zinc-400" /> Sombreado de Área Bajo la Curva
                 </span>
-                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-full">
+                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
                   {isDefinite ? `Intervalo [${limitA}, ${limitB}]` : "Vista de Curva"}
                 </span>
               </div>
@@ -587,12 +621,19 @@ export default function IntegralsView({
                         ]
                       : []
                   }
-                  height="h-[280px]"
+                  height="flex-1"
                   initialScale={55}
                 />
                 <div className="pt-2 text-[11px] font-mono text-zinc-500 flex items-center justify-between">
-                  <span>🟢 Área Sombreada = Magnitud de la Integral Definida</span>
-                  <span>🟠/🟢 Marcadores = Extremos del Intervalo [a, b]</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
+                    Área Sombreada = Magnitud de la Integral Definida
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-2 h-2 rounded-full bg-amber-400/80" aria-hidden="true" />
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
+                    Marcadores = Extremos del Intervalo [a, b]
+                  </span>
                 </div>
               </div>
             </div>
@@ -600,29 +641,37 @@ export default function IntegralsView({
             {/* Panel Derecho: Historial */}
             <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial
                 </span>
                 {history.length > 0 && (
                   <button
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
                 )}
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto pt-5 pr-1 space-y-2">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin integrales guardadas.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Presiona Integrar para registrar.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin integrales guardadas</p>
+                    <p className="text-[11px] text-zinc-500">
+                      Presiona <span className="font-mono">Enter</span> o Integrar para registrar
+                    </p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
                         const m = item.expression.match(/∫\s*(?:\[([0-9.-]+)\s*a\s*([0-9.-]+)\])?\s*\((.*)\)\s*dx/);
                         if (m) {
@@ -636,14 +685,15 @@ export default function IntegralsView({
                           setFuncInput(m[3]);
                         }
                       }}
-                      className="group p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 cursor-pointer transition-all flex items-center justify-between text-xs"
+                      title={`Recargar: ${item.expression}`}
+                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
                     >
-                      <div className="truncate pr-2 font-mono text-zinc-300 group-hover:text-zinc-100 transition-colors">
+                      <span className="truncate pr-2 font-mono text-[13px] text-zinc-300 group-hover:text-zinc-100 transition-colors">
                         {item.expression}
-                      </div>
-                      <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
+                      </span>
+                      <span className="font-mono font-bold text-emerald-400 shrink-0 truncate max-w-[120px]">
                         {item.result}
-                      </div>
+                      </span>
                     </div>
                   ))
                 )}
@@ -658,39 +708,49 @@ export default function IntegralsView({
       {viewMode === "steps" && (
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
           <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento Analítico de Integración
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
                 {isDefinite ? `∫ [${limitA} a ${limitB}] (${funcInput}) dx` : `∫ (${funcInput}) dx`}
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
-              Técnica: <strong className="text-emerald-400 text-sm font-serif">{calculation.detectedTechnique}</strong>
+            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner shrink-0">
+              Técnica: <strong className="text-zinc-100 text-sm font-serif">{calculation.detectedTechnique}</strong>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-            {calculation.steps.map((step) => (
-              <div
-                key={step.id}
-                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-zinc-200 flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner">
-                      {step.id}
+          <div className="flex-1 min-h-0 overflow-y-auto pt-1 pr-2">
+            {calculation.steps.map((step, index) => (
+              <div key={step.id} className="relative pl-13 pb-5 last:pb-0">
+                <span
+                  className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                  aria-hidden="true"
+                >
+                  {step.id}
+                </span>
+                {index < calculation.steps.length - 1 && (
+                  <span
+                    className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70"
+                    aria-hidden="true"
+                  />
+                )}
+
+                <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-zinc-100">{step.stage}</span>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                      {step.rule}
                     </span>
-                    {step.stage}
-                  </span>
-                  <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900/80 px-2 py-0.5 rounded-md border border-zinc-800">
-                    {step.rule}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed">{step.description}</p>
-                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold whitespace-pre-line">
-                  {step.expression}
+                  </div>
+                  <p className="text-xs text-zinc-300 font-sans leading-relaxed mt-1.5">{step.description}</p>
+                  <div className="mt-3 p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-zinc-100 whitespace-pre-line">
+                    {step.expression}
+                  </div>
                 </div>
               </div>
             ))}
@@ -705,7 +765,7 @@ export default function IntegralsView({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Fundamentos de Cálculo Integral
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Acumulación Continua y Teorema Fundamental del Cálculo
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -758,13 +818,20 @@ export default function IntegralsView({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Información de la técnica ${calculation.detectedTechnique}`}
               className="relative w-full max-w-md border border-zinc-800 bg-zinc-950 rounded-3xl p-6 shadow-2xl"
             >
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                 <h4 className="text-sm font-serif font-bold text-zinc-100 flex items-center gap-2">
                   <Cpu size={15} className="text-amber-400" /> {calculation.detectedTechnique}
                 </h4>
-                <button onClick={() => setIsMethodInfoOpen(false)} className="p-1 text-zinc-400 hover:text-zinc-100">
+                <button
+                  onClick={() => setIsMethodInfoOpen(false)}
+                  aria-label="Cerrar"
+                  className="p-1 text-zinc-400 hover:text-zinc-100"
+                >
                   <X size={16} />
                 </button>
               </div>
@@ -788,9 +855,12 @@ export default function IntegralsView({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Guía de cálculo integral"
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
-              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-amber-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 relative z-10">
                 <div className="flex items-center gap-2.5">
@@ -804,6 +874,7 @@ export default function IntegralsView({
                 </div>
                 <button
                   onClick={() => setIsHelpOpen(false)}
+                  aria-label="Cerrar guía"
                   className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
                 >
                   <X size={16} />

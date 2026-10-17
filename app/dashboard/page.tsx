@@ -163,8 +163,22 @@ function DashboardContent() {
   const searchParams = useSearchParams();
   const initialExpr = searchParams.get("expr") || "";
 
-  const [activeModule, setActiveModule] = useState<ModuleId>("mat1");
-  const [subTopic, setSubTopic] = useState<string>("aritmetica");
+  // Restaura módulo y subtema desde la URL (enlaces del Omni-Solver, historial o
+  // recargas de página). Sin esto, el estado siempre vuelve a mat1/aritmetica.
+  const VALID_MODULE_IDS: ModuleId[] = ["omni", "mat1", "mat2", "mat3", "mat4", "mat5", "mat6"];
+  const paramModule = searchParams.get("module");
+  const initialModule: ModuleId = VALID_MODULE_IDS.includes(paramModule as ModuleId)
+    ? (paramModule as ModuleId)
+    : "mat1";
+  const paramSubtopic = searchParams.get("subtopic");
+  const initialSubtopics = SUBTOPICS_BY_MODULE[initialModule] || [];
+  const initialSubtopic =
+    paramSubtopic && initialSubtopics.some((s) => s.id === paramSubtopic)
+      ? paramSubtopic
+      : initialSubtopics[0]?.id || "aritmetica";
+
+  const [activeModule, setActiveModule] = useState<ModuleId>(initialModule);
+  const [subTopic, setSubTopic] = useState<string>(initialSubtopic);
   const [viewMode, setViewMode] = useState<ViewMode>("calc");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -178,10 +192,9 @@ function DashboardContent() {
 
   // --- Estado Global de Tema (Para Invitados y Autenticados) ---
   const [currentTheme, setCurrentTheme] = useState<string>("dark");
-  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("resolve-theme") || document.documentElement.getAttribute("data-theme") || "dark";
+    const saved = localStorage.getItem("resolve_theme") || document.documentElement.getAttribute("data-theme") || "dark";
     setCurrentTheme(saved);
     document.documentElement.setAttribute("data-theme", saved);
   }, []);
@@ -189,7 +202,9 @@ function DashboardContent() {
   const handleThemeChange = (newTheme: string) => {
     setCurrentTheme(newTheme);
     document.documentElement.setAttribute("data-theme", newTheme);
-    localStorage.setItem("resolve-theme", newTheme);
+    localStorage.setItem("resolve_theme", newTheme);
+    // Notifica a los gráficos Canvas (math-grapher) para que se recoloreen al instante
+    window.dispatchEvent(new Event("themechange"));
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -296,7 +311,7 @@ function DashboardContent() {
   );
 
   return (
-    <div className="relative flex h-screen w-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans select-none print:h-auto print:w-full print:overflow-visible print:bg-white print:text-black">
+    <div className="relative flex h-screen w-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans print:h-auto print:w-full print:overflow-visible print:bg-white print:text-black">
       {/* Fondo ambiental */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(63,63,70,0.25),transparent_50%),radial-gradient(circle_at_80%_90%,rgba(63,63,70,0.2),transparent_50%)]" />
@@ -348,8 +363,8 @@ function DashboardContent() {
                   <Zap size={15} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="block text-[13px] leading-tight">ReSolve Solver</span>
-                  <span className="block text-[10px] text-zinc-500 font-mono">Omni-Motor Photomath</span>
+                  <span className="block text-[13px] leading-tight">Calculadora Universal</span>
+                  <span className="block text-[10px] text-zinc-500 font-mono">Motor local + IA</span>
                 </div>
               </button>
             </div>
@@ -524,41 +539,6 @@ function DashboardContent() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
-                  title="Cambiar tema de color"
-                  className="p-2 rounded-2xl border border-zinc-800/80 bg-zinc-900/60 backdrop-blur text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors flex items-center gap-1.5 text-xs font-mono"
-                >
-                  <Palette size={14} className="text-amber-400" />
-                  <span className="hidden md:inline capitalize">{currentTheme}</span>
-                </button>
-
-                {isThemeMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-36 rounded-2xl border border-zinc-800 bg-zinc-950/95 backdrop-blur-xl p-1.5 shadow-2xl z-50 space-y-1 font-mono text-xs">
-                    {THEME_OPTIONS.map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => {
-                          handleThemeChange(t.id);
-                          setIsThemeMenuOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-left transition-colors ${
-                          currentTheme === t.id
-                            ? "bg-zinc-100 text-zinc-950 font-bold"
-                            : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
-                        }`}
-                      >
-                        <t.icon size={13} />
-                        <span>{t.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               <div className="flex bg-zinc-900/60 border border-zinc-800/80 p-1 rounded-2xl gap-1 shrink-0 backdrop-blur">
                 {VIEW_MODES.map((vm) => {
                   const Icon = vm.icon;

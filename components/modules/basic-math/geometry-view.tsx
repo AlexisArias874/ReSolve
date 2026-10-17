@@ -178,7 +178,7 @@ function solveUniversalGeometry(input: string): GeometryResult {
     // 2. DISTANCIA PUNTO A RECTA: punto (x0, y0) recta Ax + By + C = 0
     // -------------------------------------------------------------------------
     const pointLineMatch = clean.match(
-      /punto\s*\(\s*(-?[0-9.]+)\s*,\s*(-?[0-9.]+)\s*\)\s*(?:recta|\,)?\s*([+-]?[0-9.]*)x([+-][0-9.]*)y([+-][0-9.]*)=0/i
+      /punto\s*\(\s*(-?[0-9.]+)\s*,\s*(-?[0-9.]+)\s*\)\s*(?:recta|\,)?\s*([+-]?[0-9.]*)\s*x\s*([+-][0-9.]*)\s*y\s*([+-][0-9.]*)\s*=\s*0/i
     );
 
     if (pointLineMatch) {
@@ -410,7 +410,7 @@ function solveUniversalGeometry(input: string): GeometryResult {
       steps.push({
         id: stepId++,
         stage: "Volumen y Superficie del Cilindro",
-        description: "V = π·r²·h   |   A_lat = 2π·r·h   |   A_total = 2π·r(r + h)",
+        description: "V = π·r²·h   |   Aₗₐₜ = 2π·r·h   |   Aₜₒₜₐₗ = 2π·r(r + h)",
         expression: `Volumen = π · (${r})² · ${h} ≈ ${Number(vol.toFixed(3))} u³\nÁrea Lateral = 2π · ${r} · ${h} ≈ ${Number(lateral.toFixed(3))} u²\nÁrea Total = ${Number(total.toFixed(3))} u²`,
         rule: "Cuerpo de Revolución Cilíndrico",
       });
@@ -471,7 +471,7 @@ function solveUniversalGeometry(input: string): GeometryResult {
     // 6. ECUACIÓN DE LA CIRCUNFERENCIA: (x - h)^2 + (y - k)^2 = r^2
     // -------------------------------------------------------------------------
     const circleEqMatch = clean.match(
-      /\(x([+-][0-9.]+)\)\^2\+\(y([+-][0-9.]+)\)\^2=([0-9.]+)/i
+      /\(x\s*([+-][0-9.]+)\s*\)\s*\^2\s*\+\s*\(y\s*([+-][0-9.]+)\s*\)\s*\^2\s*=\s*([0-9.]+)/i
     );
     if (circleEqMatch) {
       const h = -parseFloat(circleEqMatch[1]);
@@ -607,6 +607,18 @@ export default function GeometryView({
     { label: "Circunf.", val: "(x - 3)^2 + (y + 2)^2 = 25" },
   ];
 
+  // Cierre de modales con la tecla Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsHelpOpen(false);
+        setIsMethodInfoOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Catálogo completo de ejemplos para la guía del módulo
   const MODULE_EXAMPLES = [
     { category: "2 Puntos (Distancia, Recta)", eq: "(2, 3), (6, 7)", desc: "Distancia euclidiana, punto medio, pendiente y recta" },
@@ -628,12 +640,12 @@ export default function GeometryView({
             
             {/* Consola de Entrada */}
             <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -top-16 -left-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-4">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <Compass size={14} className="text-zinc-500" />
+                    <Compass size={13} className="text-zinc-500" />
                     Consola Geométrica (Analítica, 2D y 3D)
                   </span>
 
@@ -648,7 +660,11 @@ export default function GeometryView({
                 </div>
 
                 <div className="relative group">
+                  <label htmlFor="geometria-entrada" className="sr-only">
+                    Entrada geométrica
+                  </label>
                   <input
+                    id="geometria-entrada"
                     type="text"
                     value={expression}
                     onChange={(e) => setExpression(e.target.value)}
@@ -662,36 +678,48 @@ export default function GeometryView({
               </div>
 
               {/* Botones Rápidos de Plantillas */}
-              <div className="relative z-10 flex flex-wrap items-center gap-2 mt-6 pt-5 border-t border-zinc-800/60">
-                {GEOMETRY_KEYS.map((k) => (
+              <div className="relative z-10 mt-6 pt-5 border-t border-zinc-800/60">
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-600 mb-2 block">
+                  Plantillas Rápidas
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {GEOMETRY_KEYS.map((k) => (
+                    <button
+                      key={k.label}
+                      onClick={() => setExpression(k.val)}
+                      aria-label={k.label}
+                      title={k.label}
+                      className="h-10 min-w-[46px] px-3.5 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/60 text-zinc-200 rounded-xl font-mono text-xs font-medium transition-all active:scale-95 flex items-center justify-center"
+                    >
+                      {k.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex items-center gap-2.5">
                   <button
-                    key={k.label}
-                    onClick={() => setExpression(k.val)}
-                    className="h-10 px-3 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/80 text-zinc-300 rounded-xl font-mono text-xs font-medium transition-all active:scale-95 shadow-sm backdrop-blur-sm flex items-center justify-center"
+                    onClick={() => setExpression("")}
+                    className="h-11 px-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 text-zinc-400 hover:text-red-400 hover:border-red-900/40 text-xs font-medium transition-colors active:scale-95 flex items-center gap-2"
                   >
-                    {k.label}
+                    <X size={14} /> Limpiar
                   </button>
-                ))}
 
-                <button
-                  onClick={() => void saveCalculation()}
-                  className="h-10 px-5 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 ml-auto active:scale-95"
-                >
-                  <CornerDownLeft size={14} /> Calcular
-                </button>
-
-                <button
-                  onClick={() => setExpression("")}
-                  className="h-10 px-3.5 bg-zinc-900/50 border border-zinc-800/80 text-zinc-400 hover:text-red-400 hover:border-red-900/40 rounded-xl text-xs font-medium transition-colors"
-                >
-                  Limpiar
-                </button>
+                  <button
+                    onClick={() => void saveCalculation()}
+                    className="h-11 px-6 ml-auto bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 active:scale-95"
+                  >
+                    <CornerDownLeft size={14} /> Calcular
+                    <span className="ml-1 hidden sm:inline-flex items-center rounded-md border border-zinc-950/20 px-1.5 py-0.5 font-mono text-[9px] tracking-wider opacity-70">
+                      ENTER
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Panel de Soluciones */}
             <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
@@ -701,7 +729,7 @@ export default function GeometryView({
                   {calculation.primaryOutputs[0].value !== "--" && (
                     <button
                       onClick={handleCopy}
-                      className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50 hover:bg-zinc-800/60"
+                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       {copied ? "Copiado" : "Copiar"}
@@ -727,7 +755,7 @@ export default function GeometryView({
                           <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block truncate">
                             {out.label}
                           </span>
-                          <span className="text-sm font-mono font-bold text-emerald-400 block truncate mt-0.5">
+                          <span className="text-sm font-mono font-bold text-zinc-100 block truncate mt-0.5">
                             {out.value}
                           </span>
                         </div>
@@ -758,34 +786,43 @@ export default function GeometryView({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
             <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <ListOrdered size={15} className="text-zinc-400" /> Deducción Geométrica Paso a Paso
                 </span>
-                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-full">
+                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
                   {calculation.category}
                 </span>
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-2 mt-4">
-                {calculation.steps.map((step) => (
-                  <div
-                    key={step.id}
-                    className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-1.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-semibold text-zinc-200 flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center text-[11px] font-bold">
-                          {step.id}
+              <div className="flex-1 min-h-0 overflow-y-auto pt-5 pr-2">
+                {calculation.steps.map((step, index) => (
+                  <div key={step.id} className="relative pl-11 pb-4 last:pb-0">
+                    <span
+                      className="absolute left-0 top-0 w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                      aria-hidden="true"
+                    >
+                      {step.id}
+                    </span>
+                    {index < calculation.steps.length - 1 && (
+                      <span
+                        className="absolute left-[13px] top-9 bottom-0 w-px bg-zinc-800/70"
+                        aria-hidden="true"
+                      />
+                    )}
+
+                    <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm text-zinc-200 font-medium truncate">
+                          {step.stage}
                         </span>
-                        {step.stage}
-                      </span>
-                      <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900/60 px-2 py-0.5 rounded border border-zinc-800/80">
-                        {step.rule}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-zinc-400 font-sans">{step.description}</p>
-                    <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 whitespace-pre-line">
-                      {step.expression}
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 bg-zinc-900/60 px-2 py-0.5 rounded border border-zinc-800/80 shrink-0">
+                          {step.rule}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 font-sans mt-1.5">{step.description}</p>
+                      <div className="mt-2.5 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-zinc-100 whitespace-pre-line">
+                        {step.expression}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -795,38 +832,47 @@ export default function GeometryView({
             {/* Historial */}
             <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial
                 </span>
                 {history.length > 0 && (
                   <button
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
                 )}
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1">
+              <div className="flex-1 min-h-0 overflow-y-auto pt-5 pr-1 space-y-2">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin cálculos geométricos guardados.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Presiona Calcular para registrar.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin cálculos guardados</p>
+                    <p className="text-[11px] text-zinc-500">
+                      Presiona <span className="font-mono">Enter</span> o Calcular para registrar
+                    </p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setExpression(item.expression)}
-                      className="group p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 cursor-pointer transition-all flex items-center justify-between text-xs"
+                      title={`Recargar: ${item.expression}`}
+                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
                     >
-                      <div className="truncate pr-2 font-mono text-zinc-300 group-hover:text-zinc-100 transition-colors">
+                      <span className="truncate pr-2 font-mono text-[13px] text-zinc-300 group-hover:text-zinc-100 transition-colors">
                         {item.expression}
-                      </div>
-                      <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
+                      </span>
+                      <span className="font-mono font-bold text-emerald-400 shrink-0 truncate max-w-[120px]">
                         {item.result}
-                      </div>
+                      </span>
                     </div>
                   ))
                 )}
@@ -840,39 +886,49 @@ export default function GeometryView({
       {viewMode === "steps" && (
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
           <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento Geométrico Detallado
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
-                Entrada: <span className="text-zinc-200 font-semibold">{expression}</span>
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
+                Entrada: <span className="text-zinc-200 font-semibold">{expression || "--"}</span>
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
-              Método: <strong className="text-emerald-400 text-sm font-serif">{calculation.methodName}</strong>
+            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner shrink-0">
+              Método: <strong className="text-zinc-100 text-sm font-serif">{calculation.methodName}</strong>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2">
-            {calculation.steps.map((step) => (
-              <div
-                key={step.id}
-                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-zinc-200 flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner">
-                      {step.id}
+          <div className="flex-1 min-h-0 overflow-y-auto pt-1 pr-2">
+            {calculation.steps.map((step, index) => (
+              <div key={step.id} className="relative pl-13 pb-5 last:pb-0">
+                <span
+                  className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                  aria-hidden="true"
+                >
+                  {step.id}
+                </span>
+                {index < calculation.steps.length - 1 && (
+                  <span
+                    className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70"
+                    aria-hidden="true"
+                  />
+                )}
+
+                <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-zinc-100">{step.stage}</span>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                      {step.rule}
                     </span>
-                    {step.stage}
-                  </span>
-                  <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900/80 px-2 py-0.5 rounded-md border border-zinc-800">
-                    {step.rule}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed">{step.description}</p>
-                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold whitespace-pre-line">
-                  {step.expression}
+                  </div>
+                  <p className="text-xs text-zinc-300 font-sans leading-relaxed mt-1.5">{step.description}</p>
+                  <div className="mt-3 p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-zinc-100 whitespace-pre-line">
+                    {step.expression}
+                  </div>
                 </div>
               </div>
             ))}
@@ -887,7 +943,7 @@ export default function GeometryView({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Fundamentos de Geometría
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Espacio Euclidiano, Geometría Analítica y Computación
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -940,13 +996,20 @@ export default function GeometryView({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Información del método ${calculation.methodName}`}
               className="relative w-full max-w-md border border-zinc-800 bg-zinc-950 rounded-3xl p-6 shadow-2xl"
             >
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                 <h4 className="text-sm font-serif font-bold text-zinc-100 flex items-center gap-2">
                   <Cpu size={15} className="text-amber-400" /> {calculation.methodName}
                 </h4>
-                <button onClick={() => setIsMethodInfoOpen(false)} className="p-1 text-zinc-400 hover:text-zinc-100">
+                <button
+                  onClick={() => setIsMethodInfoOpen(false)}
+                  aria-label="Cerrar"
+                  className="p-1 text-zinc-400 hover:text-zinc-100"
+                >
                   <X size={16} />
                 </button>
               </div>
@@ -970,9 +1033,12 @@ export default function GeometryView({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Guía general de geometría"
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
-              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-amber-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 relative z-10">
                 <div className="flex items-center gap-2.5">
@@ -986,6 +1052,7 @@ export default function GeometryView({
                 </div>
                 <button
                   onClick={() => setIsHelpOpen(false)}
+                  aria-label="Cerrar guía"
                   className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
                 >
                   <X size={16} />

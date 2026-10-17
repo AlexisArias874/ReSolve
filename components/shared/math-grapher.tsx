@@ -632,7 +632,7 @@ export default function MathGrapher({
           ctx.beginPath();
           ctx.arc(px, py, 5.5, 0, Math.PI * 2);
           if (pt.type === "hole") {
-            ctx.fillStyle = "#09090b";
+            ctx.fillStyle = themeGraphColors.bg;
             ctx.fill();
             ctx.lineWidth = 2.5;
             ctx.strokeStyle = pt.color || "#38bdf8";
@@ -643,10 +643,19 @@ export default function MathGrapher({
           }
 
           if (pt.label) {
-            ctx.fillStyle = pt.color || "#e4e4e7";
+            // Rótulo del punto con fondo de panel para legibilidad sobre la cuadrícula
             ctx.font = "bold 11px monospace";
             ctx.textAlign = "left";
-            ctx.fillText(pt.label, px + 8, py - 8);
+            ctx.textBaseline = "middle";
+            const labelWidth = ctx.measureText(pt.label).width;
+            ctx.globalAlpha = 0.82;
+            ctx.fillStyle = themeGraphColors.bg;
+            ctx.beginPath();
+            ctx.roundRect(px + 7, py - 21, labelWidth + 10, 16, 5);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = pt.color || themeGraphColors.labels;
+            ctx.fillText(pt.label, px + 12, py - 13);
           }
         }
       });
@@ -678,6 +687,17 @@ export default function MathGrapher({
     window.addEventListener("themechange", handleThemeChange);
     return () => window.removeEventListener("themechange", handleThemeChange);
   }, [redrawAll]);
+
+  // El zoom con rueda no debe arrastrar el scroll de la página.
+  // React registra onWheel como pasivo, así que bloqueamos aquí de forma explícita.
+  useEffect(() => {
+    const targets = [canvasRef.current, modalCanvasRef.current].filter(
+      (el): el is HTMLCanvasElement => el !== null
+    );
+    const blockScroll = (e: WheelEvent) => e.preventDefault();
+    targets.forEach((el) => el.addEventListener("wheel", blockScroll, { passive: false }));
+    return () => targets.forEach((el) => el.removeEventListener("wheel", blockScroll));
+  }, [isClientMounted, isMaximized]);
 
   // Arrastre
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -719,7 +739,6 @@ export default function MathGrapher({
   const handleMouseUp = () => setIsDragging(false);
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
     const factor = e.deltaY < 0 ? 1.15 : 0.85;
     setViewState((prev) => ({
       ...prev,

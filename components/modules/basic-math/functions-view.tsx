@@ -312,6 +312,17 @@ export default function FunctionsView({
     setHistory(refreshed);
   };
 
+  // Cierre del modal con la tecla Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsHelpOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
@@ -355,15 +366,15 @@ export default function FunctionsView({
               <div className="space-y-4">
                 {/* Cabecera */}
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-1.5">
-                    <FunctionSquare size={14} className="text-zinc-500" />
+                  <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
+                    <FunctionSquare size={13} className="text-zinc-500" />
                     Moduladores de Función
                   </span>
 
                   <button
                     type="button"
                     onClick={() => setIsHelpOpen(true)}
-                    className="px-2.5 py-1 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 transition-colors flex items-center gap-1"
+                    className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-lg hover:text-zinc-300 hover:border-zinc-700 transition-colors flex items-center gap-1.5"
                   >
                     <HelpCircle size={13} className="text-amber-400" /> Catálogo
                   </button>
@@ -371,11 +382,12 @@ export default function FunctionsView({
 
                 {/* Entrada Principal f(x) */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
+                  <label htmlFor="funcion-principal" className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
                     <span>Función Principal f(x):</span>
                     <span className="text-[10px] text-sky-400 font-bold">Trazo Azul</span>
                   </label>
                   <input
+                    id="funcion-principal"
                     type="text"
                     value={funcInput}
                     onChange={(e) => setFuncInput(e.target.value)}
@@ -387,11 +399,12 @@ export default function FunctionsView({
                 {/* Entrada Comparativa g(x) */}
                 {showCompare && (
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
+                    <label htmlFor="funcion-comparativa" className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
                       <span>Función Comparativa g(x):</span>
                       <span className="text-[10px] text-rose-400 font-bold">Trazo Rojo</span>
                     </label>
                     <input
+                      id="funcion-comparativa"
                       type="text"
                       value={compareFunc}
                       onChange={(e) => setCompareFunc(e.target.value)}
@@ -582,7 +595,7 @@ export default function FunctionsView({
                     </div>
                     <div className="flex gap-2">
                       <div className="w-1/2">
-                        <label className="text-[9px] font-mono text-zinc-500 block mb-0.5">Límite a:</label>
+                        <label className="text-[10px] font-mono text-zinc-500 block mb-0.5">Límite a:</label>
                         <input
                           type="number"
                           step="0.5"
@@ -592,7 +605,7 @@ export default function FunctionsView({
                         />
                       </div>
                       <div className="w-1/2">
-                        <label className="text-[9px] font-mono text-zinc-500 block mb-0.5">Límite b:</label>
+                        <label className="text-[10px] font-mono text-zinc-500 block mb-0.5">Límite b:</label>
                         <input
                           type="number"
                           step="0.5"
@@ -725,7 +738,7 @@ export default function FunctionsView({
                 <button
                   type="button"
                   onClick={saveCalculation}
-                  className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-semibold text-xs rounded-xl shadow-md transition-all active:scale-95"
+                  className="h-11 px-6 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all shadow-lg shadow-zinc-100/5 active:scale-95"
                 >
                   Guardar Función
                 </button>
@@ -737,84 +750,105 @@ export default function FunctionsView({
 
       {/* VISTA DE PROCEDIMIENTO PASO A PASO */}
       {viewMode === "steps" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
-          <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+        <div className="relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+          <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 bg-zinc-700/10 rounded-full blur-3xl" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-800/60 shrink-0">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <Activity size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento y Deducción Analítica
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
-                f(x) = <span className="text-zinc-200 font-semibold">{funcInput}</span>
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
+                f(x) = <span className="text-zinc-200 font-semibold">{funcInput || "--"}</span>
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300">
-              Simetría: <strong className="text-emerald-400">{analysis.symmetry}</strong>
+
+            <div className="shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 shadow-inner">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                Simetría
+              </span>
+              <span className="text-sm font-serif font-bold text-zinc-100">
+                {analysis.symmetry}
+              </span>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">
-                1. Intersección con el Eje Vertical (Ordenada al Origen)
-              </span>
-              <p className="text-xs text-zinc-400">
-                Evaluamos la función en el punto neutro $x = 0$ para encontrar el cruce con el eje $Y$:
-              </p>
-              <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
-                f(0) = {analysis.yIntercept !== null ? analysis.yIntercept : "No definido en el dominio real"}
-              </div>
-            </div>
+          <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pt-6 pr-2 custom-scrollbar">
+            <div>
+              {[
+                {
+                  title: "Intersección con el Eje Vertical (Ordenada al Origen)",
+                  desc: "Evaluamos la función en el punto neutro x = 0 para encontrar el cruce con el eje Y:",
+                  value:
+                    analysis.yIntercept !== null
+                      ? `f(0) = ${analysis.yIntercept}`
+                      : "f(0) = No definido en el dominio real",
+                  tone: "text-emerald-400",
+                },
+                {
+                  title: "Detección de Raíces y Ceros de la Función",
+                  desc: "Soluciones de la ecuación f(x) = 0 aproximadas mediante métodos numéricos de bisección:",
+                  value:
+                    analysis.roots.length > 0
+                      ? analysis.roots.map((r) => `x = ${r}`).join("  |  ")
+                      : "No se identificaron cruces por cero en el rango [-15, 15]",
+                  tone: "text-emerald-400",
+                },
+                {
+                  title: "Puntos Críticos y Extremos Relativos",
+                  desc: "Ubicaciones donde la primera derivada se anula (f'(x) = 0):",
+                  value:
+                    analysis.extremes.length > 0
+                      ? analysis.extremes
+                          .map((e) => `${e.type} en (${e.x}, ${e.y})`)
+                          .join("  |  ")
+                      : "Curva monótona sin extremos relativos",
+                  tone: "text-cyan-400",
+                },
+                {
+                  title: `Ecuación de la Recta Tangente en x₀ = ${tangentX}`,
+                  desc: "Pendiente instantánea m = f'(x₀) y modelo punto-pendiente y - y₀ = m(x - x₀):",
+                  value: `m = ${analysis.slopeAtX0}  ⇒  y = ${analysis.slopeAtX0}·(x - ${tangentX}) + ${analysis.yAtTangent}`,
+                  tone: "text-amber-400",
+                },
+                {
+                  title: "Integración Definida y Área de Riemann",
+                  desc: `Aproximación de la integral definida en el intervalo [${integralA}, ${integralB}]:`,
+                  value: `∫ f(x) dx ≈ ${analysis.integralVal} u²`,
+                  tone: "text-emerald-400",
+                },
+              ].map((step, index) => (
+                <div key={index} className="relative pl-13 pb-5 last:pb-0">
+                  <span
+                    className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                    aria-hidden="true"
+                  >
+                    {index + 1}
+                  </span>
+                  {index < 4 && (
+                    <span
+                      className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70"
+                      aria-hidden="true"
+                    />
+                  )}
 
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">
-                2. Detección de Raíces y Ceros de la Función
-              </span>
-              <p className="text-xs text-zinc-400">
-                Soluciones de la ecuación $f(x) = 0$ aproximadas mediante métodos numéricos de bisección:
-              </p>
-              <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
-                {analysis.roots.length > 0
-                  ? analysis.roots.map((r) => `x = ${r}`).join("  |  ")
-                  : "No se identificaron cruces por cero en el rango [-15, 15]"}
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">
-                3. Puntos Críticos y Extremos Relativos
-              </span>
-              <p className="text-xs text-zinc-400">
-                Ubicaciones donde la primera derivada se anula ($f'(x) = 0$):
-              </p>
-              <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-cyan-400 text-center font-bold">
-                {analysis.extremes.length > 0
-                  ? analysis.extremes.map((e) => `${e.type} en (${e.x}, ${e.y})`).join("  |  ")
-                  : "Curva monótona sin extremos relativos"}
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">
-                4. Ecuación de la Recta Tangente en x₀ = {tangentX}
-              </span>
-              <p className="text-xs text-zinc-400">
-                Pendiente instantánea $m = f'(x_0)$ y modelo punto-pendiente $y - y_0 = m(x - x_0)$:
-              </p>
-              <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-amber-400 text-center font-bold">
-                m = {analysis.slopeAtX0}  ⇒  y = {analysis.slopeAtX0}·(x - {tangentX}) + {analysis.yAtTangent}
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">
-                5. Integración Definida y Área de Riemann
-              </span>
-              <p className="text-xs text-zinc-400">
-                Aproximación de la integral definida en el intervalo [{integralA}, {integralB}]:
-              </p>
-              <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
-                ∫ f(x) dx ≈ {analysis.integralVal} u²
-              </div>
+                  <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-zinc-100">{step.title}</span>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                        Paso {index + 1}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-300 leading-relaxed mt-1.5">{step.desc}</p>
+                    <div className={`mt-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 font-mono text-xs ${step.tone} text-center font-bold break-words`}>
+                      {step.value}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -822,36 +856,54 @@ export default function FunctionsView({
 
       {/* VISTA DE TEORÍA Y FUNDAMENTOS */}
       {viewMode === "theory" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto shadow-xl shadow-black/20 custom-scrollbar">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
-              Fundamentos de Análisis Funcional
+        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 overflow-y-auto shadow-xl shadow-black/20 custom-scrollbar">
+          <div className="pb-5 border-b border-zinc-800/60">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
+              <Activity size={12} /> Fundamentos de Análisis Funcional
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Mapeos, Derivadas y Comportamiento de Funciones
             </h3>
-            <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
+            <p className="text-xs text-zinc-400 mt-2.5 leading-relaxed max-w-3xl">
               Una función f: X → Y define una correspondencia unívoca entre variables. Las propiedades geométricas como las asíntotas, la concavidad y la tasa instantánea de cambio son indispensables para optimizar modelos de redes neuronales y simulaciones físicas.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 space-y-2">
-              <strong className="text-xs text-zinc-200 block font-mono uppercase tracking-wider">
-                1. Derivada y Pendiente Tangente
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                La derivada f'(x₀) representa el límite del cociente incremental. Geométricamente, describe la pendiente de la recta que roza la curva en dicho punto.
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 space-y-2">
-              <strong className="text-xs text-zinc-200 block font-mono uppercase tracking-wider">
-                2. Integral de Riemann
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                La integral definida representa la acumulación continua de un área neta bajo la curva. Si f(x) ≥ 0, la integral cuantifica exactamente la superficie acotada entre los límites [a, b].
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
+            {[
+              {
+                priority: "1",
+                title: "Derivada y Pendiente Tangente",
+                rationale:
+                  "La derivada f'(x₀) representa el límite del cociente incremental. Geométricamente, describe la pendiente de la recta que roza la curva en dicho punto.",
+              },
+              {
+                priority: "2",
+                title: "Integral de Riemann",
+                rationale:
+                  "La integral definida representa la acumulación continua de un área neta bajo la curva. Si f(x) ≥ 0, la integral cuantifica exactamente la superficie acotada entre los límites [a, b].",
+              },
+            ].map((rule) => (
+              <div
+                key={rule.priority}
+                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors"
+              >
+                <div className="flex items-start gap-3.5">
+                  <span
+                    className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center font-mono text-xs font-bold shrink-0 shadow-inner"
+                    aria-hidden="true"
+                  >
+                    {rule.priority}
+                  </span>
+                  <div className="min-w-0">
+                    <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
+                      {rule.title}
+                    </strong>
+                    <p className="text-xs text-zinc-400 leading-relaxed">{rule.rationale}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -865,9 +917,12 @@ export default function FunctionsView({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Catálogo y Operadores Matemáticos"
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
-              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-sky-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 relative z-10">
                 <div className="flex items-center gap-2.5">

@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Falta la clave GROQ_API_KEY en .env.local" }, { status: 500 });
     }
 
-    const systemInstruction = `Eres el motor central de ReSolve (Omni-Solver). Tu objetivo es analizar problemas, resolverlos o generar nuevos ejercicios de práctica universitaria según se solicite, devolviendo EXCLUSIVAMENTE un objeto JSON válido (sin código markdown \`\`\`json, solo las llaves crudas).
+    const systemInstruction = `Eres el motor de respaldo de la Calculadora Universal de ReSolve. Tu objetivo es analizar problemas que el motor local no pudo resolver (lenguaje natural, clasificación o generación de ejercicios de práctica universitaria), devolviendo EXCLUSIVAMENTE un objeto JSON válido (sin código markdown \`\`\`json, solo las llaves crudas).
 
 Debes clasificar el problema en una de las materias:
 - "mat1": Matemáticas I ("aritmetica", "algebra", "geometria", "funciones", "limites", "derivadas", "integrales")
@@ -95,9 +95,9 @@ REGLAS DE RELLENO:
     const parsed = JSON.parse(rawContent);
     return NextResponse.json(parsed);
   } catch (error: unknown) {
-    console.error("Error en Omni-Solve:", error);
+    console.error("Error en Calculadora Universal:", error);
     return NextResponse.json(
-      { error: "Error al procesar el ejercicio en el motor Omni-Solver." },
+      { error: "Error al procesar el ejercicio en la Calculadora Universal." },
       { status: 500 }
     );
   }

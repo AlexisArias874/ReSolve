@@ -38,10 +38,6 @@ import {
   deleteUserHistory,
   type HistoryItem,
 } from "@/lib/supabase/history";
-import ReactMarkdown from "react-markdown";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
 
 // -----------------------------------------------------------------------------
 // TIPOS Y MODELOS DEL MÉTODO SIMPLEX
@@ -659,9 +655,18 @@ export default function SimplexView({
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // Accesibilidad: cierre del modal con la tecla Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsHelpOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     // REGLA 1 & 2: Ancestro raíz con relative explícito y cadena de alturas resuelta
-    <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
+    <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto custom-scrollbar pr-1">
           {/* BARRA DE SELECCIÓN DE MÉTODO */}
@@ -703,7 +708,7 @@ export default function SimplexView({
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/60 pb-3">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <Scale size={14} className="text-zinc-500" />
+                    <Scale size={15} className="text-zinc-500" />
                     Planteamiento del Tablero Simplex
                   </span>
 
@@ -865,7 +870,9 @@ export default function SimplexView({
                           type="button"
                           onClick={() => handleRemoveConstraint(c.id)}
                           disabled={constraints.length <= 1}
-                          className="p-1 text-zinc-600 hover:text-rose-400 disabled:opacity-20 ml-auto"
+                          title="Eliminar restricción"
+                          aria-label="Eliminar restricción"
+                          className="p-1 text-zinc-600 hover:text-red-400 disabled:opacity-20 disabled:cursor-not-allowed ml-auto"
                         >
                           <X size={14} />
                         </button>
@@ -876,23 +883,24 @@ export default function SimplexView({
               </div>
 
               {/* Botón Guardar */}
-              <div className="pt-3 border-t border-zinc-800/60 flex items-center justify-between">
-                <span className="text-[10px] font-mono text-zinc-500">
+              <div className="pt-3 border-t border-zinc-800/60 flex items-center justify-between gap-3">
+                <span className="text-[10px] font-mono text-zinc-500 truncate">
                   Persistencia ReSolve · Simplex Gauss-Jordan
                 </span>
                 <button
                   type="button"
                   onClick={saveCalculation}
-                  className="px-5 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-semibold text-xs rounded-xl shadow-md transition-all active:scale-95"
+                  className="h-11 px-6 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] shadow-lg shadow-zinc-100/5 active:scale-95 flex items-center gap-2 shrink-0"
                 >
                   Guardar en Historial
+                  <ArrowRight size={14} />
                 </button>
               </div>
             </div>
 
             {/* Panel Derecho: Hero Card con Solución Óptima */}
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden relative">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-52 h-52 bg-emerald-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-16 -right-16 w-52 h-52 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
@@ -900,8 +908,9 @@ export default function SimplexView({
                     Valor Óptimo Z*
                   </span>
                   <button
+                    type="button"
                     onClick={handleCopy}
-                    className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                    className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                   >
                     {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                     {copied ? "Copiado" : "Copiar"}
@@ -912,21 +921,28 @@ export default function SimplexView({
                   <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
                     {sense === "max" ? "Máximo Valor Obtenido" : "Mínimo Costo Obtenido"}
                   </span>
-                  <div
-                    className={`text-5xl font-serif font-bold tracking-tight ${
-                      result.status === "optimal"
-                        ? "text-emerald-400"
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={result.status}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.05 }}
+                      transition={{ duration: 0.2 }}
+                      className={`font-serif font-bold tracking-tight ${
+                        result.status === "optimal"
+                          ? "text-5xl lg:text-7xl text-zinc-100"
+                          : result.status === "unbounded"
+                          ? "text-4xl lg:text-5xl text-amber-400"
+                          : "text-4xl lg:text-5xl text-red-400"
+                      }`}
+                    >
+                      {result.status === "optimal"
+                        ? result.optimalZ
                         : result.status === "unbounded"
-                        ? "text-amber-400"
-                        : "text-rose-400"
-                    }`}
-                  >
-                    {result.status === "optimal"
-                      ? result.optimalZ
-                      : result.status === "unbounded"
-                      ? "∞ (No Acot.)"
-                      : "Infactible"}
-                  </div>
+                        ? "∞ (No Acot.)"
+                        : "Infactible"}
+                    </motion.div>
+                  </AnimatePresence>
                   <span className="text-[11px] font-mono text-zinc-400 mt-2 block">
                     {result.status === "optimal"
                       ? `Convergencia en ${result.iterationsCount} tabla(s)`
@@ -1115,7 +1131,7 @@ export default function SimplexView({
                     </div>
                     {currentTableau.pivotElement !== null && (
                       <span className="text-zinc-500">
-                        Pivote a_{currentTableau.pivotRow},{currentTableau.pivotCol} ={" "}
+                        Pivote a<sub>{currentTableau.pivotRow},{currentTableau.pivotCol}</sub> ={" "}
                         <strong className="text-amber-300">{currentTableau.pivotElement}</strong>
                       </span>
                     )}
@@ -1127,13 +1143,15 @@ export default function SimplexView({
             {/* Panel Historial */}
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Ejecuciones
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
@@ -1142,24 +1160,26 @@ export default function SimplexView({
 
               <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin tableros guardados.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">
-                      Guarda iteraciones para auditoría académica.
-                    </p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin tableros guardados</p>
+                    <p className="text-[11px] text-zinc-500">Guarda iteraciones para auditoría académica</p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
-                      className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 transition-all flex items-center justify-between text-xs"
+                      title={item.expression}
+                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-sm"
                     >
-                      <div className="truncate pr-2 font-mono text-zinc-300">
+                      <span className="truncate pr-2 font-mono text-[13px] text-zinc-300">
                         {item.expression}
-                      </div>
-                      <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
+                      </span>
+                      <span className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
-                      </div>
+                      </span>
                     </div>
                   ))
                 )}
@@ -1174,7 +1194,10 @@ export default function SimplexView({
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20 overflow-hidden">
           <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
             <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <Binary size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento Riguroso de Pivoteo Simplex
               </h3>
               <p className="text-xs text-zinc-400 mt-1 font-mono">
@@ -1242,7 +1265,7 @@ export default function SimplexView({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Algoritmos de Optimización Combinatoria
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               El Algoritmo Simplex de George Dantzig (1947)
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -1276,13 +1299,16 @@ export default function SimplexView({
         {isHelpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="simplex-help-title"
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
-              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 relative z-10">
                 <div className="flex items-center gap-2.5">
@@ -1290,7 +1316,7 @@ export default function SimplexView({
                     <HelpCircle size={16} />
                   </div>
                   <div>
-                    <h3 className="text-base font-serif font-bold text-zinc-100">
+                    <h3 id="simplex-help-title" className="text-base font-serif font-bold text-zinc-100">
                       Guía y Casos de Estudio de Simplex
                     </h3>
                     <p className="text-xs text-zinc-400">
@@ -1299,6 +1325,8 @@ export default function SimplexView({
                   </div>
                 </div>
                 <button
+                  type="button"
+                  aria-label="Cerrar"
                   onClick={() => setIsHelpOpen(false)}
                   className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
                 >
@@ -1362,7 +1390,7 @@ export default function SimplexView({
                   </h4>
                   <ul className="list-disc pl-4 space-y-1.5 text-zinc-400 leading-relaxed">
                     <li><strong>Complejidad Teórica:</strong> Exponencial en el peor caso (Cubo de Klee-Minty), requiriendo 2ⁿ iteraciones.</li>
-                    <li><strong>Complejidad Práctica:</strong> Casi lineal $O(m)$ en problemas reales del mundo industrial.</li>
+                    <li><strong>Complejidad Práctica:</strong> Casi lineal <code className="text-zinc-200 font-mono">O(m)</code> en problemas reales del mundo industrial.</li>
                     <li><strong>Solvers Industriales:</strong> CPLEX, Gurobi y GLPK combinan Simplex dual con Branch-and-Cut para programación entera mixta (MIP).</li>
                   </ul>
                 </div>

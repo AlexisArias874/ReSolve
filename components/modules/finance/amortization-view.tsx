@@ -404,8 +404,22 @@ export default function AmortizationView({
     window.print();
   };
 
+  // Cierre de cualquier modal con la tecla Escape
+  useEffect(() => {
+    if (!isAIPanelOpen && !isPdfModalOpen && !isHelpOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsAIPanelOpen(false);
+        setIsPdfModalOpen(false);
+        setIsHelpOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [isAIPanelOpen, isPdfModalOpen, isHelpOpen]);
+
   return (
-    <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
+    <div className="h-full flex flex-col gap-6 min-h-0 relative">
       
       {/* =======================================================================
           1. TODA LA INTERFAZ EN PANTALLA SE OCULTA AL IMPRIMIR (print:hidden)
@@ -419,19 +433,20 @@ export default function AmortizationView({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0">
               
               {/* Consola de Parámetros del Crédito */}
-              <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20">
-                <div className="space-y-4">
+              <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
+                <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
+                <div className="relative z-10 space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                      <Landmark size={14} className="text-zinc-500" />
-                      Consola de Amortización de Créditos
+                      <Landmark size={13} className="text-zinc-500" />
+                      Amortización de Créditos
                     </span>
 
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setIsAIPanelOpen(true)}
-                        className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-[11px] font-mono text-amber-300 transition-all flex items-center gap-1.5 shadow-sm"
+                        className="h-9 px-3 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-[11px] font-mono text-amber-300 transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
                       >
                         <BrainCircuit size={13} className="text-amber-400" />
                         <span>Interpretar Crédito con IA</span>
@@ -440,7 +455,7 @@ export default function AmortizationView({
                       <button
                         type="button"
                         onClick={() => setIsHelpOpen(true)}
-                        className="px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 transition-colors flex items-center gap-1"
+                        className="h-9 px-3 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 transition-colors flex items-center gap-1 active:scale-95"
                       >
                         <HelpCircle size={13} className="text-zinc-400" />
                         <span>Ejemplos</span>
@@ -473,13 +488,14 @@ export default function AmortizationView({
                   {/* Inputs de Parámetros */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                     {/* Monto del Préstamo */}
-                    <div className="p-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/80">
-                      <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block mb-1">
-                        Monto del Préstamo / Capital (P):
+                    <div className="px-4 py-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/60">
+                      <label htmlFor="amort-loan" className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
+                        Monto del Préstamo / Capital (P)
                       </label>
                       <div className="flex items-center gap-1.5">
                         <span className="text-zinc-500 font-mono text-sm">{currency}</span>
                         <input
+                          id="amort-loan"
                           type="number"
                           value={loanInput}
                           onChange={(e) => setLoanInput(e.target.value)}
@@ -490,12 +506,13 @@ export default function AmortizationView({
                     </div>
 
                     {/* Tasa Nominal y Frecuencia */}
-                    <div className="p-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/80">
-                      <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block mb-1">
-                        Tasa de Interés Nominal Anual (j):
+                    <div className="px-4 py-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/60">
+                      <label htmlFor="amort-rate" className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
+                        Tasa de Interés Nominal Anual (j)
                       </label>
                       <div className="flex items-center gap-2">
                         <input
+                          id="amort-rate"
                           type="number"
                           value={rateInput}
                           onChange={(e) => setRateInput(e.target.value)}
@@ -504,9 +521,10 @@ export default function AmortizationView({
                         />
                         <span className="text-zinc-500 font-mono text-xs">%</span>
                         <select
+                          aria-label="Frecuencia de pago"
                           value={payFreq}
                           onChange={(e) => setPayFreq(e.target.value as PaymentFrequency)}
-                          className="bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs font-mono text-zinc-300 outline-none cursor-pointer shrink-0"
+                          className="bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs font-mono text-zinc-300 outline-none cursor-pointer shrink-0 focus:border-zinc-500"
                         >
                           <option value="anual">Anual</option>
                           <option value="semestral">Semestral</option>
@@ -518,12 +536,13 @@ export default function AmortizationView({
                     </div>
 
                     {/* Plazo o Número de Cuotas */}
-                    <div className="p-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/80">
-                      <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block mb-1">
-                        Plazo o Número de Periodos (n):
+                    <div className="px-4 py-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/60">
+                      <label htmlFor="amort-periods" className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
+                        Plazo o Número de Periodos (n)
                       </label>
                       <div className="flex items-center gap-2">
                         <input
+                          id="amort-periods"
                           type="number"
                           value={periodsInput}
                           onChange={(e) => setPeriodsInput(e.target.value)}
@@ -535,11 +554,12 @@ export default function AmortizationView({
                     </div>
 
                     {/* Moneda */}
-                    <div className="p-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/80">
-                      <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block mb-1">
-                        Símbolo Monetario:
+                    <div className="px-4 py-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/60">
+                      <label htmlFor="amort-currency" className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
+                        Símbolo Monetario
                       </label>
                       <input
+                        id="amort-currency"
                         type="text"
                         value={currency}
                         onChange={(e) => setCurrency(e.target.value)}
@@ -559,23 +579,23 @@ export default function AmortizationView({
                 </div>
 
                 {/* Botón Guardar */}
-                <div className="mt-5 pt-4 border-t border-zinc-800/60 flex items-center justify-between">
+                <div className="relative z-10 mt-5 pt-4 border-t border-zinc-800/60 flex items-center justify-between">
                   <span className="text-[10px] font-mono text-zinc-500">
                     Respaldo automático en Supabase
                   </span>
                   <button
                     type="button"
                     onClick={saveCalculation}
-                    className="px-5 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-semibold text-xs rounded-xl shadow-md transition-all active:scale-95"
+                    className="h-11 px-6 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] shadow-lg shadow-zinc-100/5 active:scale-95 transition-all flex items-center gap-2"
                   >
-                    Guardar Tabla
+                    <CornerDownLeft size={14} /> Guardar Tabla
                   </button>
                 </div>
               </div>
 
               {/* Caja Derecha: Cuota y Métricas Clave */}
               <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-                <div className="pointer-events-none absolute -bottom-16 -right-16 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
                 <div className="relative z-10 space-y-4">
                   <div className="flex items-center justify-between">
@@ -585,7 +605,7 @@ export default function AmortizationView({
                     <button
                       type="button"
                       onClick={handleCopy}
-                      className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       {copied ? "Copiado" : "Copiar"}
@@ -593,12 +613,21 @@ export default function AmortizationView({
                   </div>
 
                   <div className="py-4 text-center">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1.5">
                       {system === "aleman" ? "Primera Cuota R₁" : "Monto de Cuota Fija R"}
                     </span>
-                    <div className="text-4xl lg:text-5xl font-serif font-bold text-emerald-400 tracking-tight">
-                      {currency}{calculation.initialPayment.toLocaleString()}
-                    </div>
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={calculation.initialPayment}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 1.05 }}
+                        transition={{ duration: 0.2 }}
+                        className="text-5xl lg:text-7xl font-serif font-bold text-zinc-100 tracking-tight"
+                      >
+                        {currency}{calculation.initialPayment.toLocaleString()}
+                      </motion.div>
+                    </AnimatePresence>
                     {system === "aleman" && (
                       <span className="text-[11px] font-mono text-zinc-400 mt-1 block">
                         Última cuota final: {currency}{calculation.finalPayment.toLocaleString()}
@@ -632,7 +661,7 @@ export default function AmortizationView({
                   <button
                     type="button"
                     onClick={() => setIsPdfModalOpen(true)}
-                    className="w-full py-3 px-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-zinc-100/5 transition-all active:scale-95"
+                    className="w-full h-11 px-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-zinc-100/5 transition-all hover:scale-[1.02] active:scale-95"
                   >
                     <FileText size={15} />
                     <span>Configurar y Exportar PDF</span>
@@ -645,13 +674,13 @@ export default function AmortizationView({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
               
               {/* Tabla Periódica de Amortización */}
-              <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+              <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
                 <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                  <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                  <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                     <ListOrdered size={15} className="text-zinc-400" /> Calendario de Amortización ({system.toUpperCase()})
                   </span>
-                  <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-full">
-                    {calculation.scheduleRows.length} Pagos Programados
+                  <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
+                    {calculation.scheduleRows.length} pagos
                   </span>
                 </div>
 
@@ -682,39 +711,45 @@ export default function AmortizationView({
               </div>
 
               {/* Historial */}
-              <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+              <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
                 <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                  <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                  <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                     <History size={15} className="text-zinc-400" /> Historial de Créditos
                   </span>
                   {history.length > 0 && (
                     <button
+                      type="button"
                       onClick={() => void clearHistory()}
-                      className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                      title="Vaciar historial"
+                      className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                     >
                       <Trash2 size={13} /> Limpiar
                     </button>
                   )}
                 </div>
 
-                <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
+                <div className="flex-1 min-h-0 overflow-y-auto space-y-2 mt-4 pr-1 custom-scrollbar">
                   {history.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                      <p>Sin amortizaciones guardadas.</p>
-                      <p className="text-[10px] text-zinc-600 mt-1">Guarda tablas de crédito para auditar.</p>
+                    <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                      <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                        <Landmark size={18} className="text-zinc-600" />
+                      </span>
+                      <p className="text-sm text-zinc-300 font-medium">Sin amortizaciones guardadas</p>
+                      <p className="text-[11px] text-zinc-500 font-mono">Guarda tablas de crédito para auditar</p>
                     </div>
                   ) : (
                     history.map((item) => (
                       <div
                         key={item.id}
-                        className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 transition-all flex items-center justify-between text-xs"
+                        title={item.expression}
+                        className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm"
                       >
-                        <div className="truncate pr-2 font-mono text-zinc-300">
+                        <span className="truncate pr-2 font-mono text-[13px] text-zinc-300">
                           {item.expression}
-                        </div>
-                        <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px]">
+                        </span>
+                        <span className="font-mono font-bold text-emerald-400 shrink-0">
                           {item.result}
-                        </div>
+                        </span>
                       </div>
                     ))
                   )}
@@ -727,57 +762,73 @@ export default function AmortizationView({
 
         {/* VISTA 2: PASO A PASO */}
         {viewMode === "steps" && (
-          <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
-            <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-              <div>
-                <h3 className="text-xl font-serif font-bold text-zinc-100">
+          <div className="relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+            <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 bg-zinc-700/10 rounded-full blur-3xl" />
+
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/60 pb-5 shrink-0">
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                  <ListOrdered size={12} /> Procedimiento
+                </div>
+                <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                   Deducción del Sistema de Amortización
                 </h3>
-                <p className="text-xs text-zinc-400 mt-1 font-mono">
-                  Modalidad: Sistema {system.toUpperCase()} | Préstamo: {currency}{calculation.loan.toLocaleString()}
+                <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
+                  Modalidad: Sistema {system.toUpperCase()} · Préstamo: {currency}{calculation.loan.toLocaleString()}
                 </p>
               </div>
-              <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
-                Cuota: <strong className="text-emerald-400 text-sm font-serif">{currency}{calculation.initialPayment.toLocaleString()}</strong>
+              <div className="shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 shadow-inner">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Cuota</span>
+                <span className="text-sm font-serif font-bold text-zinc-100">{currency}{calculation.initialPayment.toLocaleString()}</span>
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-              {calculation.steps.map((step, idx) => (
-                <div
-                  key={idx}
-                  className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-2.5"
-                >
-                  <span className="text-sm font-semibold text-zinc-200 font-mono">
-                    {step.stage}
-                  </span>
-                  <p className="text-xs text-zinc-300 font-sans leading-relaxed">{step.desc}</p>
-                  <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold whitespace-pre-line">
-                    {step.math}
+            <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pt-6 pr-2 custom-scrollbar">
+              <div>
+                {calculation.steps.map((step, idx) => (
+                  <div key={idx} className="relative pl-11 pb-5 last:pb-0">
+                    <span
+                      className="absolute left-0 top-0 w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                      aria-hidden="true"
+                    >
+                      {idx + 1}
+                    </span>
+                    {idx < calculation.steps.length - 1 && (
+                      <span className="absolute left-[13px] top-9 bottom-0 w-px bg-zinc-800/70" aria-hidden="true" />
+                    )}
+                    <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                      <span className="text-sm font-semibold text-zinc-100 font-mono">
+                        {step.stage}
+                      </span>
+                      <p className="text-xs text-zinc-300 font-sans leading-relaxed mt-1.5">{step.desc}</p>
+                      <div className="mt-3 p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold whitespace-pre-line">
+                        {step.math}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
 
         {/* VISTA 3: TEORÍA */}
         {viewMode === "theory" && (
-          <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto shadow-xl shadow-black/20 custom-scrollbar">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
+          <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 overflow-y-auto shadow-xl shadow-black/20 custom-scrollbar">
+            <div className="pb-5 border-b border-zinc-800/60">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
                 <BookOpen size={12} /> Ingeniería Económica y Sistemas de Crédito
               </div>
-              <h3 className="text-2xl font-serif font-bold text-zinc-100">
+              <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
                 Sistemas Internacionales de Amortización de Deuda
               </h3>
-              <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
+              <p className="text-xs text-zinc-400 mt-2.5 leading-relaxed max-w-3xl">
                 La amortización es el proceso financiero mediante el cual se extingue gradualmente una deuda a través de pagos periódicos que cubren los intereses devengados y liquidan el capital inicial prestado.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
+              <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
                 <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
                   1. Sistema Francés (Cuota Fija)
                 </strong>
@@ -785,7 +836,7 @@ export default function AmortizationView({
                   Todas las cuotas R son idénticas. Al principio se paga mayor interés y poco capital; conforme el saldo vivo disminuye, el abono a capital aumenta geométricamente.
                 </p>
               </div>
-              <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
+              <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
                 <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
                   2. Sistema Alemán (Cuota Decreciente)
                 </strong>
@@ -793,7 +844,7 @@ export default function AmortizationView({
                   El capital se amortiza en cuotas uniformes constantes A = P/n. Los intereses decrecen linealmente cada mes, haciendo que la cuota final sea notablemente menor a la primera y reduciendo el sobrecosto.
                 </p>
               </div>
-              <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
+              <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
                 <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
                   3. Sistema Americano (Al Vencimiento)
                 </strong>
@@ -801,7 +852,7 @@ export default function AmortizationView({
                   Durante el plazo solo se liquidan intereses periódicos simples. El 100% del principal se reintegra en la última cuota. Común en bonos de deuda pública y emisiones corporativas.
                 </p>
               </div>
-              <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
+              <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
                 <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
                   4. Saldo Insoluto y Liquidación Anticipada
                 </strong>
@@ -825,6 +876,9 @@ export default function AmortizationView({
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="amort-ai-modal-title"
               className="relative w-full max-w-xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
@@ -833,11 +887,11 @@ export default function AmortizationView({
                     <BrainCircuit size={16} />
                   </div>
                   <div>
-                    <h3 className="text-base font-serif font-bold text-zinc-100">Extractor de Casos de Amortización</h3>
+                    <h3 id="amort-ai-modal-title" className="text-base font-serif font-bold text-zinc-100">Extractor de Casos de Amortización</h3>
                     <p className="text-xs text-zinc-400">Pega problemas bancarios o de crédito y la IA llenará los campos</p>
                   </div>
                 </div>
-                <button onClick={() => setIsAIPanelOpen(false)} className="p-1.5 text-zinc-400 hover:text-zinc-100">
+                <button aria-label="Cerrar" onClick={() => setIsAIPanelOpen(false)} className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors">
                   <X size={16} />
                 </button>
               </div>
@@ -882,6 +936,9 @@ export default function AmortizationView({
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="amort-pdf-modal-title"
               className="relative w-full max-w-2xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 shrink-0">
@@ -890,11 +947,11 @@ export default function AmortizationView({
                     <FileText size={16} />
                   </div>
                   <div>
-                    <h3 className="text-base font-serif font-bold text-zinc-100">Exportador de Tabla de Amortización a PDF</h3>
+                    <h3 id="amort-pdf-modal-title" className="text-base font-serif font-bold text-zinc-100">Exportador de Tabla de Amortización a PDF</h3>
                     <p className="text-xs text-zinc-400">Personaliza las secciones antes de imprimir o guardar</p>
                   </div>
                 </div>
-                <button onClick={() => setIsPdfModalOpen(false)} className="p-1.5 text-zinc-400 hover:text-zinc-100">
+                <button aria-label="Cerrar" onClick={() => setIsPdfModalOpen(false)} className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors">
                   <X size={16} />
                 </button>
               </div>
@@ -988,14 +1045,17 @@ export default function AmortizationView({
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="amort-help-modal-title"
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
                 <div className="flex items-center gap-2">
                   <Landmark size={16} className="text-amber-400" />
-                  <h3 className="text-base font-serif font-bold text-zinc-100">Catálogo de Sistemas de Amortización</h3>
+                  <h3 id="amort-help-modal-title" className="text-base font-serif font-bold text-zinc-100">Catálogo de Sistemas de Amortización</h3>
                 </div>
-                <button onClick={() => setIsHelpOpen(false)} className="p-2 text-zinc-400 hover:text-zinc-100">
+                <button aria-label="Cerrar" onClick={() => setIsHelpOpen(false)} className="p-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors">
                   <X size={16} />
                 </button>
               </div>

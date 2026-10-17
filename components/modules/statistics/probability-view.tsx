@@ -165,6 +165,20 @@ function factorial(num: number): number {
   return res;
 }
 
+/**
+ * Formatea un conteo para mostrarlo en LaTeX sin notación científica cruda
+ * (evita resultados tipo `2.02e+19` dentro de la fórmula).
+ */
+function formatLatexNumber(value: number): string {
+  if (!Number.isFinite(value)) return "\\infty";
+  if (Math.abs(value) >= 1e6) {
+    const exponent = Math.floor(Math.log10(Math.abs(value)));
+    const mantissa = value / Math.pow(10, exponent);
+    return `${Number(mantissa.toFixed(3))} \\times 10^{${exponent}}`;
+  }
+  return `${value}`;
+}
+
 export default function ProbabilityView({
   viewMode,
   initialExpression = "",
@@ -277,13 +291,13 @@ export default function ProbabilityView({
 
     if (combType === "combinations") {
       val = factorial(n) / (factorial(r) * factorial(n - r));
-      formula = `\\binom{${n}}{${r}} = \\frac{${n}!}{${r}!(${n}-${r})!} = ${val}`;
+      formula = `\\binom{${n}}{${r}} = ${formatLatexNumber(val)}`;
     } else if (combType === "permutations") {
       val = factorial(n) / factorial(n - r);
-      formula = `P(${n}, ${r}) = \\frac{${n}!}{(${n}-${r})!} = ${val}`;
+      formula = `P(${n}, ${r}) = ${formatLatexNumber(val)}`;
     } else {
       val = Math.pow(n, r);
-      formula = `VR(${n}, ${r}) = ${n}^{${r}} = ${val}`;
+      formula = `VR(${n}, ${r}) = ${n}^{${r}} = ${formatLatexNumber(val)}`;
     }
 
     return {
@@ -487,8 +501,20 @@ export default function ProbabilityView({
     return steps;
   }, [subtopic, hypotheses, bayesAnalysis, eventsAnalysis, combinatoricsAnalysis]);
 
+  // Accesibilidad: cierre de modales con la tecla Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsPropsOpen(false);
+        setIsHelpOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
-    <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
+    <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto custom-scrollbar pr-1">
           {/* BARRA DE SELECCIÓN DE SUB-MOTOR */}
@@ -549,8 +575,8 @@ export default function ProbabilityView({
               {subtopic === "bayes" && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3">
-                    <span className="text-xs font-mono font-semibold text-zinc-300 flex items-center gap-2">
-                      <GitBranch size={14} className="text-emerald-400" />
+                    <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
+                      <GitBranch size={13} className="text-zinc-500" />
                       Hipótesis a Priori y Verosimilitudes Condicionales
                     </span>
                     <button
@@ -571,6 +597,7 @@ export default function ProbabilityView({
                         <input
                           type="text"
                           value={h.name}
+                          aria-label="Nombre de la hipótesis"
                           onChange={(e) => updateHypothesis(h.id, "name", e.target.value)}
                           className="w-32 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-zinc-200 focus:outline-none focus:border-emerald-500"
                         />
@@ -583,6 +610,7 @@ export default function ProbabilityView({
                             min="0"
                             max="1"
                             value={h.prior}
+                            aria-label="Probabilidad a priori P(Aᵢ)"
                             onChange={(e) => updateHypothesis(h.id, "prior", e.target.value)}
                             className="w-16 bg-zinc-900 border border-zinc-800 rounded-lg px-1.5 py-1 text-center text-emerald-400 font-bold focus:outline-none focus:border-emerald-500"
                           />
@@ -596,6 +624,7 @@ export default function ProbabilityView({
                             min="0"
                             max="1"
                             value={h.likelihood}
+                            aria-label="Verosimilitud P(B|Aᵢ)"
                             onChange={(e) => updateHypothesis(h.id, "likelihood", e.target.value)}
                             className="w-16 bg-zinc-900 border border-zinc-800 rounded-lg px-1.5 py-1 text-center text-amber-400 font-bold focus:outline-none focus:border-amber-400"
                           />
@@ -632,7 +661,8 @@ export default function ProbabilityView({
               {subtopic === "events" && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3">
-                    <span className="text-xs font-mono font-semibold text-zinc-300">
+                    <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
+                      <PieChart size={13} className="text-zinc-500" />
                       Parámetros de Eventos A y B
                     </span>
                     <div className="flex bg-zinc-900 p-0.5 rounded-xl border border-zinc-800 text-xs font-mono">
@@ -678,6 +708,7 @@ export default function ProbabilityView({
                         max="1"
                         step="0.02"
                         value={probA}
+                        aria-label="Probabilidad del evento A"
                         onChange={(e) => setProbA(parseFloat(e.target.value))}
                         className="w-full accent-emerald-500"
                       />
@@ -694,6 +725,7 @@ export default function ProbabilityView({
                         max="1"
                         step="0.02"
                         value={probB}
+                        aria-label="Probabilidad del evento B"
                         onChange={(e) => setProbB(parseFloat(e.target.value))}
                         className="w-full accent-sky-500"
                       />
@@ -710,7 +742,9 @@ export default function ProbabilityView({
                         max={Math.min(probA, probB)}
                         step="0.01"
                         disabled={eventRelation !== "custom"}
+                        title={eventRelation !== "custom" ? "Selecciona la relación Personalizado para editar" : "Probabilidad de la intersección"}
                         value={eventsAnalysis.probIntersection}
+                        aria-label="Probabilidad de la intersección P(A ∩ B)"
                         onChange={(e) => setCustomIntersection(parseFloat(e.target.value))}
                         className="w-full accent-purple-500 disabled:opacity-30"
                       />
@@ -723,7 +757,8 @@ export default function ProbabilityView({
               {subtopic === "combinatorics" && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3">
-                    <span className="text-xs font-mono font-semibold text-zinc-300">
+                    <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
+                      <Binary size={13} className="text-zinc-500" />
                       Técnicas de Conteo y Particiones
                     </span>
                     <div className="flex bg-zinc-900 p-0.5 rounded-xl border border-zinc-800 text-xs font-mono">
@@ -759,7 +794,12 @@ export default function ProbabilityView({
                         min="1"
                         max="25"
                         value={combN}
-                        onChange={(e) => setCombN(parseInt(e.target.value))}
+                        aria-label="Población total n"
+                        onChange={(e) => {
+                          const n = parseInt(e.target.value);
+                          setCombN(n);
+                          setCombR((r) => Math.min(r, n));
+                        }}
                         className="w-full accent-emerald-400"
                       />
                     </div>
@@ -774,6 +814,7 @@ export default function ProbabilityView({
                         min="0"
                         max={combN}
                         value={combR}
+                        aria-label="Tamaño de la muestra o selección r"
                         onChange={(e) => setCombR(parseInt(e.target.value))}
                         className="w-full accent-sky-400"
                       />
@@ -790,7 +831,7 @@ export default function ProbabilityView({
                 <button
                   type="button"
                   onClick={saveCalculation}
-                  className="px-5 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-semibold text-xs rounded-xl shadow-md transition-all active:scale-95"
+                  className="h-11 px-6 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] shadow-lg shadow-zinc-100/5 active:scale-95 flex items-center gap-2 transition-all"
                 >
                   Guardar en Historial
                 </button>
@@ -799,11 +840,12 @@ export default function ProbabilityView({
 
             {/* Panel Derecho: Tarjeta Hero */}
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden relative">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-52 h-52 bg-emerald-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold">
+                  <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
+                    <Activity size={13} className="text-zinc-500" />
                     {subtopic === "bayes"
                       ? "Posterior P(A₁|B)"
                       : subtopic === "events"
@@ -811,8 +853,9 @@ export default function ProbabilityView({
                       : "Espacio Muestral"}
                   </span>
                   <button
+                    type="button"
                     onClick={handleCopy}
-                    className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                    className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                   >
                     {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                     {copied ? "Copiado" : "Copiar"}
@@ -827,13 +870,28 @@ export default function ProbabilityView({
                       ? "Probabilidad Acumulada"
                       : "Configuraciones Posibles"}
                   </span>
-                  <div className="text-5xl font-serif font-bold text-emerald-400 tracking-tight">
-                    {subtopic === "bayes"
-                      ? `${((bayesAnalysis.posteriors[0]?.posterior || 0) * 100).toFixed(2)}%`
-                      : subtopic === "events"
-                      ? `${(eventsAnalysis.probUnion * 100).toFixed(1)}%`
-                      : combinatoricsAnalysis.resultValue.toLocaleString()}
-                  </div>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={
+                        subtopic === "bayes"
+                          ? `b-${bayesAnalysis.posteriors[0]?.posterior || 0}`
+                          : subtopic === "events"
+                          ? `e-${eventsAnalysis.probUnion}`
+                          : `c-${combinatoricsAnalysis.resultValue}`
+                      }
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.05 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-5xl lg:text-7xl font-serif font-bold text-zinc-100 tracking-tight"
+                    >
+                      {subtopic === "bayes"
+                        ? `${((bayesAnalysis.posteriors[0]?.posterior || 0) * 100).toFixed(2)}%`
+                        : subtopic === "events"
+                        ? `${(eventsAnalysis.probUnion * 100).toFixed(1)}%`
+                        : combinatoricsAnalysis.resultValue.toLocaleString("es-MX")}
+                    </motion.div>
+                  </AnimatePresence>
                   <span className="text-[11px] font-mono text-zinc-400 mt-2 block">
                     {subtopic === "bayes"
                       ? `P(B) Total = ${(bayesAnalysis.totalProbB * 100).toFixed(2)}%`
@@ -914,8 +972,8 @@ export default function ProbabilityView({
               }`}
             >
               <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3 shrink-0">
-                <span className="text-xs font-mono font-semibold text-zinc-300 flex items-center gap-2">
-                  <Layers size={14} className="text-emerald-400" />
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
+                  <Layers size={13} className="text-zinc-500" />
                   {subtopic === "bayes"
                     ? "Diagrama de Árbol Probabilístico"
                     : subtopic === "events"
@@ -934,10 +992,10 @@ export default function ProbabilityView({
               </div>
 
               {/* Renderizado Gráfico */}
-              <div className="flex-1 min-h-0 pt-2 flex items-center justify-center">
+              <div className="flex-1 min-h-0 pt-2 flex flex-col">
                 {/* 1. ÁRBOL DE PROBABILIDAD DE BAYES (SVG) */}
                 {subtopic === "bayes" && (
-                  <div className={`w-full overflow-y-auto p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 ${isExpanded ? "h-[calc(100vh-160px)]" : "h-[360px]"}`}>
+                  <div className={`w-full overflow-y-auto p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 ${isExpanded ? "h-[calc(100vh-160px)]" : "h-full"}`}>
                     <div className="flex flex-col gap-4 max-w-xl mx-auto font-mono text-xs">
                       {hypotheses.map((h, i) => {
                         const post = bayesAnalysis.posteriors[i]?.posterior || 0;
@@ -973,11 +1031,11 @@ export default function ProbabilityView({
 
                 {/* 2. DIAGRAMA DE VENN PROPORCIONAL */}
                 {subtopic === "events" && (
-                  <div className={`w-full flex flex-col items-center justify-center p-6 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 ${isExpanded ? "h-[calc(100vh-160px)]" : "h-[360px]"}`}>
+                  <div className={`w-full flex flex-col items-center justify-center p-6 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 ${isExpanded ? "h-[calc(100vh-160px)]" : "h-full"}`}>
                     <svg viewBox="0 0 400 200" className="w-full max-w-md h-auto">
                       {/* Fondo Universo S */}
-                      <rect x="10" y="10" width="380" height="180" rx="16" fill="#09090b" stroke="#27272a" strokeWidth="1.5" />
-                      <text x="30" y="35" fill="#71717a" fontSize="12" fontFamily="monospace">Universo S (100%)</text>
+                      <rect x="10" y="10" width="380" height="180" rx="16" strokeWidth="1.5" className="fill-zinc-500/10 stroke-zinc-500/40" />
+                      <text x="30" y="35" fontSize="12" fontFamily="monospace" className="fill-current text-zinc-400">Universo S (100%)</text>
 
                       {/* Círculo Evento A */}
                       <circle cx="160" cy="105" r="65" fill="#10b981" fillOpacity="0.25" stroke="#10b981" strokeWidth="2" />
@@ -985,19 +1043,19 @@ export default function ProbabilityView({
                       <circle cx="240" cy="105" r="65" fill="#0ea5e9" fillOpacity="0.25" stroke="#0ea5e9" strokeWidth="2" />
 
                       {/* Textos y Etiquetas */}
-                      <text x="130" y="110" fill="#a7f3d0" fontSize="11" fontFamily="monospace" textAnchor="middle">
+                      <text x="130" y="110" fontSize="11" fontFamily="monospace" textAnchor="middle" fontWeight="bold" className="fill-current text-emerald-400">
                         A \ B
-                        <tspan x="130" dy="14" fontSize="10" fill="#6ee7b7">{(eventsAnalysis.probA_minus_B * 100).toFixed(1)}%</tspan>
+                        <tspan x="130" dy="14" fontSize="10" className="fill-current text-emerald-300">{(eventsAnalysis.probA_minus_B * 100).toFixed(1)}%</tspan>
                       </text>
 
-                      <text x="200" y="110" fill="#fcd34d" fontSize="11" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                      <text x="200" y="110" fontSize="11" fontFamily="monospace" textAnchor="middle" fontWeight="bold" className="fill-current text-amber-400">
                         A ∩ B
-                        <tspan x="200" dy="14" fontSize="10" fill="#fef08a">{(eventsAnalysis.probIntersection * 100).toFixed(1)}%</tspan>
+                        <tspan x="200" dy="14" fontSize="10" className="fill-current text-amber-300">{(eventsAnalysis.probIntersection * 100).toFixed(1)}%</tspan>
                       </text>
 
-                      <text x="270" y="110" fill="#bae6fd" fontSize="11" fontFamily="monospace" textAnchor="middle">
+                      <text x="270" y="110" fontSize="11" fontFamily="monospace" textAnchor="middle" fontWeight="bold" className="fill-current text-sky-400">
                         B \ A
-                        <tspan x="270" dy="14" fontSize="10" fill="#7dd3fc">{Number(((eventsAnalysis.probB - eventsAnalysis.probIntersection) * 100).toFixed(1))}%</tspan>
+                        <tspan x="270" dy="14" fontSize="10" className="fill-current text-sky-300">{Number(((eventsAnalysis.probB - eventsAnalysis.probIntersection) * 100).toFixed(1))}%</tspan>
                       </text>
                     </svg>
                     <div className="text-[11px] font-mono text-zinc-400 mt-2 text-center">
@@ -1008,20 +1066,20 @@ export default function ProbabilityView({
 
                 {/* 3. COMBINATORIA RESUMEN */}
                 {subtopic === "combinatorics" && (
-                  <div className={`w-full flex flex-col items-center justify-center p-6 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-4 ${isExpanded ? "h-[calc(100vh-160px)]" : "h-[360px]"}`}>
-                    <div className="p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800 text-center space-y-2">
-                      <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest block">
+                  <div className={`w-full flex flex-col items-center justify-center p-6 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 gap-5 ${isExpanded ? "h-[calc(100vh-160px)]" : "h-full"}`}>
+                    <div className="w-full max-w-xl p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800 text-center space-y-3">
+                      <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-widest block">
                         Fórmula Combinatoria Evaluada
                       </span>
-                      <div className="text-xl font-mono text-emerald-400">
+                      <div className="w-full max-w-full overflow-x-auto py-1 text-lg sm:text-xl font-mono text-emerald-400">
                         <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                          {`$$${combinatoricsAnalysis.formulaLaTeX}$$`}
+                          {`\n$$\n${combinatoricsAnalysis.formulaLaTeX}\n$$\n`}
                         </ReactMarkdown>
                       </div>
                     </div>
-                    <span className="text-xs font-mono text-zinc-500 text-center max-w-sm">
+                    <p className="text-xs font-mono text-zinc-500 text-center max-w-md leading-relaxed">
                       Cada subconjunto tiene una probabilidad uniforme idéntica de ocurrir de p = {combinatoricsAnalysis.laplaceProb}.
-                    </span>
+                    </p>
                   </div>
                 )}
               </div>
@@ -1030,13 +1088,15 @@ export default function ProbabilityView({
             {/* Panel Historial */}
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
-                  <History size={15} className="text-zinc-400" /> Historial de Probabilidad
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
+                  <History size={15} className="text-zinc-500" /> Historial de Probabilidad
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
@@ -1045,17 +1105,21 @@ export default function ProbabilityView({
 
               <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin cálculos guardados.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Guarda operaciones para auditar.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin cálculos guardados</p>
+                    <p className="text-[11px] text-zinc-500">Guarda operaciones para auditar</p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
-                      className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 transition-all flex items-center justify-between text-xs"
+                      title={`Recargar: ${item.expression}`}
+                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between text-sm"
                     >
-                      <div className="truncate pr-2 font-mono text-zinc-300">
+                      <div className="truncate pr-2 font-mono text-[13px] text-zinc-300">
                         {item.expression}
                       </div>
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
@@ -1074,11 +1138,14 @@ export default function ProbabilityView({
       {viewMode === "steps" && (
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
           <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento y Demostración Probabilística
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
                 {subtopic === "bayes"
                   ? "Teorema de Bayes y Descomposición del Espacio Muestral"
                   : subtopic === "events"
@@ -1086,8 +1153,9 @@ export default function ProbabilityView({
                   : "Análisis Combinatorio y Regla de Laplace"}
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300">
-              Método: <strong className="text-emerald-400">{subtopic.toUpperCase()}</strong>
+            <div className="shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 shadow-inner">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Método</span>
+              <span className="text-sm font-serif font-bold text-emerald-400">{subtopic.toUpperCase()}</span>
             </div>
           </div>
 
@@ -1106,7 +1174,7 @@ export default function ProbabilityView({
                 <p className="text-xs text-zinc-300 font-sans leading-relaxed">{st.desc}</p>
                 <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto whitespace-pre-line">
                   <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                    {`$$${st.math}$$`}
+                    {`\n$$\n${st.math}\n$$\n`}
                   </ReactMarkdown>
                 </div>
               </div>
@@ -1122,7 +1190,7 @@ export default function ProbabilityView({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Teoría de la Medida y Probabilidad
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Inferencia Bayesiana, Independencia y Teoría de la Información
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -1156,6 +1224,9 @@ export default function ProbabilityView({
         {isPropsOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Axiomas fundamentales de probabilidad"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -1165,7 +1236,7 @@ export default function ProbabilityView({
                 <h4 className="text-sm font-serif font-bold text-zinc-100 flex items-center gap-2">
                   <Activity size={15} className="text-amber-400" /> Axiomas Fundamentales
                 </h4>
-                <button onClick={() => setIsPropsOpen(false)} className="p-1 text-zinc-400 hover:text-zinc-100">
+                <button type="button" aria-label="Cerrar" onClick={() => setIsPropsOpen(false)} className="p-1 text-zinc-400 hover:text-zinc-100">
                   <X size={16} />
                 </button>
               </div>
@@ -1187,13 +1258,16 @@ export default function ProbabilityView({
         {isHelpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Guía de probabilidad universitaria"
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
-              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 relative z-10">
                 <div className="flex items-center gap-2.5">
@@ -1206,6 +1280,8 @@ export default function ProbabilityView({
                   </div>
                 </div>
                 <button
+                  type="button"
+                  aria-label="Cerrar"
                   onClick={() => setIsHelpOpen(false)}
                   className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
                 >

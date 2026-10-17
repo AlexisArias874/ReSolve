@@ -355,7 +355,7 @@ export default function MatricesView({
 
       steps.push({
         stage: `${stepId++}. Operación Término a Término`,
-        desc: `Sumamos o restamos cada elemento en su posición correspondiente c_{ij} = a_{ij} ${selectedOp === "add" ? "+" : "-"} b_{ij}`,
+        desc: `Sumamos o restamos cada elemento en su posición correspondiente cᵢⱼ = aᵢⱼ ${selectedOp === "add" ? "+" : "-"} bᵢⱼ`,
         math: `A ${selectedOp === "add" ? "+" : "-"} B = ${matrixToLaTeX(R)}`,
       });
 
@@ -416,7 +416,7 @@ export default function MatricesView({
 
       steps.push({
         stage: `${stepId++}. Suma de la Diagonal Principal`,
-        desc: "La traza es el invariante algebraico formado por la suma de los elementos a_{ii}",
+        desc: "La traza es el invariante algebraico formado por la suma de los elementos aᵢᵢ",
         math: `\\text{tr}(A) = ${terms.join(" + ")} = ${tr}`,
       });
 
@@ -442,7 +442,7 @@ export default function MatricesView({
 
       steps.push({
         stage: `${stepId++}. Multiplicación Escalar por Componente`,
-        desc: `Multiplicamos cada entrada a_{ij} por el escalar k = ${scalarK}`,
+        desc: `Multiplicamos cada entrada aᵢⱼ por el escalar k = ${scalarK}`,
         math: `${scalarK} \\cdot A = ${matrixToLaTeX(S)}`,
       });
 
@@ -575,8 +575,20 @@ export default function MatricesView({
 
   const isBinaryOp = selectedOp === "mul" || selectedOp === "add" || selectedOp === "sub";
 
+  // Accesibilidad: cerrar modales con la tecla Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsHelpOpen(false);
+        setIsMethodInfoOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
-    <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
+    <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto custom-scrollbar pr-1">
           
@@ -584,20 +596,21 @@ export default function MatricesView({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0">
             
             {/* Caja Izquierda: Editor de Celdas y Dimensiones */}
-            <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20">
-              <div className="space-y-5">
-                
+            <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="relative z-10 space-y-5">
+
                 {/* Cabecera con Botón de Guía */}
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <Grid size={14} className="text-zinc-500" />
+                    <Grid size={15} className="text-zinc-500" />
                     Editor Matricial y Transformaciones Lineales
                   </span>
 
                   <button
                     type="button"
                     onClick={() => setIsHelpOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 transition-colors flex items-center gap-1 shadow-sm"
+                    className="px-3 py-1.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 text-[11px] font-mono text-zinc-400 hover:text-zinc-100 transition-colors flex items-center gap-1.5"
                   >
                     <HelpCircle size={13} className="text-amber-400" />
                     <span>Ejemplos 3D y Grafos</span>
@@ -638,7 +651,7 @@ export default function MatricesView({
                   <div className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-mono font-bold text-zinc-200 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-sky-400" /> Matriz A ({rowsA}×{colsA})
+                        <span className="w-2 h-2 rounded-full bg-zinc-300" /> Matriz A ({rowsA}×{colsA})
                       </span>
                       
                       {/* Dimensiones rápidas A */}
@@ -680,8 +693,9 @@ export default function MatricesView({
                               key={`${rIdx}-${cIdx}`}
                               type="number"
                               value={val}
+                              aria-label={`Elemento a${rIdx + 1}${cIdx + 1} de la Matriz A`}
                               onChange={(e) => updateCellA(rIdx, cIdx, parseFloat(e.target.value))}
-                              className="h-11 bg-zinc-900 border border-zinc-800 rounded-xl font-mono text-sm text-center text-zinc-100 focus:outline-none focus:border-sky-400/80 transition-colors"
+                              className="h-11 bg-zinc-900 border border-zinc-800/60 rounded-xl font-mono text-sm text-center text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors"
                             />
                           ))
                         )}
@@ -713,7 +727,7 @@ export default function MatricesView({
                     <div className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-mono font-bold text-zinc-200 flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-rose-400" /> Matriz B ({rowsB}×{colsB})
+                          <span className="w-2 h-2 rounded-full bg-zinc-500" /> Matriz B ({rowsB}×{colsB})
                         </span>
 
                         {/* Dimensiones rápidas B */}
@@ -757,8 +771,9 @@ export default function MatricesView({
                                 key={`${rIdx}-${cIdx}`}
                                 type="number"
                                 value={val}
+                                aria-label={`Elemento b${rIdx + 1}${cIdx + 1} de la Matriz B`}
                                 onChange={(e) => updateCellB(rIdx, cIdx, parseFloat(e.target.value))}
-                                className="h-11 bg-zinc-900 border border-zinc-800 rounded-xl font-mono text-sm text-center text-zinc-100 focus:outline-none focus:border-rose-400/80 transition-colors"
+                                className="h-11 bg-zinc-900 border border-zinc-800/60 rounded-xl font-mono text-sm text-center text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors"
                               />
                             ))
                           )}
@@ -793,7 +808,7 @@ export default function MatricesView({
                         type="number"
                         value={scalarK}
                         onChange={(e) => setScalarK(parseFloat(e.target.value) || 0)}
-                        className="h-12 bg-zinc-900 border border-zinc-800 rounded-xl font-mono text-base text-center text-amber-400 font-bold focus:outline-none focus:border-amber-400/80"
+                        className="h-12 bg-zinc-900 border border-zinc-800/60 rounded-xl font-mono text-base text-center text-amber-400 font-bold focus:outline-none focus:border-amber-400/80"
                       />
                       <p className="text-[11px] text-zinc-500 font-mono text-center">
                         Cada elemento a_{"ij"} se multiplicará por {scalarK}.
@@ -811,14 +826,14 @@ export default function MatricesView({
               </div>
 
               {/* Botón de Guardado */}
-              <div className="mt-5 pt-4 border-t border-zinc-800/60 flex items-center justify-between">
+              <div className="relative z-10 mt-5 pt-4 border-t border-zinc-800/60 flex items-center justify-between">
                 <span className="text-[10px] font-mono text-zinc-500">
                   Respaldo automático en Supabase
                 </span>
                 <button
                   type="button"
                   onClick={saveCalculation}
-                  className="px-5 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-semibold text-xs rounded-xl shadow-md transition-all active:scale-95"
+                  className="h-11 px-6 bg-zinc-100 hover:bg-zinc-200 hover:scale-[1.02] text-zinc-950 font-semibold text-xs rounded-xl shadow-lg shadow-zinc-100/5 transition-all active:scale-95"
                 >
                   Guardar en Historial
                 </button>
@@ -827,7 +842,7 @@ export default function MatricesView({
 
             {/* Caja Derecha: Resultado Matricial */}
             <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-48 h-48 bg-sky-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
@@ -837,7 +852,8 @@ export default function MatricesView({
                   {(calculation.resultMatrix || calculation.scalarResult !== null) && (
                     <button
                       onClick={handleCopy}
-                      className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                      aria-label="Copiar el resultado matricial"
+                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       {copied ? "Copiado" : "Copiar"}
@@ -854,11 +870,11 @@ export default function MatricesView({
                   {calculation.resultMatrix ? (
                     <div className="py-2 flex items-center justify-center font-mono text-emerald-400 overflow-x-auto text-sm">
                       <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                        {`$$${matrixToLaTeX(calculation.resultMatrix)}$$`}
+                        {`\n$$\n${matrixToLaTeX(calculation.resultMatrix)}\n$$\n`}
                       </ReactMarkdown>
                     </div>
                   ) : calculation.scalarResult !== null ? (
-                    <div className="text-4xl font-serif font-bold text-emerald-400">
+                    <div className="text-5xl lg:text-7xl font-serif font-bold text-zinc-100">
                       {calculation.scalarResult}
                     </div>
                   ) : (
@@ -896,26 +912,37 @@ export default function MatricesView({
             {/* Panel Izquierdo: Desglose Algorítmico */}
             <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <ListOrdered size={15} className="text-zinc-400" /> Desglose Celda por Celda / Operaciones de Fila
                 </span>
-                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-full">
+                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
                   {calculation.steps.length} Pasos
                 </span>
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-2 mt-4 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto pt-4 pr-2">
                 {calculation.steps.map((st, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-1.5"
-                  >
-                    <span className="text-xs font-mono font-semibold text-zinc-200">{st.stage}</span>
-                    <p className="text-[11px] text-zinc-400 font-sans">{st.desc}</p>
-                    <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto">
-                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                        {`$$${st.math}$$`}
-                      </ReactMarkdown>
+                  <div key={idx} className="relative pl-11 pb-4 last:pb-0">
+                    <span
+                      className="absolute left-0 top-0 w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                      aria-hidden="true"
+                    >
+                      {idx + 1}
+                    </span>
+                    {idx < calculation.steps.length - 1 && (
+                      <span
+                        className="absolute left-[13px] top-9 bottom-0 w-px bg-zinc-800/70"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-1.5">
+                      <span className="text-xs font-mono font-semibold text-zinc-200">{st.stage.replace(/^\d+\.\s*/, "")}</span>
+                      <p className="text-[11px] text-zinc-400 font-sans">{st.desc}</p>
+                      <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto">
+                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                          {`\n$$\n${st.math}\n$$\n`}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -925,13 +952,15 @@ export default function MatricesView({
             {/* Panel Derecho: Historial */}
             <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial Matricial
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
@@ -940,15 +969,21 @@ export default function MatricesView({
 
               <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin matrices guardadas.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Guarda transformaciones para auditar.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin matrices guardadas</p>
+                    <p className="text-[11px] text-zinc-500">
+                      Guarda transformaciones para auditar
+                    </p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
-                      className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 transition-all flex items-center justify-between text-xs"
+                      title={item.expression}
+                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-default transition-colors flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">
                         {item.expression}
@@ -970,31 +1005,46 @@ export default function MatricesView({
       {viewMode === "steps" && (
         <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
           <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento Matricial Detallado
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
+              <p className="text-xs text-zinc-400 mt-1 font-mono truncate">
                 Operación: {calculation.title}
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
-              Algoritmo: <strong className="text-emerald-400 text-sm font-serif">{selectedOp.toUpperCase()}</strong>
+            <div className="shrink-0 flex items-center gap-2.5 text-xs font-mono px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Algoritmo</span>
+              <strong className="text-sm font-serif font-bold text-zinc-100">{selectedOp.toUpperCase()}</strong>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+          <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pt-6 pr-2">
             {calculation.steps.map((st, i) => (
-              <div
-                key={i}
-                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-2.5"
-              >
-                <span className="text-sm font-semibold text-zinc-200 font-mono">{st.stage}</span>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed">{st.desc}</p>
-                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto">
-                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                    {`$$${st.math}$$`}
-                  </ReactMarkdown>
+              <div key={i} className="relative pl-13 pb-5 last:pb-0">
+                <span
+                  className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                  aria-hidden="true"
+                >
+                  {i + 1}
+                </span>
+                {i < calculation.steps.length - 1 && (
+                  <span
+                    className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70"
+                    aria-hidden="true"
+                  />
+                )}
+                <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-2.5">
+                  <span className="text-sm font-semibold text-zinc-200 font-mono">{st.stage.replace(/^\d+\.\s*/, "")}</span>
+                  <p className="text-xs text-zinc-300 font-sans leading-relaxed">{st.desc}</p>
+                  <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold overflow-x-auto">
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {`\n$$\n${st.math}\n$$\n`}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             ))}
@@ -1009,7 +1059,7 @@ export default function MatricesView({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Álgebra Lineal y Computación
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Matrices como Operadores de Transformación Espacial
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -1062,13 +1112,21 @@ export default function MatricesView({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Complejidad algorítmica de matrices"
               className="relative w-full max-w-md border border-zinc-800 bg-zinc-950 rounded-3xl p-6 shadow-2xl"
             >
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                 <h4 className="text-sm font-serif font-bold text-zinc-100 flex items-center gap-2">
                   <Cpu size={15} className="text-amber-400" /> Complejidad Algorítmica de Matrices
                 </h4>
-                <button onClick={() => setIsMethodInfoOpen(false)} className="p-1 text-zinc-400 hover:text-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setIsMethodInfoOpen(false)}
+                  aria-label="Cerrar"
+                  className="p-1 text-zinc-400 hover:text-zinc-100 transition-colors"
+                >
                   <X size={16} />
                 </button>
               </div>
@@ -1093,6 +1151,9 @@ export default function MatricesView({
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Casos prácticos de matrices en computación"
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
@@ -1100,7 +1161,12 @@ export default function MatricesView({
                   <Terminal size={16} className="text-amber-400" />
                   <h3 className="text-base font-serif font-bold text-zinc-100">Casos Prácticos de Matrices en Computación</h3>
                 </div>
-                <button onClick={() => setIsHelpOpen(false)} className="p-2 text-zinc-400 hover:text-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setIsHelpOpen(false)}
+                  aria-label="Cerrar"
+                  className="p-2 text-zinc-400 hover:text-zinc-100 transition-colors"
+                >
                   <X size={16} />
                 </button>
               </div>

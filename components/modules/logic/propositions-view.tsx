@@ -371,6 +371,18 @@ export default function PropositionsView({
     fetchUserHistory("mat2", "proposiciones").then((data) => setHistory(data));
   }, []);
 
+  // Cerrar modales con la tecla Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setIsAIPanelOpen(false);
+      setIsHelpOpen(false);
+      setIsMethodInfoOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const saveCalculation = async () => {
     if (!formula.trim()) return;
     const summary = `${truthTable.classification} | "${naturalLanguageTranslation.slice(0, 40)}..."`;
@@ -459,7 +471,7 @@ DEBES devolver al final DOS etiquetas estrictas:
   ];
 
   return (
-    <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
+    <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="flex-1 flex flex-col gap-6 min-h-0">
           
@@ -468,12 +480,12 @@ DEBES devolver al final DOS etiquetas estrictas:
             
             {/* Consola de Entrada Lógica */}
             <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -top-16 -left-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <Binary size={14} className="text-zinc-500" />
+                    <Binary size={13} className="text-zinc-500" />
                     Consola Lógica Proposicional
                   </span>
 
@@ -485,7 +497,7 @@ DEBES devolver al final DOS etiquetas estrictas:
                       className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-[11px] font-mono text-amber-300 transition-all flex items-center gap-1.5 shadow-sm"
                     >
                       <BrainCircuit size={13} className="text-amber-400" />
-                      <span>Lenguaje Natural ➔ Símbolos</span>
+                      <span>Lenguaje Natural → Símbolos</span>
                     </button>
 
                     <button
@@ -501,11 +513,12 @@ DEBES devolver al final DOS etiquetas estrictas:
 
                 {/* Input de la Fórmula */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
+                  <label htmlFor="formula-proposicional" className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
                     <span>Expresión Lógica Proposicional:</span>
                     <span className="text-[10px] text-zinc-500 font-mono">Conectores: ∧, ∨, ¬, →, ↔, ⊕</span>
                   </label>
                   <input
+                    id="formula-proposicional"
                     type="text"
                     value={formula}
                     onChange={(e) => setFormula(e.target.value)}
@@ -563,32 +576,40 @@ DEBES devolver al final DOS etiquetas estrictas:
                 {LOGIC_KEYS.map((k) => (
                   <button
                     key={k.label}
+                    type="button"
                     onClick={() => setFormula((prev) => prev + k.val)}
-                    className="h-10 min-w-[42px] px-3 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/80 text-zinc-200 rounded-xl font-mono text-sm font-medium transition-all active:scale-95 shadow-sm backdrop-blur-sm flex items-center justify-center"
+                    aria-label={`Insertar ${k.label}`}
+                    title={`Insertar ${k.label}`}
+                    className="h-10 min-w-[46px] px-3.5 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/60 text-zinc-200 rounded-xl font-mono text-base font-medium transition-all active:scale-95 flex items-center justify-center"
                   >
                     {k.label}
                   </button>
                 ))}
 
                 <button
-                  onClick={() => void saveCalculation()}
-                  className="h-10 px-5 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 ml-auto active:scale-95"
+                  type="button"
+                  onClick={() => setFormula("")}
+                  className="h-11 px-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 text-zinc-400 hover:text-red-400 hover:border-red-900/40 text-xs font-medium transition-colors flex items-center gap-2 active:scale-95"
                 >
-                  <CornerDownLeft size={14} /> Evaluar Tabla
+                  Limpiar
                 </button>
 
                 <button
-                  onClick={() => setFormula("")}
-                  className="h-10 px-3.5 bg-zinc-900/50 border border-zinc-800/80 text-zinc-400 hover:text-red-400 hover:border-red-900/40 rounded-xl text-xs font-medium transition-colors"
+                  type="button"
+                  onClick={() => void saveCalculation()}
+                  className="h-11 px-6 ml-auto bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 active:scale-95"
                 >
-                  Limpiar
+                  <CornerDownLeft size={14} /> Evaluar Tabla
+                  <span className="ml-1 hidden sm:inline-flex items-center rounded-md border border-zinc-950/20 px-1.5 py-0.5 font-mono text-[9px] tracking-wider opacity-70">
+                    ENTER
+                  </span>
                 </button>
               </div>
             </div>
 
             {/* Caja Derecha: Clasificación Ontológica */}
             <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
@@ -597,8 +618,9 @@ DEBES devolver al final DOS etiquetas estrictas:
                   </span>
                   {formula && (
                     <button
+                      type="button"
                       onClick={handleCopyFormula}
-                      className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       {copied ? "Copiado" : "Copiar"}
@@ -614,7 +636,7 @@ DEBES devolver al final DOS etiquetas estrictas:
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 1.05 }}
                       transition={{ duration: 0.2 }}
-                      className={`text-3xl lg:text-4xl font-serif font-bold tracking-tight ${
+                      className={`flex items-center justify-center gap-2.5 text-4xl lg:text-5xl font-serif font-bold tracking-tight ${
                         truthTable.classification === "Tautología"
                           ? "text-emerald-400"
                           : truthTable.classification === "Contradicción"
@@ -622,7 +644,14 @@ DEBES devolver al final DOS etiquetas estrictas:
                           : "text-amber-400"
                       }`}
                     >
-                      {truthTable.classification}
+                      {truthTable.classification === "Tautología" ? (
+                        <Sparkles size={26} className="text-emerald-400 shrink-0" aria-hidden="true" />
+                      ) : truthTable.classification === "Contradicción" ? (
+                        <X size={26} className="text-red-400 shrink-0" aria-hidden="true" />
+                      ) : (
+                        <HelpCircle size={26} className="text-amber-400 shrink-0" aria-hidden="true" />
+                      )}
+                      <span>{truthTable.classification}</span>
                     </motion.div>
                   </AnimatePresence>
                   <span className="text-[11px] font-mono text-zinc-400 mt-1 block">
@@ -664,12 +693,12 @@ DEBES devolver al final DOS etiquetas estrictas:
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
             
             {/* Panel Izquierdo: Tabla de Verdad */}
-            <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+            <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <ListOrdered size={15} className="text-zinc-400" /> Tabla de Verdad Completa ({truthTable.totalRows} renglones)
                 </span>
-                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-full">
+                <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
                   2^{truthTable.vars.length} Estados
                 </span>
               </div>
@@ -713,15 +742,17 @@ DEBES devolver al final DOS etiquetas estrictas:
             </div>
 
             {/* Panel Derecho: Historial */}
-            <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+            <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial Lógico
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
@@ -730,23 +761,31 @@ DEBES devolver al final DOS etiquetas estrictas:
 
               <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin fórmulas guardadas.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Presiona Evaluar para registrar.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin fórmulas guardadas</p>
+                    <p className="text-[11px] text-zinc-500">
+                      Presiona <span className="font-mono">Enter</span> o Evaluar para registrar
+                    </p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setFormula(item.expression)}
-                      className="group p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 cursor-pointer transition-all flex items-center justify-between text-xs"
+                      title={`Recargar: ${item.expression}`}
+                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
                     >
-                      <div className="truncate pr-2 font-mono text-zinc-300 group-hover:text-zinc-100 transition-colors">
+                      <span className="truncate pr-2 font-mono text-[13px] text-zinc-300 group-hover:text-zinc-100 transition-colors">
                         {item.expression}
-                      </div>
-                      <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
+                      </span>
+                      <span className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
-                      </div>
+                      </span>
                     </div>
                   ))
                 )}
@@ -759,45 +798,82 @@ DEBES devolver al final DOS etiquetas estrictas:
 
       {/* MODO 2: PASO A PASO */}
       {viewMode === "steps" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
-          <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+        <div className="relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+          <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 bg-zinc-700/10 rounded-full blur-3xl" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-800/60 shrink-0">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Deducción Proposicional Paso a Paso
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
-                Fórmula: <span className="text-zinc-200 font-semibold">{formula}</span>
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
+                Fórmula: <span className="text-zinc-200 font-semibold">{formula || "--"}</span>
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
-              Clasificación: <strong className="text-emerald-400 text-sm font-serif">{truthTable.classification}</strong>
+
+            <div className="shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 shadow-inner">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                Clasificación
+              </span>
+              <span className="text-sm font-serif font-bold text-emerald-400">
+                {truthTable.classification}
+              </span>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">1. Identificación de Variables Atómicas</span>
-              <p className="text-xs text-zinc-400">El número de estados de verdad necesarios es 2ⁿ, donde n es la cantidad de proposiciones simples:</p>
-              <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
-                n = {truthTable.vars.length} variables ({truthTable.vars.join(", ")}) ⟹ 2^{truthTable.vars.length} = {truthTable.totalRows} filas de evaluación
+          <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pt-6 pr-2 custom-scrollbar">
+            <div className="relative pl-13 pb-5 last:pb-0">
+              <span
+                className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                aria-hidden="true"
+              >
+                1
+              </span>
+              <span className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70" aria-hidden="true" />
+              <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-2">
+                <span className="text-sm font-semibold text-zinc-100">Identificación de Variables Atómicas</span>
+                <p className="text-xs text-zinc-400">El número de estados de verdad necesarios es 2ⁿ, donde n es la cantidad de proposiciones simples:</p>
+                <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
+                  n = {truthTable.vars.length} variables ({truthTable.vars.join(", ")}) ⟹ 2^{truthTable.vars.length} = {truthTable.totalRows} filas de evaluación
+                </div>
               </div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">2. Jerarquía de Conectores Lógicos Aplicada</span>
-              <p className="text-xs text-zinc-400">Orden de precedencia formal en la evaluación booleana:</p>
-              <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-zinc-300 text-center">
-                1. Paréntesis ( ) ➔ 2. Negación ¬ ➔ 3. Conjunción ∧ ➔ 4. Disyunción ∨ ➔ 5. Condicional → ➔ 6. Bicondicional ↔
+            <div className="relative pl-13 pb-5 last:pb-0">
+              <span
+                className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                aria-hidden="true"
+              >
+                2
+              </span>
+              <span className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70" aria-hidden="true" />
+              <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-2">
+                <span className="text-sm font-semibold text-zinc-100">Jerarquía de Conectores Lógicos</span>
+                <p className="text-xs text-zinc-400">Orden de precedencia formal en la evaluación booleana:</p>
+                <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-zinc-300 text-center">
+                  1. Paréntesis ( ) → 2. Negación ¬ → 3. Conjunción ∧ → 4. Disyunción ∨ → 5. Condicional → 6. Bicondicional ↔
+                </div>
               </div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">3. Veredicto Ontológico Final</span>
-              <p className="text-xs text-zinc-400">Interpretación del vector de verdad de la columna principal:</p>
-              <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
-                {truthTable.classification === "Tautología" && "Todos los valores son Verdaderos (1). La proposición es válida en todo modelo."}
-                {truthTable.classification === "Contradicción" && "Todos los valores son Falsos (0). Es insatisfactible (inconsistente)."}
-                {truthTable.classification === "Contingencia" && `Presenta ${truthTable.trueCount} estados verdaderos y ${truthTable.totalRows - truthTable.trueCount} falsos. Su verdad depende de las premisas.`}
+            <div className="relative pl-13 pb-5 last:pb-0">
+              <span
+                className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                aria-hidden="true"
+              >
+                3
+              </span>
+              <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-2">
+                <span className="text-sm font-semibold text-zinc-100">Veredicto Ontológico Final</span>
+                <p className="text-xs text-zinc-400">Interpretación del vector de verdad de la columna principal:</p>
+                <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
+                  {truthTable.classification === "Tautología" && "Todos los valores son Verdaderos (1). La proposición es válida en todo modelo."}
+                  {truthTable.classification === "Contradicción" && "Todos los valores son Falsos (0). Es insatisfactible (inconsistente)."}
+                  {truthTable.classification === "Contingencia" && `Presenta ${truthTable.trueCount} estados verdaderos y ${truthTable.totalRows - truthTable.trueCount} falsos. Su verdad depende de las premisas.`}
+                </div>
               </div>
             </div>
           </div>
@@ -811,7 +887,7 @@ DEBES devolver al final DOS etiquetas estrictas:
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Lógica Matemática y Computacional
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Álgebra Booleana y Verificación Formal de Software
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -820,7 +896,7 @@ DEBES devolver al final DOS etiquetas estrictas:
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
+            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
               <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
                 1. Condicional y Cortocircuito (p → q)
               </strong>
@@ -828,7 +904,7 @@ DEBES devolver al final DOS etiquetas estrictas:
                 En lógica formal, p → q es falsa ÚNICAMENTE cuando la premisa es verdadera y la conclusión falsa. Equivale a ¬p ∨ q, base del cortocircuito en condicionales `if (!p || q)`.
               </p>
             </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
+            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
               <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
                 2. Leyes de De Morgan y Optimización
               </strong>
@@ -845,6 +921,9 @@ DEBES devolver al final DOS etiquetas estrictas:
         {isAIPanelOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-xl select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Formalizador de lenguaje natural a símbolos"
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -860,7 +939,12 @@ DEBES devolver al final DOS etiquetas estrictas:
                     <p className="text-xs text-zinc-400">Escribe cualquier frase y la IA extraerá las variables y la fórmula lógica</p>
                   </div>
                 </div>
-                <button onClick={() => setIsAIPanelOpen(false)} className="p-1.5 text-zinc-400 hover:text-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAIPanelOpen(false)}
+                  aria-label="Cerrar formalizador"
+                  className="p-1.5 text-zinc-400 hover:text-zinc-100 active:scale-95 transition-transform"
+                >
                   <X size={16} />
                 </button>
               </div>
@@ -871,6 +955,7 @@ DEBES devolver al final DOS etiquetas estrictas:
                 </p>
                 <textarea
                   rows={3}
+                  aria-label="Enunciado en lenguaje natural a formalizar"
                   value={naturalQuery}
                   onChange={(e) => setNaturalQuery(e.target.value)}
                   placeholder="Ej: Si el servidor está activo y no hay sobrecarga entonces la aplicación responde rápido..."
@@ -883,7 +968,8 @@ DEBES devolver al final DOS etiquetas estrictas:
                     type="button"
                     onClick={handleFormalizeWithAI}
                     disabled={isTranslating || !naturalQuery.trim()}
-                    className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-zinc-950 font-semibold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all disabled:opacity-40"
+                    title={isTranslating ? "Extrayendo variables..." : !naturalQuery.trim() ? "Escribe un enunciado para formalizar" : "Formalizar a símbolos"}
+                    className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-zinc-950 font-semibold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isTranslating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                     <span>{isTranslating ? "Extrayendo variables..." : "Formalizar a Símbolos"}</span>
@@ -900,6 +986,9 @@ DEBES devolver al final DOS etiquetas estrictas:
         {isHelpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Guía de lógica proposicional"
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -907,7 +996,12 @@ DEBES devolver al final DOS etiquetas estrictas:
             >
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
                 <h3 className="text-base font-serif font-bold text-zinc-100">Guía de Lógica Proposicional</h3>
-                <button onClick={() => setIsHelpOpen(false)} className="p-2 text-zinc-400 hover:text-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setIsHelpOpen(false)}
+                  aria-label="Cerrar guía"
+                  className="p-2 text-zinc-400 hover:text-zinc-100 active:scale-95 transition-transform"
+                >
                   <X size={16} />
                 </button>
               </div>

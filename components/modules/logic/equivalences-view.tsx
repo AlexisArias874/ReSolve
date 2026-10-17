@@ -290,6 +290,17 @@ export default function EquivalencesView({
     fetchUserHistory("mat2", "equivalencias").then((data) => setHistory(data));
   }, []);
 
+  // Cerrar modales con la tecla Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setIsHelpOpen(false);
+      setIsMethodInfoOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const saveCalculation = async () => {
     if (!exprA.trim() || !exprB.trim()) return;
     const title = `${exprA} ≡ ${exprB}`;
@@ -326,7 +337,7 @@ export default function EquivalencesView({
   ];
 
   return (
-    <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
+    <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="flex-1 flex flex-col gap-6 min-h-0">
           
@@ -335,12 +346,12 @@ export default function EquivalencesView({
             
             {/* Consola Dual de Comparación */}
             <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -top-16 -left-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <Scale size={14} className="text-zinc-500" />
+                    <Scale size={13} className="text-zinc-500" />
                     Comparador de Equivalencia Semántica (A ≡ B)
                   </span>
 
@@ -368,6 +379,7 @@ export default function EquivalencesView({
                     </div>
                     <input
                       type="text"
+                      aria-label="Expresión A"
                       value={exprA}
                       onChange={(e) => setExprA(e.target.value)}
                       onFocus={() => setActiveInput("A")}
@@ -388,6 +400,7 @@ export default function EquivalencesView({
                     </div>
                     <input
                       type="text"
+                      aria-label="Expresión B"
                       value={exprB}
                       onChange={(e) => setExprB(e.target.value)}
                       onFocus={() => setActiveInput("B")}
@@ -411,38 +424,43 @@ export default function EquivalencesView({
                 {LOGIC_KEYS.map((k) => (
                   <button
                     key={k.label}
+                    type="button"
                     onClick={() => {
                       if (activeInput === "A") setExprA((prev) => prev + k.val);
                       else setExprB((prev) => prev + k.val);
                     }}
-                    className="h-10 min-w-[42px] px-3 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/80 text-zinc-200 rounded-xl font-mono text-sm font-medium transition-all active:scale-95 shadow-sm backdrop-blur-sm flex items-center justify-center"
+                    aria-label={`Insertar ${k.label} en Expresión ${activeInput}`}
+                    title={`Insertar ${k.label} en Expresión ${activeInput}`}
+                    className="h-10 min-w-[46px] px-3.5 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/60 text-zinc-200 rounded-xl font-mono text-base font-medium transition-all active:scale-95 flex items-center justify-center"
                   >
                     {k.label}
                   </button>
                 ))}
 
                 <button
-                  onClick={() => void saveCalculation()}
-                  className="h-10 px-5 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 ml-auto active:scale-95"
-                >
-                  <CornerDownLeft size={14} /> Comprobar
-                </button>
-
-                <button
+                  type="button"
                   onClick={() => {
                     setExprA("");
                     setExprB("");
                   }}
-                  className="h-10 px-3.5 bg-zinc-900/50 border border-zinc-800/80 text-zinc-400 hover:text-red-400 hover:border-red-900/40 rounded-xl text-xs font-medium transition-colors"
+                  className="h-11 px-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 text-zinc-400 hover:text-red-400 hover:border-red-900/40 text-xs font-medium transition-colors flex items-center gap-2 active:scale-95"
                 >
                   Limpiar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void saveCalculation()}
+                  className="h-11 px-6 ml-auto bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 active:scale-95"
+                >
+                  <CornerDownLeft size={14} /> Comprobar
                 </button>
               </div>
             </div>
 
             {/* Caja Derecha: Veredicto de Equivalencia */}
             <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
@@ -451,8 +469,9 @@ export default function EquivalencesView({
                   </span>
                   {exprA && exprB && (
                     <button
+                      type="button"
                       onClick={handleCopy}
-                      className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       {copied ? "Copiado" : "Copiar"}
@@ -471,13 +490,13 @@ export default function EquivalencesView({
                       className="flex flex-col items-center gap-1.5"
                     >
                       {comparison.isEquivalent ? (
-                        <div className="flex items-center gap-2 text-emerald-400 text-2xl lg:text-3xl font-serif font-bold tracking-tight">
-                          <CheckCircle2 size={26} className="text-emerald-400 shrink-0" />
+                        <div className="flex flex-wrap items-center justify-center gap-2.5 text-center text-emerald-400 text-4xl lg:text-5xl font-serif font-bold tracking-tight">
+                          <CheckCircle2 size={26} className="text-emerald-400 shrink-0" aria-hidden="true" />
                           <span>Son Equivalentes</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 text-red-400 text-2xl lg:text-3xl font-serif font-bold tracking-tight">
-                          <XCircle size={26} className="text-red-400 shrink-0" />
+                        <div className="flex flex-wrap items-center justify-center gap-2.5 text-center text-red-400 text-4xl lg:text-5xl font-serif font-bold tracking-tight">
+                          <XCircle size={26} className="text-red-400 shrink-0" aria-hidden="true" />
                           <span>No Equivalentes</span>
                         </div>
                       )}
@@ -538,12 +557,12 @@ export default function EquivalencesView({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
             
             {/* Panel Izquierdo: Tabla Comparativa A vs B */}
-            <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+            <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <ListOrdered size={15} className="text-zinc-400" /> Tabla de Verdad Comparativa ({comparison.totalRows} renglones)
                 </span>
-                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-full">
+                <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
                   {comparison.matchCount}/{comparison.totalRows} Coincidencias
                 </span>
               </div>
@@ -610,15 +629,17 @@ export default function EquivalencesView({
             </div>
 
             {/* Panel Derecho: Historial */}
-            <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+            <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Leyes
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
@@ -627,14 +648,19 @@ export default function EquivalencesView({
 
               <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin equivalencias guardadas.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">Presiona Comprobar para registrar.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin equivalencias guardadas</p>
+                    <p className="text-[11px] text-zinc-500">Presiona Comprobar para registrar</p>
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
                         const parts = item.expression.split("≡");
                         if (parts.length === 2) {
@@ -642,14 +668,15 @@ export default function EquivalencesView({
                           setExprB(parts[1].trim());
                         }
                       }}
-                      className="group p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 cursor-pointer transition-all flex items-center justify-between text-xs"
+                      title={`Recargar: ${item.expression}`}
+                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
                     >
-                      <div className="truncate pr-2 font-mono text-zinc-300 group-hover:text-zinc-100 transition-colors">
+                      <span className="truncate pr-2 font-mono text-[13px] text-zinc-300 group-hover:text-zinc-100 transition-colors">
                         {item.expression}
-                      </div>
-                      <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[110px]">
+                      </span>
+                      <span className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[110px]">
                         {item.result}
-                      </div>
+                      </span>
                     </div>
                   ))
                 )}
@@ -662,45 +689,82 @@ export default function EquivalencesView({
 
       {/* MODO 2: PASO A PASO */}
       {viewMode === "steps" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
-          <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+        <div className="relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+          <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 bg-zinc-700/10 rounded-full blur-3xl" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-800/60 shrink-0">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Demostración Semántica de Equivalencia
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
                 Bicondicional evaluado: ({exprA}) ↔ ({exprB})
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
-              Estado: <strong className="text-emerald-400 text-sm font-serif">{comparison.isEquivalent ? "Tautología" : "Falla"}</strong>
+
+            <div className="shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 shadow-inner">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                Estado
+              </span>
+              <span className="text-sm font-serif font-bold text-emerald-400">
+                {comparison.isEquivalent ? "Tautología" : "Falla"}
+              </span>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">1. Principio de Sustitución y Tautología</span>
-              <p className="text-xs text-zinc-400">Dos proposiciones compuestas A y B son lógicamente equivalentes si y solo si la fórmula condicional doble A ↔ B es una Tautología:</p>
-              <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
-                A ≡ B  ⟺  ⊨ (A ↔ B)
+          <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pt-6 pr-2 custom-scrollbar">
+            <div className="relative pl-13 pb-5 last:pb-0">
+              <span
+                className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                aria-hidden="true"
+              >
+                1
+              </span>
+              <span className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70" aria-hidden="true" />
+              <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-2">
+                <span className="text-sm font-semibold text-zinc-100">Principio de Sustitución y Tautología</span>
+                <p className="text-xs text-zinc-400">Dos proposiciones compuestas A y B son lógicamente equivalentes si y solo si la fórmula condicional doble A ↔ B es una Tautología:</p>
+                <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
+                  A ≡ B  ⟺  ⊨ (A ↔ B)
+                </div>
               </div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">2. Identificación de Ley del Álgebra de Boole</span>
-              <p className="text-xs text-zinc-400">Propiedad formal que vincula la estructura sintáctica de ambas proposiciones:</p>
-              <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-amber-400 text-center font-bold">
-                {comparison.lawInfo.name}: {comparison.lawInfo.desc}
+            <div className="relative pl-13 pb-5 last:pb-0">
+              <span
+                className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                aria-hidden="true"
+              >
+                2
+              </span>
+              <span className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70" aria-hidden="true" />
+              <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-2">
+                <span className="text-sm font-semibold text-zinc-100">Identificación de Ley del Álgebra de Boole</span>
+                <p className="text-xs text-zinc-400">Propiedad formal que vincula la estructura sintáctica de ambas proposiciones:</p>
+                <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-amber-400 text-center font-bold">
+                  {comparison.lawInfo.name}: {comparison.lawInfo.desc}
+                </div>
               </div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 flex flex-col gap-2">
-              <span className="text-xs font-mono font-semibold text-zinc-200">3. Veredicto y Contraejemplos</span>
-              <p className="text-xs text-zinc-400">Comprobación del espacio de estados booleanos:</p>
-              <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
-                {comparison.isEquivalent
-                  ? "Las columnas de verdad son 100% idénticas en todas las filas. A y B pueden intercambiarse sin alterar la validez."
-                  : `Se detectaron diferencias de verdad. Ejemplo en fila #${comparison.firstCounterexample?.id}.`}
+            <div className="relative pl-13 pb-5 last:pb-0">
+              <span
+                className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                aria-hidden="true"
+              >
+                3
+              </span>
+              <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors flex flex-col gap-2">
+                <span className="text-sm font-semibold text-zinc-100">Veredicto y Contraejemplos</span>
+                <p className="text-xs text-zinc-400">Comprobación del espacio de estados booleanos:</p>
+                <div className="p-3 rounded-xl bg-zinc-950 font-mono text-xs text-emerald-400 text-center font-bold">
+                  {comparison.isEquivalent
+                    ? "Las columnas de verdad son 100% idénticas en todas las filas. A y B pueden intercambiarse sin alterar la validez."
+                    : `Se detectaron diferencias de verdad. Ejemplo en fila #${comparison.firstCounterexample?.id}.`}
+                </div>
               </div>
             </div>
           </div>
@@ -714,7 +778,7 @@ export default function EquivalencesView({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Álgebra de Proposiciones
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Leyes Fundamentales del Álgebra Booleana
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -723,7 +787,7 @@ export default function EquivalencesView({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
+            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
               <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
                 1. Leyes de De Morgan
               </strong>
@@ -731,7 +795,7 @@ export default function EquivalencesView({
                 ¬(p ∧ q) ≡ ¬p ∨ ¬q y ¬(p ∨ q) ≡ ¬p ∧ ¬q. Fundamentales para transformar compuertas NAND y NOR universales en circuitos lógicos.
               </p>
             </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
+            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
               <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
                 2. Ley de la Implicación y Cortocircuito
               </strong>
@@ -739,7 +803,7 @@ export default function EquivalencesView({
                 p → q ≡ ¬p ∨ q. En compiladores, la evaluación de cortocircuito en `if (!p || q)` aprovecha esta equivalencia para no computar `q` si `p` es falso.
               </p>
             </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
+            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
               <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
                 3. Contraposición y Demostración
               </strong>
@@ -747,7 +811,7 @@ export default function EquivalencesView({
                 p → q ≡ ¬q → ¬p. Permite demostrar teoremas difíciles probando su contrapositiva equivalente (ej: si n² es par, entonces n es par).
               </p>
             </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
+            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
               <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
                 4. Ley de Absorción
               </strong>
@@ -764,6 +828,9 @@ export default function EquivalencesView({
         {isMethodInfoOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label={comparison.lawInfo.name}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -773,7 +840,12 @@ export default function EquivalencesView({
                 <h4 className="text-sm font-serif font-bold text-zinc-100 flex items-center gap-2">
                   <Info size={15} className="text-amber-400" /> {comparison.lawInfo.name}
                 </h4>
-                <button onClick={() => setIsMethodInfoOpen(false)} className="p-1 text-zinc-400 hover:text-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setIsMethodInfoOpen(false)}
+                  aria-label="Cerrar información del teorema"
+                  className="p-1 text-zinc-400 hover:text-zinc-100 active:scale-95 transition-transform"
+                >
                   <X size={16} />
                 </button>
               </div>
@@ -790,6 +862,9 @@ export default function EquivalencesView({
         {isHelpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Catálogo de leyes del álgebra booleana"
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -800,7 +875,12 @@ export default function EquivalencesView({
                   <Scale size={16} className="text-amber-400" />
                   <h3 className="text-base font-serif font-bold text-zinc-100">Catálogo de Leyes del Álgebra Booleana</h3>
                 </div>
-                <button onClick={() => setIsHelpOpen(false)} className="p-2 text-zinc-400 hover:text-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setIsHelpOpen(false)}
+                  aria-label="Cerrar catálogo"
+                  className="p-2 text-zinc-400 hover:text-zinc-100 active:scale-95 transition-transform"
+                >
                   <X size={16} />
                 </button>
               </div>

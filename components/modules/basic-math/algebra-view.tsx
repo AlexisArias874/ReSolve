@@ -652,6 +652,18 @@ export default function AlgebraView({
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // Cierre de modales con la tecla Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsHelpOpen(false);
+        setIsMethodInfoOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const ALGEBRA_KEYS = [
     { label: "x", val: "x" },
     { label: "y", val: "y" },
@@ -690,12 +702,12 @@ export default function AlgebraView({
             
             {/* Consola de Entrada */}
             <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -top-16 -left-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <Variable size={14} className="text-zinc-500" />
+                    <Variable size={13} className="text-zinc-500" />
                     Consola de Álgebra Simbólica Universal
                   </span>
 
@@ -703,7 +715,7 @@ export default function AlgebraView({
                   <button
                     type="button"
                     onClick={() => setIsHelpOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 text-[11px] font-mono text-zinc-300 hover:text-zinc-100 transition-colors flex items-center gap-1.5 shadow-sm"
+                    className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-lg hover:text-zinc-300 hover:border-zinc-700 transition-colors flex items-center gap-1.5"
                   >
                     <HelpCircle size={13} className="text-amber-400" />
                     <span>Guía del Módulo</span>
@@ -711,7 +723,11 @@ export default function AlgebraView({
                 </div>
 
                 <div className="relative group">
+                  <label htmlFor="algebra-expresion" className="sr-only">
+                    Expresión algebraica
+                  </label>
                   <input
+                    id="algebra-expresion"
                     type="text"
                     value={expression}
                     onChange={(e) => setExpression(e.target.value)}
@@ -719,52 +735,72 @@ export default function AlgebraView({
                       if (e.key === "Enter") void saveCalculation();
                     }}
                     placeholder="Ej: (x - 2)(x - 1)(x^2 + 4) = 0   o   x + y + z = 6, xy + yz + zx = 11, xyz = 6"
-                    className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-2xl px-5 py-4 font-mono text-base lg:text-lg text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/20 transition-all shadow-inner"
+                    className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-2xl px-5 py-4 font-mono text-lg lg:text-2xl text-zinc-100 placeholder:text-zinc-600 placeholder:text-sm lg:placeholder:text-base focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/20 transition-all shadow-inner selection:bg-emerald-500/30"
                   />
                 </div>
               </div>
 
-              {/* Botones Rápidos */}
-              <div className="relative z-10 flex flex-wrap items-center gap-2.5 mt-6 pt-5 border-t border-zinc-800/60">
-                {ALGEBRA_KEYS.map((k) => (
+              {/* Teclado de operadores */}
+              <div className="relative z-10 mt-6 pt-5 border-t border-zinc-800/60">
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-600 mb-2 block">
+                  Insertar Operadores
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {ALGEBRA_KEYS.map((k) => (
+                    <button
+                      key={k.label}
+                      type="button"
+                      onClick={() => setExpression((prev) => prev + k.val)}
+                      aria-label={k.label}
+                      title={k.label}
+                      className="h-10 min-w-[46px] px-3.5 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/60 text-zinc-200 rounded-xl font-mono text-base font-medium transition-all active:scale-95 flex items-center justify-center"
+                    >
+                      {k.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Acciones */}
+                <div className="mt-5 pt-5 border-t border-zinc-800/60 flex items-center gap-2.5">
                   <button
-                    key={k.label}
-                    onClick={() => setExpression((prev) => prev + k.val)}
-                    className="h-11 min-w-[46px] px-3.5 bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-600 hover:bg-zinc-800/80 text-zinc-200 rounded-xl font-mono text-base font-medium transition-all active:scale-95 shadow-sm backdrop-blur-sm flex items-center justify-center"
+                    type="button"
+                    onClick={() => setExpression("")}
+                    className="h-11 px-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 text-zinc-400 hover:text-red-400 hover:border-red-900/40 text-xs font-medium transition-colors flex items-center gap-2 active:scale-95"
                   >
-                    {k.label}
+                    <X size={14} /> Limpiar
                   </button>
-                ))}
 
-                <button
-                  onClick={() => void saveCalculation()}
-                  className="h-11 px-5 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 ml-auto active:scale-95"
-                >
-                  <CornerDownLeft size={14} /> Resolver
-                </button>
-
-                <button
-                  onClick={() => setExpression("")}
-                  className="h-11 px-4 bg-zinc-900/50 border border-zinc-800/80 text-zinc-400 hover:text-red-400 hover:border-red-900/40 rounded-xl text-xs font-medium transition-colors"
-                >
-                  Limpiar
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => void saveCalculation()}
+                    className="h-11 px-6 ml-auto bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-lg shadow-zinc-100/5 active:scale-95"
+                  >
+                    <CornerDownLeft size={14} /> Resolver
+                    <span className="ml-1 hidden sm:inline-flex items-center rounded-md border border-zinc-950/20 px-1.5 py-0.5 font-mono text-[9px] tracking-wider opacity-70">
+                      ENTER
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Panel de Soluciones */}
             <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-48 h-48 bg-zinc-700/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold">
-                    Solución ({calculation.roots.length})
+                  <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
+                    Solución
+                    <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
+                      {calculation.roots.length}
+                    </span>
                   </span>
                   {calculation.roots[0] !== "--" && (
                     <button
+                      type="button"
                       onClick={handleCopy}
-                      className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50 hover:bg-zinc-800/60"
+                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       {copied ? "Copiado" : "Copiar"}
@@ -785,7 +821,9 @@ export default function AlgebraView({
                       {calculation.roots.map((r, i) => (
                         <span
                           key={i}
-                          className="px-3 py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-emerald-400 font-mono text-sm font-bold shadow-sm"
+                          className={`px-3 py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800 font-mono text-sm font-bold shadow-sm ${
+                            r === "--" ? "text-zinc-600" : "text-zinc-100"
+                          }`}
                         >
                           {r}
                         </span>
@@ -814,73 +852,117 @@ export default function AlgebraView({
 
           {/* Fila Inferior: Pasos e Historial */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
-            <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+            <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <ListOrdered size={15} className="text-zinc-400" /> Deducción Algebraica Paso a Paso
                 </span>
-                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900/80 border border-zinc-800/80 px-2.5 py-1 rounded-full">
-                  Incógnitas: {calculation.variableChar}
+                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-full">
+                  {calculation.steps.length} pasos · {calculation.variableChar}
                 </span>
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-2 mt-4">
-                {calculation.steps.map((step) => (
-                  <div
-                    key={step.id}
-                    className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-1.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-semibold text-zinc-200 flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center text-[11px] font-bold">
+              <div className="flex-1 min-h-0 overflow-y-auto pt-5 pr-2">
+                {calculation.steps.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <Variable size={20} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">
+                      Ingresa una ecuación para ver la deducción
+                    </p>
+                    <p className="text-[11px] text-zinc-500 font-mono">
+                      El motor detecta la estructura algebraica automáticamente
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    {calculation.steps.map((step, index) => (
+                      <div key={step.id} className="relative pl-11 pb-4 last:pb-0">
+                        <span
+                          className="absolute left-0 top-0 w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                          aria-hidden="true"
+                        >
                           {step.id}
                         </span>
-                        {step.stage}
-                      </span>
-                      <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900/60 px-2 py-0.5 rounded border border-zinc-800/80">
-                        {step.rule}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-zinc-400 font-sans">{step.description}</p>
-                    <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 whitespace-pre-line">
-                      {step.expression}
-                    </div>
+                        {index < calculation.steps.length - 1 && (
+                          <span
+                            className="absolute left-[13px] top-9 bottom-0 w-px bg-zinc-800/70"
+                            aria-hidden="true"
+                          />
+                        )}
+
+                        <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm text-zinc-200 font-medium truncate">
+                              {step.stage}
+                            </p>
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                              {step.rule}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 font-sans mt-1.5 leading-relaxed">
+                            {step.description}
+                          </p>
+                          <div className="mt-2.5 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-zinc-100 whitespace-pre-line">
+                            {step.expression}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
             {/* Historial */}
-            <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+            <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
                 )}
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1">
-                {history.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => setExpression(item.expression)}
-                    className="group p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 cursor-pointer transition-all flex items-center justify-between text-xs"
-                  >
-                    <div className="truncate pr-2 font-mono text-zinc-300 group-hover:text-zinc-100 transition-colors">
-                      {item.expression}
-                    </div>
-                    <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px]">
-                      {item.result}
-                    </div>
+              <div className="flex-1 min-h-0 overflow-y-auto pt-5 pr-1 space-y-2">
+                {history.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin ecuaciones guardadas</p>
+                    <p className="text-[11px] text-zinc-500">
+                      Presiona <span className="font-mono">Enter</span> o Resolver para registrar
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  history.map((item) => (
+                    <div
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setExpression(item.expression)}
+                      title={`Recargar: ${item.expression}`}
+                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
+                    >
+                      <span className="min-w-0 truncate pr-2 font-mono text-[13px] text-zinc-300 group-hover:text-zinc-100 transition-colors">
+                        {item.expression}
+                      </span>
+                      <span className="font-mono font-bold text-emerald-400 shrink-0 text-[11px]">
+                        {item.result}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -889,96 +971,154 @@ export default function AlgebraView({
 
       {/* MODO 2: PASO A PASO EXPANDIDO */}
       {viewMode === "steps" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20">
-          <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+        <div className="relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+          <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 bg-zinc-700/10 rounded-full blur-3xl" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-800/60 shrink-0">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <ListOrdered size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento Algebraico de Resolución
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
-                Ecuación: <span className="text-zinc-200 font-semibold">{expression}</span>
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
+                Ecuación:{" "}
+                <span className="text-zinc-200 font-semibold">{expression || "--"}</span>
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300 shadow-inner">
-              Método: <strong className="text-emerald-400 text-sm font-serif">{calculation.methodName}</strong>
+
+            <div className="shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 shadow-inner">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                Método
+              </span>
+              <span className="text-sm font-serif font-bold text-zinc-100">
+                {calculation.methodName}
+              </span>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2">
-            {calculation.steps.map((step) => (
-              <div
-                key={step.id}
-                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-zinc-200 flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner">
+          <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pt-6 pr-2">
+            {calculation.steps.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                  <Variable size={20} className="text-zinc-600" />
+                </span>
+                <p className="text-sm text-zinc-300 font-medium">Sin procedimiento disponible</p>
+                <p className="text-[11px] text-zinc-500">
+                  Ingresa una ecuación en la pestaña Calcular para consultar el procedimiento
+                </p>
+              </div>
+            ) : (
+              <div>
+                {calculation.steps.map((step, index) => (
+                  <div key={step.id} className="relative pl-13 pb-5 last:pb-0">
+                    <span
+                      className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                      aria-hidden="true"
+                    >
                       {step.id}
                     </span>
-                    {step.stage}
-                  </span>
-                  <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900/80 px-2 py-0.5 rounded-md border border-zinc-800">
-                    {step.rule}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed">{step.description}</p>
-                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-emerald-400 text-center font-bold whitespace-pre-line">
-                  {step.expression}
-                </div>
+                    {index < calculation.steps.length - 1 && (
+                      <span
+                        className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70"
+                        aria-hidden="true"
+                      />
+                    )}
+
+                    <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-zinc-100">
+                          {step.stage}
+                        </span>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                          Paso {step.id}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-zinc-300 leading-relaxed mt-1.5">
+                        {step.description}
+                      </p>
+
+                      <div className="flex items-center justify-between gap-3 pt-3 mt-3 border-t border-zinc-800/60 min-w-0">
+                        <div className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 font-mono text-xs text-emerald-400 whitespace-pre-line truncate min-w-0 flex-1">
+                          {step.expression}
+                        </div>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                          {step.rule}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         </div>
       )}
 
       {/* MODO 3: TEORÍA */}
       {viewMode === "theory" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto shadow-xl shadow-black/20">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
+        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col min-h-0 overflow-y-auto shadow-xl shadow-black/20">
+          <div className="pb-5 border-b border-zinc-800/60">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Fundamentos Algebraicos
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               Estructuras y Teoremas Fundamentales del Álgebra
             </h3>
-            <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
+            <p className="text-xs text-zinc-400 mt-2.5 leading-relaxed max-w-3xl">
               El álgebra moderna conecta la geometría de curvas, la teoría de grupos simétricos y los sistemas matriciales con la optimización computacional.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                1. Teorema Fundamental del Álgebra
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Todo polinomio de grado n con coeficientes complejos tiene exactamente n raíces en el plano complejo, contando sus multiplicidades algebraicas.
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                2. Fórmulas de Viète y Simetría
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Relacionan las sumas elementales de las raíces con los coeficientes del polinomio mónico, base de la teoría de Galois y sistemas multivariables.
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                3. Propiedad del Producto Nulo
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                A · B = 0 implica que al menos un término es nulo, permitiendo resolver expresiones de grado superior factorizándolas en bloques elementales.
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60">
-              <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
-                4. Regla de Cramer e Inversión
-              </strong>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Permite resolver sistemas de n ecuaciones mediante determinantes siempre que el determinante de la matriz principal sea distinto de cero (det(A) ≠ 0).
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
+            {[
+              {
+                priority: "1",
+                title: "Teorema Fundamental del Álgebra",
+                rationale:
+                  "Todo polinomio de grado n con coeficientes complejos tiene exactamente n raíces en el plano complejo, contando sus multiplicidades algebraicas.",
+              },
+              {
+                priority: "2",
+                title: "Fórmulas de Viète y Simetría",
+                rationale:
+                  "Relacionan las sumas elementales de las raíces con los coeficientes del polinomio mónico, base de la teoría de Galois y sistemas multivariables.",
+              },
+              {
+                priority: "3",
+                title: "Propiedad del Producto Nulo",
+                rationale:
+                  "A · B = 0 implica que al menos un término es nulo, permitiendo resolver expresiones de grado superior factorizándolas en bloques elementales.",
+              },
+              {
+                priority: "4",
+                title: "Regla de Cramer e Inversión",
+                rationale:
+                  "Permite resolver sistemas de n ecuaciones mediante determinantes siempre que el determinante de la matriz principal sea distinto de cero (det(A) ≠ 0).",
+              },
+            ].map((rule) => (
+              <div
+                key={rule.priority}
+                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors"
+              >
+                <div className="flex items-start gap-3.5">
+                  <span
+                    className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center font-mono text-xs font-bold shrink-0 shadow-inner"
+                    aria-hidden="true"
+                  >
+                    {rule.priority}
+                  </span>
+                  <div className="min-w-0">
+                    <strong className="text-xs text-zinc-200 block mb-1.5 font-mono uppercase tracking-wider">
+                      {rule.title}
+                    </strong>
+                    <p className="text-xs text-zinc-400 leading-relaxed">{rule.rationale}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -991,6 +1131,9 @@ export default function AlgebraView({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label={calculation.methodName}
               className="relative w-full max-w-md border border-zinc-800 bg-zinc-950 rounded-3xl p-6 shadow-2xl"
             >
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
@@ -1023,9 +1166,12 @@ export default function AlgebraView({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Guía General de Álgebra Simbólica"
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
-              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-amber-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 relative z-10">
                 <div className="flex items-center gap-2.5">
@@ -1090,7 +1236,7 @@ export default function AlgebraView({
                   </h4>
                   <ul className="list-disc pl-4 space-y-1.5 text-zinc-400 leading-relaxed">
                     <li><strong>Gráficos 3D y Shaders (Raytracing):</strong> La detección de colisión de un rayo de luz contra una superficie esférica se traduce en resolver una ecuación cuadrática en el tiempo de impacto <code className="text-zinc-300">t</code>.</li>
-                    <li><strong>Sistemas 3×3 y Gráficos por Computadora:</strong> La transformación de coordenadas y perspectiva en GPUs se modela con matrices $3\times3$ y $4\times4$.</li>
+                    <li><strong>Sistemas 3×3 y Gráficos por Computadora:</strong> La transformación de coordenadas y perspectiva en GPUs se modela con matrices <code className="text-zinc-200 font-mono">3×3</code> y <code className="text-zinc-200 font-mono">4×4</code>.</li>
                     <li><strong>Análisis de Complejidad Algorítmica:</strong> Determinar el tiempo de ejecución en bucles anidados cuadráticos o polinómicos se modela mediante polinomios de grado superior.</li>
                     <li><strong>Criptografía Asimétrica:</strong> Las curvas elípticas de clave pública se basan en polinomios de Weierstrass de tercer grado.</li>
                   </ul>

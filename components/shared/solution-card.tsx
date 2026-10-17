@@ -297,7 +297,7 @@ export default function SolutionCard({
               <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
                 Resultado Extraído
               </span>
-              <div className="text-3xl lg:text-4xl font-serif font-bold text-emerald-400 tracking-tight">
+              <div className="text-4xl lg:text-5xl font-serif font-bold text-emerald-400 tracking-tight">
                 {solution.primaryResult}
               </div>
               {solution.extractedFormula && (

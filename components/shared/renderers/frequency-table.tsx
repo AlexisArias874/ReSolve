@@ -56,6 +56,14 @@ export default function FrequencyTable({
     return rows.reduce((acc, r) => acc + r.absFreq, 0);
   }, [rows, n]);
 
+  // Banderas de columna calculadas sobre TODAS las filas para que encabezado y
+  // cuerpo nunca se desalineen si una fila omite un valor opcional.
+  const hasClassMark = useMemo(() => rows.some((r) => r.classMark !== undefined), [rows]);
+  const hasRel = useMemo(() => rows.some((r) => r.relFreq !== undefined), [rows]);
+  const hasPct = useMemo(() => rows.some((r) => r.pctFreq !== undefined), [rows]);
+  const hasCumAbs = useMemo(() => rows.some((r) => r.cumAbsAsc !== undefined), [rows]);
+  const hasCumPct = useMemo(() => rows.some((r) => r.cumPctAsc !== undefined), [rows]);
+
   if (!rows.length) {
     return (
       <div className="p-6 rounded-2xl bg-zinc-950/60 border border-dashed border-zinc-800 text-center">
@@ -87,20 +95,20 @@ export default function FrequencyTable({
             <tr>
               <th className="p-2.5 text-[10px]">#</th>
               <th className="p-2.5">Intervalo</th>
-              {rows[0]?.classMark !== undefined && (
+              {hasClassMark && (
                 <th className="p-2.5 text-zinc-300">xᵢ</th>
               )}
               <th className="p-2.5 text-emerald-400">fᵢ</th>
-              {rows[0]?.relFreq !== undefined && (
+              {hasRel && (
                 <th className="p-2.5 text-zinc-400">hᵢ</th>
               )}
-              {rows[0]?.pctFreq !== undefined && (
+              {hasPct && (
                 <th className="p-2.5 text-amber-400">hᵢ %</th>
               )}
-              {rows[0]?.cumAbsAsc !== undefined && (
+              {hasCumAbs && (
                 <th className="p-2.5 text-sky-400">Fᵢ</th>
               )}
-              {rows[0]?.cumPctAsc !== undefined && (
+              {hasCumPct && (
                 <th className="p-2.5 text-zinc-400">Hᵢ %</th>
               )}
             </tr>
@@ -112,27 +120,31 @@ export default function FrequencyTable({
                 <td className="p-2.5 font-bold text-sky-400">
                   [{r.lower}, {r.upper})
                 </td>
-                {r.classMark !== undefined && (
-                  <td className="p-2.5 text-zinc-200">{r.classMark}</td>
+                {hasClassMark && (
+                  <td className="p-2.5 text-zinc-200">{r.classMark ?? "—"}</td>
                 )}
                 <td className="p-2.5 text-emerald-400 font-bold">
                   {r.absFreq}
                 </td>
-                {r.relFreq !== undefined && (
+                {hasRel && (
                   <td className="p-2.5 text-zinc-400">
-                    {r.relFreq.toFixed(4)}
+                    {r.relFreq !== undefined ? r.relFreq.toFixed(4) : "—"}
                   </td>
                 )}
-                {r.pctFreq !== undefined && (
-                  <td className="p-2.5 text-amber-400">{r.pctFreq}%</td>
+                {hasPct && (
+                  <td className="p-2.5 text-amber-400">
+                    {r.pctFreq !== undefined ? `${r.pctFreq}%` : "—"}
+                  </td>
                 )}
-                {r.cumAbsAsc !== undefined && (
+                {hasCumAbs && (
                   <td className="p-2.5 text-sky-300 font-semibold">
-                    {r.cumAbsAsc}
+                    {r.cumAbsAsc ?? "—"}
                   </td>
                 )}
-                {r.cumPctAsc !== undefined && (
-                  <td className="p-2.5 text-zinc-400">{r.cumPctAsc}%</td>
+                {hasCumPct && (
+                  <td className="p-2.5 text-zinc-400">
+                    {r.cumPctAsc !== undefined ? `${r.cumPctAsc}%` : "—"}
+                  </td>
                 )}
               </tr>
             ))}

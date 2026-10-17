@@ -128,7 +128,7 @@ const SUBTOPIC_ALIASES: Record<string, string> = {
   "teoria-colas": "teoria-colas", "teoria_colas": "teoria-colas", "queueing": "teoria-colas",
 };
 
-function normalizeSubtopic(raw: string): string {
+export function normalizeSubtopic(raw: string): string {
   if (!raw) return "";
   const key = raw.trim().toLowerCase();
   return SUBTOPIC_ALIASES[key] || key;

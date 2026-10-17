@@ -40,10 +40,6 @@ import {
   deleteUserHistory,
   type HistoryItem,
 } from "@/lib/supabase/history";
-import ReactMarkdown from "react-markdown";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
 
 // -----------------------------------------------------------------------------
 // TIPOS Y MODELOS DEL PROBLEMA DE ASIGNACIÓN
@@ -577,9 +573,19 @@ export default function AssignmentView({
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // Cierra la guía con la tecla Escape
+  useEffect(() => {
+    if (!isHelpOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsHelpOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isHelpOpen]);
+
   return (
     // REGLA 1 & 2: Ancestro raíz con relative explícito y cadena de alturas resuelta
-    <div className="h-full flex flex-col gap-6 min-h-0 relative select-none">
+    <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto custom-scrollbar pr-1">
           {/* BARRA DE CONFIGURACIÓN SUPERIOR */}
@@ -589,6 +595,7 @@ export default function AssignmentView({
                 <button
                   type="button"
                   onClick={() => setSense("min")}
+                  aria-pressed={sense === "min"}
                   className={`px-3 py-1.5 rounded-lg transition-all ${
                     sense === "min"
                       ? "bg-zinc-100 text-zinc-950 font-bold shadow-md"
@@ -600,6 +607,7 @@ export default function AssignmentView({
                 <button
                   type="button"
                   onClick={() => setSense("max")}
+                  aria-pressed={sense === "max"}
                   className={`px-3 py-1.5 rounded-lg transition-all ${
                     sense === "max"
                       ? "bg-emerald-500 text-zinc-950 font-bold shadow-md"
@@ -617,7 +625,9 @@ export default function AssignmentView({
                   type="button"
                   onClick={handleRemoveWorker}
                   disabled={workers.length <= 2}
-                  className="p-1 hover:text-zinc-100 disabled:opacity-20"
+                  title="Quitar agente"
+                  aria-label="Quitar agente"
+                  className="p-1 hover:text-zinc-100 disabled:opacity-20 transition-colors active:scale-95"
                 >
                   <Minus size={12} />
                 </button>
@@ -626,7 +636,9 @@ export default function AssignmentView({
                   type="button"
                   onClick={handleAddWorker}
                   disabled={workers.length >= 6}
-                  className="p-1 hover:text-zinc-100 disabled:opacity-20"
+                  title="Añadir agente"
+                  aria-label="Añadir agente"
+                  className="p-1 hover:text-zinc-100 disabled:opacity-20 transition-colors active:scale-95"
                 >
                   <Plus size={12} />
                 </button>
@@ -638,7 +650,9 @@ export default function AssignmentView({
                   type="button"
                   onClick={handleRemoveTask}
                   disabled={tasks.length <= 2}
-                  className="p-1 hover:text-zinc-100 disabled:opacity-20"
+                  title="Quitar tarea"
+                  aria-label="Quitar tarea"
+                  className="p-1 hover:text-zinc-100 disabled:opacity-20 transition-colors active:scale-95"
                 >
                   <Minus size={12} />
                 </button>
@@ -647,7 +661,9 @@ export default function AssignmentView({
                   type="button"
                   onClick={handleAddTask}
                   disabled={tasks.length >= 6}
-                  className="p-1 hover:text-zinc-100 disabled:opacity-20"
+                  title="Añadir tarea"
+                  aria-label="Añadir tarea"
+                  className="p-1 hover:text-zinc-100 disabled:opacity-20 transition-colors active:scale-95"
                 >
                   <Plus size={12} />
                 </button>
@@ -657,9 +673,9 @@ export default function AssignmentView({
             <button
               type="button"
               onClick={() => setIsHelpOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 transition-colors flex items-center gap-1.5 shadow-sm ml-auto"
+              className="h-11 px-4 rounded-xl bg-zinc-900/40 border border-zinc-800/80 hover:bg-zinc-800 hover:text-zinc-100 text-[11px] font-mono uppercase tracking-[0.15em] text-zinc-300 transition-colors flex items-center gap-2 shadow-sm ml-auto active:scale-95"
             >
-              <Sparkles size={13} className="text-amber-400" />
+              <Sparkles size={14} className="text-amber-400" />
               <span>Casos de Asignación</span>
             </button>
           </div>
@@ -667,17 +683,19 @@ export default function AssignmentView({
           {/* SECCIÓN SUPERIOR: MATRIZ DE COSTOS + HERO CARD */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 shrink-0">
             {/* Panel Izquierdo: Editor de Matriz de Costos C_ij */}
-            <div className="xl:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 space-y-5 overflow-hidden">
-              <div className="space-y-4">
+            <div className="xl:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 space-y-5 overflow-hidden">
+              <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
+
+              <div className="relative z-10 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/60 pb-3">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-                    <Briefcase size={14} className="text-zinc-500" />
+                    <Briefcase size={13} className="text-zinc-500" />
                     Matriz de Costos / Rendimiento C_{`{ij}`}
                   </span>
-                  <span className="text-[10px] font-mono text-zinc-500">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 bg-zinc-950/60 border border-zinc-800/60 px-2.5 py-1 rounded-lg">
                     {result.isBalanced
                       ? "Matriz Balanceada (n = m)"
-                      : "Matriz Rectangular (Requiere Variable Ficticia Dummy)"}
+                      : "Rectangular · Requiere Ficticia Dummy"}
                   </span>
                 </div>
 
@@ -741,23 +759,23 @@ export default function AssignmentView({
               </div>
 
               {/* Botón Guardar en Supabase */}
-              <div className="pt-3 border-t border-zinc-800/60 flex items-center justify-between">
-                <span className="text-[10px] font-mono text-zinc-500">
-                  Persistencia ReSolve · Algoritmo Húngaro (Kuhn-Munkres)
+              <div className="relative z-10 pt-3 border-t border-zinc-800/60 flex items-center justify-between gap-3">
+                <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500">
+                  Persistencia ReSolve · Kuhn-Munkres
                 </span>
                 <button
                   type="button"
                   onClick={saveCalculation}
-                  className="px-5 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-semibold text-xs rounded-xl shadow-md transition-all active:scale-95"
+                  className="h-11 px-6 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold hover:bg-zinc-200 hover:scale-[1.02] shadow-lg shadow-zinc-100/5 active:scale-95 flex items-center gap-2 transition-all"
                 >
-                  Guardar en Historial
+                  <CheckCircle2 size={14} /> Guardar en Historial
                 </button>
               </div>
             </div>
 
             {/* Panel Derecho: Hero Card con Costo Total y Parejas Asignadas */}
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden relative">
-              <div className="pointer-events-none absolute -bottom-16 -right-16 w-52 h-52 bg-emerald-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">
@@ -765,8 +783,9 @@ export default function AssignmentView({
                     Costo Total Óptimo Z*
                   </span>
                   <button
+                    type="button"
                     onClick={handleCopy}
-                    className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-900/50"
+                    className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
                   >
                     {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                     {copied ? "Copiado" : "Copiar"}
@@ -774,16 +793,26 @@ export default function AssignmentView({
                 </div>
 
                 <div className="py-2 text-center">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-500 block mb-1">
                     {sense === "min" ? "Costo Mínimo Global" : "Beneficio Máximo Obtenido"}
                   </span>
-                  <div className="text-5xl font-serif font-bold text-emerald-400 tracking-tight">
-                    {result.totalOptimalCost}
-                  </div>
-                  <span className="text-[11px] font-mono text-zinc-400 mt-2 block">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={result.totalOptimalCost}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.05 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-5xl lg:text-7xl font-serif font-bold text-zinc-100 tracking-tight"
+                    >
+                      {result.totalOptimalCost}
+                    </motion.div>
+                  </AnimatePresence>
+                  <span className="text-[11px] font-mono text-zinc-400 mt-2 flex items-center justify-center gap-1.5">
+                    <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
                     {result.isBalanced
-                      ? "✓ Asignación 1 a 1 Factible y Completa"
-                      : "✓ Asignación con Tarea/Agente Ficticio (Dummy)"}
+                      ? "Asignación 1 a 1 factible y completa"
+                      : "Asignación con tarea/agente ficticio (dummy)"}
                   </span>
                 </div>
 
@@ -829,10 +858,10 @@ export default function AssignmentView({
               }`}
             >
               <div className="flex flex-wrap items-center justify-between border-b border-zinc-800/60 pb-3 gap-2 shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono font-semibold text-zinc-200 flex items-center gap-1.5">
-                    <TableIcon size={14} className="text-emerald-400" />
-                    {currentStep?.title || "Paso del Algoritmo Húngaro"}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2 min-w-0">
+                    <TableIcon size={13} className="text-zinc-500 shrink-0" />
+                    <span className="truncate">{currentStep?.title || "Paso del Algoritmo Húngaro"}</span>
                   </span>
                 </div>
 
@@ -843,8 +872,9 @@ export default function AssignmentView({
                       type="button"
                       disabled={currentStepIdx <= 0}
                       onClick={() => setCurrentStepIdx((prev) => Math.max(0, prev - 1))}
-                      className="p-1 text-zinc-400 hover:text-zinc-100 disabled:opacity-25"
+                      className="p-1 text-zinc-400 hover:text-zinc-100 disabled:opacity-25 transition-colors active:scale-95"
                       title="Paso anterior"
+                      aria-label="Paso anterior"
                     >
                       <ArrowLeft size={13} />
                     </button>
@@ -859,8 +889,9 @@ export default function AssignmentView({
                           Math.min(result.steps.length - 1, prev + 1)
                         )
                       }
-                      className="p-1 text-zinc-400 hover:text-zinc-100 disabled:opacity-25"
+                      className="p-1 text-zinc-400 hover:text-zinc-100 disabled:opacity-25 transition-colors active:scale-95"
                       title="Paso siguiente"
+                      aria-label="Paso siguiente"
                     >
                       <ArrowRight size={13} />
                     </button>
@@ -869,7 +900,8 @@ export default function AssignmentView({
                   <button
                     type="button"
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800 text-xs font-mono transition-all flex items-center gap-1.5 shadow-sm"
+                    aria-label={isExpanded ? "Reducir visualizador" : "Expandir visualizador"}
+                    className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800 text-xs font-mono transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
                   >
                     {isExpanded ? <Minimize2 size={13} className="text-amber-400" /> : <Maximize2 size={13} />}
                     <span>{isExpanded ? "Reducir" : "Expandir"}</span>
@@ -961,24 +993,29 @@ export default function AssignmentView({
             {/* Panel Historial */}
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
-                  <History size={15} className="text-zinc-400" /> Historial de Asignaciones
+                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                  <History size={15} className="text-zinc-400" /> Historial
                 </span>
                 {history.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => void clearHistory()}
-                    className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                    title="Vaciar historial"
+                    className="text-[11px] text-zinc-500 hover:text-red-400 flex items-center gap-1.5 transition-colors"
                   >
                     <Trash2 size={13} /> Limpiar
                   </button>
                 )}
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 mt-4 pr-1 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pt-4 pr-1 custom-scrollbar">
                 {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-xs text-zinc-500 p-6">
-                    <p>Sin problemas guardados.</p>
-                    <p className="text-[10px] text-zinc-600 mt-1">
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                    <span className="w-11 h-11 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
+                      <History size={18} className="text-zinc-600" />
+                    </span>
+                    <p className="text-sm text-zinc-300 font-medium">Sin problemas guardados</p>
+                    <p className="text-[11px] text-zinc-500">
                       Guarda asignaciones para auditar costos.
                     </p>
                   </div>
@@ -986,7 +1023,8 @@ export default function AssignmentView({
                   history.map((item) => (
                     <div
                       key={item.id}
-                      className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 transition-all flex items-center justify-between text-xs"
+                      title={item.expression}
+                      className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">
                         {item.expression}
@@ -1005,58 +1043,77 @@ export default function AssignmentView({
 
       {/* MODO 2: PROCEDIMIENTO ANALÍTICO PASO A PASO */}
       {viewMode === "steps" && (
-        <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-zinc-800/60 pb-5 shrink-0">
-            <div>
-              <h3 className="text-xl font-serif font-bold text-zinc-100">
+        <div className="relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-8 flex-1 flex flex-col gap-6 min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+          <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 bg-zinc-700/10 rounded-full blur-3xl" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/60 pb-5 shrink-0">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-2.5">
+                <TableIcon size={12} /> Procedimiento
+              </div>
+              <h3 className="text-xl lg:text-2xl font-serif font-bold text-zinc-100">
                 Procedimiento Riguroso del Método Húngaro
               </h3>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
-                {sense.toUpperCase()} Z · Dimensión {result.paddedRows}×{result.paddedCols} · {result.steps.length} Pasos
+              <p className="text-xs text-zinc-400 mt-1.5 font-mono truncate">
+                {sense.toUpperCase()} Z · Dimensión {result.paddedRows}×{result.paddedCols} · {result.steps.length} pasos
               </p>
             </div>
-            <div className="text-xs font-mono px-4 py-2 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 text-zinc-300">
-              Costo Total Z* = <strong className="text-emerald-400">{result.totalOptimalCost}</strong>
+            <div className="shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 shadow-inner">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                Costo Total Z*
+              </span>
+              <span className="text-sm font-serif font-bold text-emerald-400">
+                {result.totalOptimalCost}
+              </span>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+          <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pt-6 pr-2 custom-scrollbar">
             {result.steps.map((st, idx) => (
-              <div
-                key={idx}
-                className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all flex flex-col gap-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-zinc-200 font-mono">
-                    {st.title}
-                  </span>
-                  <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900/80 px-2 py-0.5 rounded-md border border-zinc-800">
-                    Paso #{st.stepNumber}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed">{st.description}</p>
+              <div key={idx} className="relative pl-11 pb-5 last:pb-0">
+                <span
+                  className="absolute left-0 top-0 w-7 h-7 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
+                  aria-hidden="true"
+                >
+                  {st.stepNumber}
+                </span>
+                {idx < result.steps.length - 1 && (
+                  <span className="absolute left-[13px] top-9 bottom-0 w-px bg-zinc-800/70" aria-hidden="true" />
+                )}
 
-                <div className="overflow-x-auto py-1">
-                  <table className="w-full text-xs font-mono text-center border-collapse">
-                    <thead>
-                      <tr className="border-b border-zinc-800 text-zinc-400 bg-zinc-900/80">
-                        <th className="p-2 text-left">Agente</th>
-                        {result.tasks.map((t, i) => (
-                          <th key={i} className="p-2">{t}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-800/40 text-zinc-300">
-                      {st.matrix.map((row, rIdx) => (
-                        <tr key={rIdx}>
-                          <td className="p-2 text-left font-bold text-zinc-400">{result.workers[rIdx]}</td>
-                          {row.map((val, cIdx) => (
-                            <td key={cIdx} className="p-2">{val}</td>
+                <div className="p-4 lg:p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-zinc-100 font-mono">
+                      {st.title}
+                    </span>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 shrink-0">
+                      Paso {st.stepNumber}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-300 leading-relaxed mt-1.5">{st.description}</p>
+
+                  <div className="overflow-x-auto py-1 mt-3">
+                    <table className="w-full text-xs font-mono text-center border-collapse">
+                      <thead>
+                        <tr className="border-b border-zinc-800 text-zinc-400 bg-zinc-900/60">
+                          <th className="p-2 text-left">Agente</th>
+                          {result.tasks.map((t, i) => (
+                            <th key={i} className="p-2">{t}</th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/40 text-zinc-300">
+                        {st.matrix.map((row, rIdx) => (
+                          <tr key={rIdx}>
+                            <td className="p-2 text-left font-bold text-zinc-400">{result.workers[rIdx]}</td>
+                            {row.map((val, cIdx) => (
+                              <td key={cIdx} className="p-2">{val}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             ))}
@@ -1071,7 +1128,7 @@ export default function AssignmentView({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/60 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-3">
               <BookOpen size={12} /> Grafos Bipartitos y Emparejamiento Ponderado
             </div>
-            <h3 className="text-2xl font-serif font-bold text-zinc-100">
+            <h3 className="text-2xl lg:text-3xl font-serif font-bold text-zinc-100">
               El Teorema de Kuhn-Munkres y el Problema de Asignación
             </h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed max-w-3xl">
@@ -1105,13 +1162,16 @@ export default function AssignmentView({
         {isHelpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md select-none">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Guía del Algoritmo Húngaro"
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="relative w-full max-w-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden"
             >
-              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 relative z-10">
                 <div className="flex items-center gap-2.5">
@@ -1128,8 +1188,11 @@ export default function AssignmentView({
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsHelpOpen(false)}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
+                  aria-label="Cerrar"
+                  title="Cerrar"
+                  className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors active:scale-95"
                 >
                   <X size={16} />
                 </button>

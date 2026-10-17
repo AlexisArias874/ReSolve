@@ -1,4 +1,5 @@
 import { sanitizeMathExpression } from "./universal-evaluator";
+import { normalizeSubtopic } from "./problem-router";
 
 export interface AdaptedPayload {
   expression: string;
@@ -12,8 +13,11 @@ export function adaptExpressionForModule(
   extraMeta?: { point?: string; side?: string }
 ): AdaptedPayload {
   const cleaned = sanitizeMathExpression(rawExpression);
+  // Normaliza el subtema (alias/case) para que los `case` no fallen ante
+  // variantes devueltas por el LLM ("Matrices", "tablas_frecuencia", ...).
+  const subtopic = normalizeSubtopic(targetSubtopic);
 
-  switch (targetSubtopic) {
+  switch (subtopic) {
     case "aritmetica":
       // Aritmética acepta sqrt, fracciones, potencias puras
       return { expression: cleaned };
@@ -25,13 +29,14 @@ export function adaptExpressionForModule(
       }
       return { expression: cleaned };
 
-    case "geometria":
+    case "geometria": {
       // Si la IA mandó una fórmula analítica como "sqrt((6-2)^2...)", intentamos extraer los puntos si existen
       const pointsMatch = cleaned.match(/\((-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\).*\((-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\)/);
       if (pointsMatch) {
         return { expression: `(${pointsMatch[1]}, ${pointsMatch[2]}), (${pointsMatch[3]}, ${pointsMatch[4]})` };
       }
       return { expression: cleaned };
+    }
 
     case "limites":
       return {
