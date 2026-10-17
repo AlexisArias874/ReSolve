@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Playfair_Display } from "next/font/google";
+import { Geist, Geist_Mono, EB_Garamond } from "next/font/google";
+import ThemeScope from "@/components/shared/theme-scope";
 import "./globals.css";
 
 const geist = Geist({
@@ -7,9 +8,16 @@ const geist = Geist({
   variable: "--font-sans",
 });
 
-const playfair = Playfair_Display({
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+});
+
+const serif = EB_Garamond({
   subsets: ["latin"],
   variable: "--font-serif",
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -25,19 +33,26 @@ export default function RootLayout({
   return (
     <html lang="es" className="dark" suppressHydrationWarning>
       <head>
-        {/* Inyector instantáneo de tema guardado */}
+        {/* Inyector instantáneo de tema guardado. El tema es una preferencia de
+            la app: solo se aplica dentro del dashboard. Las páginas públicas
+            (landing, auth, historial) quedan siempre en oscuro. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               try {
+                const path = location.pathname;
+                const isApp = path === '/dashboard' || path.startsWith('/dashboard/');
                 const savedTheme = localStorage.getItem('resolve_theme') || 'dark';
-                document.documentElement.setAttribute('data-theme', savedTheme);
+                document.documentElement.setAttribute('data-theme', isApp ? savedTheme : 'dark');
+                const savedEffects = localStorage.getItem('resolve_effects');
+                document.documentElement.setAttribute('data-effects', savedEffects === '1' ? 'on' : 'off');
               } catch(e) {}
             `,
           }}
         />
       </head>
-      <body className={`${geist.variable} ${playfair.variable} font-sans antialiased bg-zinc-950 text-zinc-50`}>
+      <body className={`${geist.variable} ${geistMono.variable} ${serif.variable} font-sans antialiased bg-zinc-950 text-zinc-50`}>
+        <ThemeScope />
         {children}
       </body>
     </html>

@@ -25,8 +25,10 @@ import {
   Minimize2,
   AlertCircle,
   PieChart,
-  Cpu
+  Cpu,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import { useAIContext } from "@/lib/context/ai-context";
 import {
   fetchUserHistory,
@@ -283,6 +285,7 @@ export default function DescriptiveStatisticsView({
     initialExpression || "42, 45, 48, 44, 52, 49, 46, 47, 55, 43, 44, 46, 50, 51, 48, 47, 49, 120, 46, 45"
   );
   const [sampleType, setSampleType] = useState<SampleType>("sample");
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
   const [activeTab, setActiveTab] = useState<"histogram" | "table" | "boxplot">("histogram");
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -629,13 +632,13 @@ export default function DescriptiveStatisticsView({
           </div>
 
           {/* SECCIÓN INFERIOR */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-0">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-[640px]">
             {/* Contenedor Visual y Tabular */}
             <div
               className={`${
                 isExpanded
                   ? "absolute inset-2 z-30 bg-zinc-950/95 backdrop-blur-2xl border border-zinc-700/80 rounded-3xl p-6 shadow-2xl flex flex-col overflow-hidden"
-                  : "xl:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4"
+                  : `${isHistoryHidden ? "xl:col-span-12" : "xl:col-span-8"} border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4`
               }`}
             >
               {/* Pestañas */}
@@ -850,11 +853,22 @@ export default function DescriptiveStatisticsView({
             </div>
 
             {/* Panel Historial */}
+            {isHistoryHidden ? null : (
+
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Análisis
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryHidden(true)}
+                  title="Ocultar historial"
+                  aria-label="Ocultar historial"
+                  className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+                >
+                  <PanelRightClose size={14} />
+                </button>
                 {history.length > 0 && (
                   <button
                     onClick={() => void clearHistory()}
@@ -895,6 +909,8 @@ export default function DescriptiveStatisticsView({
                 )}
               </div>
             </div>
+
+            )}
           </div>
         </div>
       )}

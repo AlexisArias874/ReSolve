@@ -25,8 +25,10 @@ import {
   Cpu,
   ArrowRight,
   ScatterChart,
-  Target
+  Target,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import { useAIContext } from "@/lib/context/ai-context";
 import {
   fetchUserHistory,
@@ -273,6 +275,7 @@ export default function RegressionView({
   const [predictX, setPredictX] = useState<number>(9);
   const [showResiduals, setShowResiduals] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<"scatter" | "table">("scatter");
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
 
   // Estados de control UI y persistencia
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
@@ -638,13 +641,13 @@ export default function RegressionView({
           </div>
 
           {/* SECCIÓN INFERIOR: VISUALIZADOR SVG ESTRICTO + TABLA DE RESIDUOS */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-0">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-[640px]">
             {/* Visualizador de Dispersión y Ajuste (Reglas 1, 4 y 9) */}
             <div
               className={`${
                 isExpanded
                   ? "absolute inset-0 z-30 bg-zinc-950/95 backdrop-blur-2xl border border-zinc-700/80 rounded-3xl p-6 shadow-2xl flex flex-col min-h-0 overflow-hidden"
-                  : "xl:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4 overflow-hidden"
+                  : `${isHistoryHidden ? "xl:col-span-12" : "xl:col-span-8"} border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4 overflow-hidden`
               }`}
             >
               <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3 shrink-0">
@@ -868,11 +871,22 @@ export default function RegressionView({
             </div>
 
             {/* Panel Historial */}
+            {isHistoryHidden ? null : (
+
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Regresión
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryHidden(true)}
+                  title="Ocultar historial"
+                  aria-label="Ocultar historial"
+                  className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+                >
+                  <PanelRightClose size={14} />
+                </button>
                 {history.length > 0 && (
                   <button
                     onClick={() => void clearHistory()}
@@ -913,6 +927,8 @@ export default function RegressionView({
                 )}
               </div>
             </div>
+
+            )}
           </div>
         </div>
       )}

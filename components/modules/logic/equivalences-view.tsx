@@ -21,8 +21,10 @@ import {
   Scale,
   CheckCircle2,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import { useAIContext } from "@/lib/context/ai-context";
 import {
   fetchUserHistory,
@@ -177,6 +179,7 @@ export default function EquivalencesView({
 }) {
   // Expresión A y Expresión B
   const [exprA, setExprA] = useState<string>("¬(p ∧ q)");
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
   const [exprB, setExprB] = useState<string>("¬p ∨ ¬q");
   const [activeInput, setActiveInput] = useState<"A" | "B">("A");
 
@@ -557,7 +560,7 @@ export default function EquivalencesView({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
             
             {/* Panel Izquierdo: Tabla Comparativa A vs B */}
-            <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+            <div className={`${isHistoryHidden ? "lg:col-span-12" : "lg:col-span-8"} border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden`}>
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <ListOrdered size={15} className="text-zinc-400" /> Tabla de Verdad Comparativa ({comparison.totalRows} renglones)
@@ -629,11 +632,22 @@ export default function EquivalencesView({
             </div>
 
             {/* Panel Derecho: Historial */}
+            {isHistoryHidden ? null : (
+
             <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Leyes
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryHidden(true)}
+                  title="Ocultar historial"
+                  aria-label="Ocultar historial"
+                  className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+                >
+                  <PanelRightClose size={14} />
+                </button>
                 {history.length > 0 && (
                   <button
                     type="button"
@@ -682,6 +696,8 @@ export default function EquivalencesView({
                 )}
               </div>
             </div>
+
+            )}
 
           </div>
         </div>

@@ -27,8 +27,10 @@ import {
   CheckCircle2,
   Shuffle,
   Binary,
-  Cpu
+  Cpu,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import { useAIContext } from "@/lib/context/ai-context";
 import {
   fetchUserHistory,
@@ -187,6 +189,7 @@ export default function ProbabilityView({
   initialExpression?: string;
 }) {
   const [subtopic, setSubtopic] = useState<ProbabilitySubtopic>("bayes");
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
 
   // Estado: Bayes
   const [hypotheses, setHypotheses] = useState<BayesHypothesis[]>([
@@ -962,13 +965,13 @@ export default function ProbabilityView({
           </div>
 
           {/* SECCIÓN INFERIOR: VISUALIZACIÓN GRÁFICA (ÁRBOL / VENN) + HISTORIAL */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-0">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-[640px]">
             {/* Contenedor Visual */}
             <div
               className={`${
                 isExpanded
                   ? "fixed inset-4 z-50 bg-zinc-950/95 backdrop-blur-2xl border border-zinc-700/80 rounded-3xl p-6 shadow-2xl flex flex-col"
-                  : "xl:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4"
+                  : `${isHistoryHidden ? "xl:col-span-12" : "xl:col-span-8"} border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4`
               }`}
             >
               <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3 shrink-0">
@@ -996,7 +999,7 @@ export default function ProbabilityView({
                 {/* 1. ÁRBOL DE PROBABILIDAD DE BAYES (SVG) */}
                 {subtopic === "bayes" && (
                   <div className={`w-full overflow-y-auto p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 ${isExpanded ? "h-[calc(100vh-160px)]" : "h-full"}`}>
-                    <div className="flex flex-col gap-4 max-w-xl mx-auto font-mono text-xs">
+                    <div className="flex flex-col gap-4 w-full font-mono text-xs">
                       {hypotheses.map((h, i) => {
                         const post = bayesAnalysis.posteriors[i]?.posterior || 0;
                         const joint = Number((h.prior * h.likelihood).toFixed(4));
@@ -1032,7 +1035,7 @@ export default function ProbabilityView({
                 {/* 2. DIAGRAMA DE VENN PROPORCIONAL */}
                 {subtopic === "events" && (
                   <div className={`w-full flex flex-col items-center justify-center p-6 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 ${isExpanded ? "h-[calc(100vh-160px)]" : "h-full"}`}>
-                    <svg viewBox="0 0 400 200" className="w-full max-w-md h-auto">
+                    <svg viewBox="0 0 400 200" className="w-full h-auto">
                       {/* Fondo Universo S */}
                       <rect x="10" y="10" width="380" height="180" rx="16" strokeWidth="1.5" className="fill-zinc-500/10 stroke-zinc-500/40" />
                       <text x="30" y="35" fontSize="12" fontFamily="monospace" className="fill-current text-zinc-400">Universo S (100%)</text>
@@ -1067,7 +1070,7 @@ export default function ProbabilityView({
                 {/* 3. COMBINATORIA RESUMEN */}
                 {subtopic === "combinatorics" && (
                   <div className={`w-full flex flex-col items-center justify-center p-6 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 gap-5 ${isExpanded ? "h-[calc(100vh-160px)]" : "h-full"}`}>
-                    <div className="w-full max-w-xl p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800 text-center space-y-3">
+                    <div className="w-full p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800 text-center space-y-3">
                       <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-widest block">
                         Fórmula Combinatoria Evaluada
                       </span>
@@ -1077,7 +1080,7 @@ export default function ProbabilityView({
                         </ReactMarkdown>
                       </div>
                     </div>
-                    <p className="text-xs font-mono text-zinc-500 text-center max-w-md leading-relaxed">
+                    <p className="text-xs font-mono text-zinc-500 text-center leading-relaxed">
                       Cada subconjunto tiene una probabilidad uniforme idéntica de ocurrir de p = {combinatoricsAnalysis.laplaceProb}.
                     </p>
                   </div>
@@ -1086,11 +1089,22 @@ export default function ProbabilityView({
             </div>
 
             {/* Panel Historial */}
+            {isHistoryHidden ? null : (
+
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-500" /> Historial de Probabilidad
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryHidden(true)}
+                  title="Ocultar historial"
+                  aria-label="Ocultar historial"
+                  className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+                >
+                  <PanelRightClose size={14} />
+                </button>
                 {history.length > 0 && (
                   <button
                     type="button"
@@ -1130,6 +1144,8 @@ export default function ProbabilityView({
                 )}
               </div>
             </div>
+
+            )}
           </div>
         </div>
       )}

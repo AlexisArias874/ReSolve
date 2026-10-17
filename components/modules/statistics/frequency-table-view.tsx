@@ -26,8 +26,10 @@ import {
   Layers,
   Cpu,
   ArrowDownRight,
-  Percent
+  Percent,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import { useAIContext } from "@/lib/context/ai-context";
 import {
   fetchUserHistory,
@@ -247,6 +249,7 @@ export default function FrequencyView({
     initialExpression || "112, 115, 118, 122, 125, 128, 130, 132, 135, 138, 140, 142, 145, 148, 150, 152, 155, 160, 165, 170, 175, 185, 195, 210"
   );
   const [method, setMethod] = useState<GroupingMethod>("sturges");
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
   const [manualK, setManualK] = useState<number>(6);
   const [activeTab, setActiveTab] = useState<"table" | "histogram" | "ogive">("table");
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
@@ -618,12 +621,12 @@ export default function FrequencyView({
           </div>
 
           {/* SECCIÓN INFERIOR */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-0">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-[640px]">
             <div
               className={`${
                 isExpanded
                   ? "absolute inset-2 z-30 bg-zinc-950/95 backdrop-blur-2xl border border-zinc-700/80 rounded-3xl p-6 shadow-2xl flex flex-col overflow-hidden"
-                  : "xl:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4"
+                  : `${isHistoryHidden ? "xl:col-span-12" : "xl:col-span-8"} border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4`
               }`}
             >
               <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3 shrink-0">
@@ -821,11 +824,23 @@ export default function FrequencyView({
               </div>
             </div>
 
+            {isHistoryHidden ? null : (
+
+
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Tabulaciones
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryHidden(true)}
+                  title="Ocultar historial"
+                  aria-label="Ocultar historial"
+                  className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+                >
+                  <PanelRightClose size={14} />
+                </button>
                 {history.length > 0 && (
                   <button
                     onClick={() => void clearHistory()}
@@ -866,6 +881,9 @@ export default function FrequencyView({
                 )}
               </div>
             </div>
+
+
+            )}
           </div>
         </div>
       )}

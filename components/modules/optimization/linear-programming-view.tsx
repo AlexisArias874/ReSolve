@@ -27,7 +27,9 @@ import {
   Sliders,
   Table as TableIcon,
   Minimize2,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import { useAIContext } from "@/lib/context/ai-context";
 import {
   fetchUserHistory,
@@ -576,6 +578,7 @@ export default function LinearProgrammingView({
   });
 
   const [activeTab, setActiveTab] = useState<"graph" | "simplex" | "table">("graph");
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [copied, setCopied] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -1220,7 +1223,7 @@ export default function LinearProgrammingView({
               className={`${
                 isExpanded
                   ? "absolute inset-2 z-30 bg-zinc-950/95 backdrop-blur-2xl border border-zinc-700/80 rounded-3xl p-6 shadow-2xl flex flex-col min-h-0 min-w-0 overflow-hidden"
-                  : "xl:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4"
+                  : `${isHistoryHidden ? "xl:col-span-12" : "xl:col-span-8"} border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4`
               }`}
             >
               <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3 shrink-0">
@@ -1403,11 +1406,23 @@ export default function LinearProgrammingView({
               </div>
             </div>
 
+            {isHistoryHidden ? null : (
+
+
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Optimización
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryHidden(true)}
+                  title="Ocultar historial"
+                  aria-label="Ocultar historial"
+                  className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+                >
+                  <PanelRightClose size={14} />
+                </button>
                 {history.length > 0 && (
                   <button
                     type="button"
@@ -1445,6 +1460,9 @@ export default function LinearProgrammingView({
                 )}
               </div>
             </div>
+
+
+            )}
           </div>
         </div>
       )}

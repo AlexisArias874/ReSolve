@@ -1,10 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Calculator, BrainCircuit, LineChart, ArrowRight, LogIn, User } from "lucide-react";
+import { Calculator, BrainCircuit, LineChart, ArrowRight, LogIn, User, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo, useEffect, useRef, memo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useEffectsPreference } from "@/lib/hooks/use-effects-preference";
+import BrandLogo from "@/components/shared/brand-logo";
 
 // --- Pool de símbolos matemáticos ---
 const SYMBOL_POOL = [
@@ -160,7 +162,7 @@ const BackgroundSymbols = () => {
   );
 
   return (
-    <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+    <div className="fx-layer fixed inset-0 z-0 overflow-hidden pointer-events-none">
       {/* Gradiente radial de fondo */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#09090b_90%)]" />
 
@@ -184,6 +186,7 @@ const BackgroundSymbols = () => {
 // --- Landing Page ---
 export default function LandingPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { effectsEnabled, setEffectsEnabled } = useEffectsPreference();
 
   useEffect(() => {
     const supabase = createClient();
@@ -196,7 +199,7 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen bg-zinc-950 selection:bg-zinc-800 selection:text-zinc-100">
-      <BackgroundSymbols />
+      {effectsEnabled && <BackgroundSymbols />}
 
       {/* Barra de Navegación */}
 <nav className="fixed top-0 w-full border-b border-zinc-900 bg-zinc-950/70 backdrop-blur-md z-50">
@@ -207,13 +210,22 @@ export default function LandingPage() {
       <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center shadow-sm">
         <Calculator className="text-zinc-950" size={18} />
       </div>
-      <span className="text-xl font-bold font-serif tracking-wide text-zinc-100">
-        Re<span className="text-zinc-500">Solve</span>
-      </span>
+      <BrandLogo size="sm" />
     </Link>
 
     {/* Acciones / Navegación */}
     <div className="flex items-center gap-4 shrink-0">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={effectsEnabled}
+        aria-label="Activar o desactivar animaciones decorativas"
+        title={effectsEnabled ? "Desactivar animaciones" : "Activar animaciones"}
+        onClick={() => setEffectsEnabled(!effectsEnabled)}
+        className="p-2 rounded-full border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
+      >
+        <Sparkles size={15} className={effectsEnabled ? "text-emerald-400" : ""} />
+      </button>
       {isLoggedIn ? (
         <div className="flex items-center gap-6 text-sm font-medium text-zinc-400">
           <Link href="/metodos" className="hover:text-zinc-100 transition-colors whitespace-nowrap">

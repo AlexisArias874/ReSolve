@@ -17,7 +17,9 @@ import {
   Wand2,
   CheckCircle2,
   CornerDownLeft,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -150,6 +152,7 @@ export default function UniversalCalculatorView({ onNavigateToModule }: Universa
   const [source, setSource] = useState<"local" | "ai" | "fallback" | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
 
   // --- Estados del Generador de Problemas Aleatorios ---
   const [isGeneratorOpen, setIsGeneratorOpen] = useState<boolean>(false);
@@ -385,7 +388,7 @@ Redacta el enunciado completo en 'problemStatement', extrae la ecuación canóni
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
 
         {/* 2. RESULTADO PRINCIPAL */}
-        <div className="xl:col-span-9 min-w-0">
+        <div className={`${isHistoryHidden ? "xl:col-span-12" : "xl:col-span-9"} min-w-0`}>
           {solution ? (
             <div className="space-y-4">
               {badge && (
@@ -438,12 +441,22 @@ Redacta el enunciado completo en 'problemStatement', extrae la ecuación canóni
         </div>
 
         {/* 3. HISTORIAL DE CÁLCULOS */}
-        <div className="xl:col-span-3 min-w-0">
+        <div className={`${isHistoryHidden ? "hidden" : "xl:col-span-3"} min-w-0`}>
+          {isHistoryHidden ? null : (
           <div className="border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-5 shadow-xl shadow-black/20 h-full flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-800/60">
               <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                 <History size={14} className="text-zinc-400" /> Historial
               </span>
+              <button
+                type="button"
+                onClick={() => setIsHistoryHidden(true)}
+                title="Ocultar historial"
+                aria-label="Ocultar historial"
+                className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+              >
+                <PanelRightClose size={14} />
+              </button>
               {history.length > 0 && (
                 <button
                   type="button"
@@ -477,6 +490,7 @@ Redacta el enunciado completo en 'problemStatement', extrae la ecuación canóni
               )}
             </div>
           </div>
+          )}
         </div>
       </div>
 

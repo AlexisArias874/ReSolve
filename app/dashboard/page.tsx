@@ -4,11 +4,13 @@ import { useSearchParams } from "next/navigation";
 import ProfileModal from "@/components/profile/profile-modal";
 import { User as UserIcon, Settings, Zap } from "lucide-react";
 import OmniSolverView from "@/components/modules/omni/omni-solver-view";
+import TechBackdrop from "@/components/shared/tech-backdrop";
+import BrandLogo from "@/components/shared/brand-logo";
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import {
   Calculator,
   Binary,
@@ -24,6 +26,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
+  PanelRightOpen,
   ChevronRight,
   LogOut,
   LogIn,
@@ -40,6 +43,27 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { AIContextProvider } from "@/lib/context/ai-context";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
+import { useEffectsPreference } from "@/lib/hooks/use-effects-preference";
+import dynamic from "next/dynamic";
+
+// AeroShards (React Bits) — fondo trasero del módulo Matemáticas I.
+// ssr:false: requiere WebGPU y solo corre en cliente.
+const AeroShards = dynamic(() => import("@/components/shared/aero-shards"), {
+  ssr: false,
+});
+
+// SplitText (React Bits) — efecto del título de sección del header (por letras).
+// Requiere gsap y @gsap/react y trabaja sobre el DOM en cliente: no aporta SSR.
+const SplitText = dynamic(() => import("@/components/shared/split-text"), {
+  ssr: false,
+});
+
+// FoldText (React Bits) — efecto de "ReSolve AI" en el panel de IA. Requiere
+// gsap; se carga sin SSR (igual que SplitText).
+const FoldText = dynamic(() => import("@/components/shared/fold-text"), {
+  ssr: false,
+});
 
 // =============================================================================
 // IMPORTACIÓN DE VISTAS (ACTIVAS Y FUTURAS)
@@ -183,12 +207,24 @@ function DashboardContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  // Menú lateral: columna en escritorio (lg+) y drawer superpuesto en móvil.
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
   // --- Estados de Asistente IA (Visibilidad, Ancho y Maximizado) ---
   const [isAiOpen, setIsAiOpen] = useState<boolean>(true);
+  // Drawer del asistente para pantallas < 1280px (xl), donde no cabe en columna.
+  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
+  // Preferencia global de visibilidad del historial (persistente entre vistas).
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
+  // Animaciones decorativas opcionales (fondo + logo).
+  const { effectsEnabled, setEffectsEnabled } = useEffectsPreference();
   // Ancho inicial reducido a 320px para liberar 40px al área central
   const [aiWidth, setAiWidth] = useState<number>(320);
   const [isAiMaximized, setIsAiMaximized] = useState<boolean>(false);
   const isDraggingRef = useRef<boolean>(false);
+
+  // Cierra el drawer de navegación al elegir contenido en pantallas pequeñas.
+  const closeMobileNav = () => setIsMobileNavOpen(false);
 
   // --- Estado Global de Tema (Para Invitados y Autenticados) ---
   const [currentTheme, setCurrentTheme] = useState<string>("dark");
@@ -277,6 +313,7 @@ function DashboardContent() {
     if (extraParams?.point) query.set("point", extraParams.point);
     if (extraParams?.side) query.set("side", extraParams.side);
 
+    closeMobileNav();
     router.push(`/dashboard?${query.toString()}`);
   };
 
@@ -286,24 +323,39 @@ function DashboardContent() {
     if (subList && subList.length > 0) {
       setSubTopic(subList[0].id);
     }
+    closeMobileNav();
   };
 
   const currentModule = MODULES.find((m) => m.id === activeModule) || MODULES[0];
   const currentSubtopics = SUBTOPICS_BY_MODULE[activeModule] || SUBTOPICS_BY_MODULE.mat1;
   const currentSubtopicConfig = currentSubtopics.find((s) => s.id === subTopic) || currentSubtopics[0];
 
+  // Cabecera: la Calculadora Universal (omni) no pertenece a MODULES ni tiene
+  // subtemas, así que recibe su propia identidad en lugar de heredar la de mat1.
+  const isOmni = activeModule === "omni";
+  const crumbModuleLabel = isOmni ? "Calculadora Universal" : currentModule?.label;
+  const headerTitle = isOmni ? "Calculadora Universal" : currentSubtopicConfig?.label;
+  const headerDesc = isOmni
+    ? "Resuelve, grafica y explica cualquier expresión · Motor local + IA"
+    : currentSubtopicConfig?.desc;
+
+  // SplitText: se dispara cuando todas las letras del título terminan de animar.
+  const handleLetterAnimationComplete = () => {
+    console.log("All letters have animated!");
+  };
+
   const userInitials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name.substring(0, 2).toUpperCase()
     : user?.email?.substring(0, 2).toUpperCase() || "U";
 
   const renderPlaceholder = (title: string, desc: string) => (
-    <div className="h-full min-h-[400px] border border-dashed border-zinc-800/80 rounded-3xl flex flex-col items-center justify-center p-10 text-center bg-zinc-900/20 backdrop-blur-sm max-w-2xl mx-auto my-auto">
-      <div className="w-14 h-14 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-center mb-4 text-zinc-400 shadow-inner">
+    <div className="h-full min-h-[400px] border border-dashed border-shell-hairline rounded-3xl flex flex-col items-center justify-center p-10 text-center bg-shell-surface backdrop-blur-sm max-w-2xl mx-auto my-auto">
+      <div className="w-14 h-14 rounded-2xl bg-zinc-900/80 border border-shell-hairline flex items-center justify-center mb-4 text-zinc-400 shadow-inner">
         <currentModule.icon size={26} />
       </div>
       <h3 className="text-xl font-serif font-bold text-zinc-200 mb-1">{title}</h3>
       <p className="text-xs text-zinc-400 max-w-md mt-1 leading-relaxed">{desc}</p>
-      <div className="mt-5 flex items-center gap-2 text-[11px] font-mono text-zinc-500 bg-zinc-950/60 border border-zinc-800/80 px-3.5 py-1.5 rounded-xl">
+      <div className="mt-5 flex items-center gap-2 text-[11px] font-mono text-zinc-500 bg-zinc-950/60 border border-shell-hairline px-3.5 py-1.5 rounded-xl">
         <Cpu size={13} className="text-amber-400" />
         <span>Módulo en preparación · Conexión ReSolve AI activa</span>
       </div>
@@ -311,22 +363,67 @@ function DashboardContent() {
   );
 
   return (
-    <div className="relative flex h-screen w-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans print:h-auto print:w-full print:overflow-visible print:bg-white print:text-black">
+    <div className="relative flex h-[100dvh] w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans print:h-auto print:w-full print:overflow-visible print:bg-white print:text-black">
       {/* Fondo ambiental */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(63,63,70,0.25),transparent_50%),radial-gradient(circle_at_80%_90%,rgba(63,63,70,0.2),transparent_50%)]" />
         <div className="absolute inset-0 bg-zinc-950/40" />
+        <TechBackdrop />
+        {/* Fondo común a todos los módulos: la cinta de cristales AeroShards
+            (React Bits), el mismo que funcionó en Matemáticas I. Se desactiva
+            con el switch global de animaciones. TEMPORAL: se personalizará por
+            módulo más adelante. */}
+        {effectsEnabled && (
+          <motion.div
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <AeroShards
+              shardColor="#896ABD"
+              accentColor="#A855F7"
+              placement="full"
+              material="glass"
+              markers="plus"
+              count={1300}
+              depthOfField={0.75}
+              vignette={0.3}
+              mouseInteraction
+              pulseOnClick
+              holdToGather
+            />
+          </motion.div>
+        )}
       </div>
 
-      {/* 1. MENÚ LATERAL IZQUIERDO */}
+      {/* 1. MENÚ LATERAL IZQUIERDO (drawer en móvil, columna en escritorio) */}
+      <AnimatePresence>
+        {isMobileNavOpen && (
+          <motion.div
+            key="mobile-nav-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={closeMobileNav}
+            className="fixed inset-0 z-30 bg-zinc-950/70 backdrop-blur-sm lg:hidden print:hidden"
+          />
+        )}
+      </AnimatePresence>
       <aside
-        className={`relative z-20 h-full border-r border-zinc-800/60 bg-zinc-950/60 backdrop-blur-xl flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0 print:hidden ${
-          isSidebarOpen ? "w-72" : "w-0 border-r-0 overflow-hidden"
+        className={`fixed lg:relative inset-y-0 left-0 z-40 lg:z-20 h-full border-r border-shell-hairline bg-shell-surface-strong lg:bg-shell-surface backdrop-blur-xl flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0 print:hidden w-[86vw] max-w-xs ${
+          isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
+        } lg:translate-x-0 lg:max-w-none ${
+          isSidebarOpen
+            ? "lg:w-72"
+            : "lg:w-0 lg:border-r-0 lg:overflow-hidden"
         }`}
       >
         <div className="flex flex-col min-h-0 flex-1">
-          <div className="p-5 border-b border-zinc-800/60 shrink-0">
-            <div className="flex items-start justify-between">
+          <div className="p-5 border-b border-shell-hairline shrink-0">
+            <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <Link
                   href="/"
@@ -334,15 +431,21 @@ function DashboardContent() {
                 >
                   <ArrowLeft size={12} /> Volver a Inicio
                 </Link>
-                <h1 className="text-2xl font-bold tracking-tight font-serif leading-none">
-                  Re<span className="text-zinc-500">Solve</span>
+                <h1 className="leading-none">
+                  <BrandLogo size="lg" />
                 </h1>
+                <p className="mt-1 type-nav-desc font-mono uppercase tracking-[0.2em] text-zinc-600">
+                  Suite matemática
+                </p>
               </div>
               <button
-                onClick={() => setIsSidebarOpen(false)}
+                onClick={() => {
+                  closeMobileNav();
+                  setIsSidebarOpen(false);
+                }}
                 title="Ocultar menú lateral"
                 aria-label="Ocultar menú lateral"
-                className="p-2 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors shrink-0"
+                className="p-2 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-shell-hover transition-colors shrink-0"
               >
                 <PanelLeftClose size={16} />
               </button>
@@ -352,8 +455,11 @@ function DashboardContent() {
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
             <div className="px-3 pt-2 pb-1">
               <button
-                onClick={() => setActiveModule("omni")}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left transition-all border ${
+                onClick={() => {
+                  setActiveModule("omni");
+                  closeMobileNav();
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left transition-all border outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 ${
                   activeModule === "omni"
                     ? "bg-amber-400/10 border-amber-400/30 text-amber-300 font-semibold shadow-lg shadow-amber-400/5"
                     : "bg-zinc-900/40 border-zinc-800/80 text-zinc-300 hover:border-zinc-700 hover:text-zinc-100"
@@ -363,8 +469,8 @@ function DashboardContent() {
                   <Zap size={15} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="block text-[13px] leading-tight">Calculadora Universal</span>
-                  <span className="block text-[10px] text-zinc-500 font-mono">Motor local + IA</span>
+                  <span className="block type-nav-label truncate">Calculadora Universal</span>
+                  <span className="block type-nav-desc text-zinc-500 font-mono">Motor local + IA</span>
                 </div>
               </button>
             </div>
@@ -378,35 +484,35 @@ function DashboardContent() {
                 <button
                   key={mod.id}
                   onClick={() => handleSelectModule(mod.id)}
-                  className={`group relative w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-all ${
+                  className={`group relative w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
                     isActive
-                      ? "bg-zinc-100 text-zinc-950 shadow-lg shadow-zinc-100/5 font-semibold"
-                      : "text-zinc-400 hover:bg-zinc-900/70 hover:text-zinc-100"
+                      ? "bg-shell-active text-shell-active-fg shadow-lg shadow-black/5 font-semibold"
+                      : "text-zinc-400 hover:bg-shell-hover hover:text-zinc-100"
                   }`}
                 >
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                       isActive
-                        ? "bg-zinc-950/10 text-zinc-950"
+                        ? "bg-shell-active-fg/10 text-shell-active-fg"
                         : "bg-zinc-900/60 text-zinc-400 group-hover:text-zinc-200"
                     }`}
                   >
                     <Icon size={15} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="block text-[13px] leading-tight truncate">
+                    <span className="block type-nav-label truncate">
                       {mod.label}
                     </span>
                     <span
-                      className={`block text-[10px] truncate ${
-                        isActive ? "text-zinc-600 font-normal" : "text-zinc-500"
+                      className={`block type-nav-desc truncate ${
+                        isActive ? "text-shell-active-fg/70 font-normal" : "text-zinc-500"
                       }`}
                     >
                       {mod.desc}
                     </span>
                   </div>
                   {isActive && (
-                    <ChevronRight size={14} className="text-zinc-700 shrink-0" />
+                    <ChevronRight size={14} className="text-shell-active-fg/60 shrink-0" />
                   )}
                 </button>
               );
@@ -415,8 +521,8 @@ function DashboardContent() {
         </div>
 
         {/* PIE DEL MENÚ LATERAL */}
-        <div className="p-3 border-t border-zinc-800/60 bg-zinc-950/40 shrink-0 space-y-2">
-          <div className="p-2 rounded-xl bg-zinc-900/40 border border-zinc-800/80 flex items-center justify-between">
+        <div className="p-3 border-t border-shell-hairline bg-shell-surface shrink-0 space-y-2">
+          <div className="p-2 rounded-xl bg-zinc-900/40 border border-shell-hairline flex items-center justify-between">
             <span className="text-[10px] font-mono uppercase text-zinc-500 flex items-center gap-1.5">
               <Palette size={12} className="text-amber-400" /> Tema
             </span>
@@ -430,10 +536,12 @@ function DashboardContent() {
                     type="button"
                     onClick={() => handleThemeChange(t.id)}
                     title={`Cambiar a tema ${t.label}`}
-                    className={`p-1.5 rounded-lg text-xs transition-colors ${
+                    aria-label={`Cambiar a tema ${t.label}`}
+                    aria-pressed={isCurrent}
+                    className={`p-1.5 rounded-lg text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
                       isCurrent
-                        ? "bg-zinc-100 text-zinc-950 font-bold"
-                        : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                        ? "bg-shell-active text-shell-active-fg font-bold"
+                        : "text-zinc-400 hover:text-zinc-100 hover:bg-shell-hover"
                     }`}
                   >
                     <Icon size={12} />
@@ -442,6 +550,34 @@ function DashboardContent() {
               })}
             </div>
           </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={effectsEnabled}
+            aria-label="Activar o desactivar animaciones decorativas"
+            onClick={() => setEffectsEnabled(!effectsEnabled)}
+            className="w-full p-2 rounded-xl bg-zinc-900/40 border border-shell-hairline flex items-center justify-between gap-2 text-left hover:border-zinc-700 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40"
+          >
+            <span className="text-[10px] font-mono uppercase text-zinc-500 flex items-center gap-1.5">
+              <Sparkles size={12} className="text-emerald-400" /> Animaciones
+            </span>
+            <span
+              className={`relative h-4 w-7 shrink-0 rounded-full border transition-colors ${
+                effectsEnabled
+                  ? "bg-emerald-500/30 border-emerald-400/40"
+                  : "bg-zinc-800 border-zinc-700"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-2.5 w-2.5 rounded-full transition-all ${
+                  effectsEnabled
+                    ? "left-3.5 bg-emerald-300"
+                    : "left-0.5 bg-zinc-500"
+                }`}
+              />
+            </span>
+          </button>
 
           {user ? (
             <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur">
@@ -509,37 +645,68 @@ function DashboardContent() {
 
       {/* 2. ÁREA CENTRAL */}
       <main className="relative z-10 flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <header className="px-5 lg:px-7 py-3.5 border-b border-zinc-800/60 bg-zinc-950/40 backdrop-blur-xl flex flex-col gap-2.5 shrink-0 print:hidden">
+        <header className="px-5 lg:px-8 py-4 border-b border-shell-hairline bg-shell-surface backdrop-blur-xl flex flex-col gap-3.5 shrink-0 print:hidden">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={() => setIsMobileNavOpen(true)}
+                aria-label="Abrir menú de módulos"
+                title="Abrir menú de módulos"
+                className="lg:hidden p-2 -ml-1 rounded-xl border border-shell-hairline bg-zinc-900/60 backdrop-blur text-zinc-400 hover:text-zinc-100 hover:bg-shell-hover transition-colors shrink-0"
+              >
+                <PanelLeftOpen size={18} />
+              </button>
+
               {!isSidebarOpen && (
                 <button
+                  type="button"
                   onClick={() => setIsSidebarOpen(true)}
                   title="Mostrar menú lateral"
                   aria-label="Mostrar menú lateral"
-                  className="p-2 rounded-xl border border-zinc-800/80 bg-zinc-900/60 backdrop-blur text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors shrink-0"
+                  className="hidden lg:flex p-2 rounded-xl border border-shell-hairline bg-zinc-900/60 backdrop-blur text-zinc-400 hover:text-zinc-100 hover:bg-shell-hover transition-colors shrink-0"
                 >
                   <PanelLeftOpen size={16} />
                 </button>
               )}
 
-              <div className="truncate">
-                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono uppercase tracking-wider mb-1">
-                  <span>{currentModule?.label}</span>
-                  <ChevronRight size={11} />
-                  <span className="text-foreground/70">{currentSubtopicConfig?.label}</span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 type-eyebrow text-muted-foreground mb-4">
+                  <span className="truncate">{crumbModuleLabel}</span>
+                  {!isOmni && (
+                    <>
+                      <ChevronRight size={14} className="shrink-0 opacity-60" />
+                      <span className="text-foreground/75 truncate">{headerTitle}</span>
+                    </>
+                  )}
                 </div>
-                <h2 className="text-2xl md:text-3xl font-serif font-bold tracking-tight text-foreground truncate leading-tight">
-                  {currentSubtopicConfig?.label}{" "}
-                  <span className="text-muted-foreground italic font-normal text-lg md:text-xl">
-                    · {currentSubtopicConfig?.desc}
-                  </span>
-                </h2>
+                <SplitText
+                  tag="h2"
+                  text={headerTitle ?? ""}
+                  className="type-title font-serif font-bold text-foreground"
+                  effect="rise"
+                  splitType="chars"
+                  delay={45}
+                  duration={2.05}
+                  staggerFrom="start"
+                  trigger="view"
+                  hoverEffect="lift"
+                  loop={false}
+                  loopDelay={1.5}
+                  mask={false}
+                  threshold={0.1}
+                  rootMargin="-100px"
+                  textAlign="left"
+                  onLetterAnimationComplete={handleLetterAnimationComplete}
+                />
+                <p className="type-subtitle text-muted-foreground mt-1 max-w-[62ch]">
+                  {headerDesc}
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <div className="flex bg-zinc-900/60 border border-zinc-800/80 p-1 rounded-2xl gap-1 shrink-0 backdrop-blur">
+              <div className="flex bg-zinc-900/60 border border-shell-hairline p-1 rounded-2xl gap-1 shrink-0 backdrop-blur">
                 {VIEW_MODES.map((vm) => {
                   const Icon = vm.icon;
                   const isActive = viewMode === vm.id;
@@ -547,65 +714,100 @@ function DashboardContent() {
                     <button
                       key={vm.id}
                       onClick={() => setViewMode(vm.id)}
-                      className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-colors ${
-                        isActive ? "text-zinc-950 font-semibold" : "text-zinc-400 hover:text-zinc-100"
+                      aria-pressed={isActive}
+                      className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl type-control font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
+                        isActive ? "text-shell-active-fg font-semibold" : "text-zinc-400 hover:text-zinc-100"
                       }`}
                     >
                       {isActive && (
                         <motion.span
                           layoutId="viewModePill"
-                          className="absolute inset-0 bg-zinc-100 rounded-xl"
+                          className="absolute inset-0 bg-shell-active rounded-xl"
                           transition={{ type: "spring", stiffness: 400, damping: 30 }}
                         />
                       )}
                       <span className="relative flex items-center gap-1.5">
-                        <Icon size={13} />
-                        {vm.label}
+                        <Icon size={14} />
+                        <span className="hidden sm:inline">{vm.label}</span>
                       </span>
                     </button>
                   );
                 })}
               </div>
 
+              <button
+                type="button"
+                onClick={() => setIsHistoryHidden(!isHistoryHidden)}
+                title={isHistoryHidden ? "Mostrar historial" : "Ocultar historial"}
+                aria-pressed={!isHistoryHidden}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-shell-hairline bg-zinc-900/60 backdrop-blur type-control font-mono text-zinc-300 hover:text-zinc-100 hover:border-emerald-400/40 transition-all shadow-sm"
+              >
+                {isHistoryHidden ? (
+                  <PanelRightOpen size={13} className="text-emerald-400" />
+                ) : (
+                  <PanelRightClose size={13} className="text-zinc-400" />
+                )}
+                <span className="hidden lg:inline">
+                  {isHistoryHidden ? "Mostrar historial" : "Ocultar historial"}
+                </span>
+              </button>
+
               {!isAiOpen && (
                 <button
                   type="button"
                   onClick={() => setIsAiOpen(true)}
                   title="Abrir asistente ReSolve AI"
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-zinc-800/80 bg-zinc-900/60 backdrop-blur text-xs font-mono text-zinc-300 hover:text-zinc-100 hover:border-amber-400/40 transition-all shadow-sm"
+                  className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-shell-hairline bg-zinc-900/60 backdrop-blur type-control font-mono text-zinc-300 hover:text-zinc-100 hover:border-amber-400/40 transition-all shadow-sm"
                 >
                   <Sparkles size={13} className="text-amber-400" />
                   <span className="hidden sm:inline">ReSolve AI</span>
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={() => setIsAiDrawerOpen(true)}
+                title="Abrir asistente ReSolve AI"
+                aria-label="Abrir asistente ReSolve AI"
+                className="xl:hidden flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-shell-hairline bg-zinc-900/60 backdrop-blur type-control font-mono text-zinc-300 hover:text-zinc-100 hover:border-amber-400/40 transition-all shadow-sm"
+              >
+                <Sparkles size={13} className="text-amber-400" />
+                <span className="hidden sm:inline">IA</span>
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
-            {currentSubtopics.map((item) => {
-              const isActive = subTopic === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setSubTopic(item.id)}
-                  className={`relative px-3.5 py-1.5 rounded-full whitespace-nowrap text-xs transition-colors ${
-                    isActive
-                      ? "text-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {isActive && (
-                    <motion.span
-                      layoutId="subtopicPill"
-                      className="absolute inset-0 bg-accent border border-border rounded-full"
-                      transition={{ type: "spring", stiffness: 450, damping: 30 }}
-                    />
-                  )}
-                  <span className="relative z-10">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          {currentSubtopics.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {currentSubtopics.map((item) => {
+                const isActive = subTopic === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setSubTopic(item.id);
+                      closeMobileNav();
+                    }}
+                    aria-pressed={isActive}
+                    className={`relative px-4 py-2 rounded-full whitespace-nowrap type-control transition-colors outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
+                      isActive
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {isActive && (
+                      <motion.span
+                        layoutId="subtopicPill"
+                        className="absolute inset-0 bg-accent border border-border rounded-full"
+                        transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                      />
+                    )}
+                    <span className="relative z-10">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </header>
 
         {/* CONTENEDOR DE VISTAS CON CONTAINER QUERIES */}
@@ -688,7 +890,8 @@ function DashboardContent() {
       </main>
 
       {/* =======================================================================
-          3. ASISTENTE IA: OCULTABLE, ARRASTRABLE (DRAG) Y MAXIMIZABLE
+          3. ASISTENTE IA: COLUMNA EN ESCRITORIO (xl+), DRAWER EN PANTALLAS MENORES,
+             CON REDIMENSIONADO POR ARRASTRE Y MODO MAXIMIZADO.
       ======================================================================== */}
       {isAiMaximized && (
         <div
@@ -702,8 +905,8 @@ function DashboardContent() {
           style={!isAiMaximized ? { width: `${aiWidth}px` } : undefined}
           className={`transition-all duration-200 ease-out flex flex-col justify-between ${
             isAiMaximized
-              ? "fixed inset-4 lg:inset-8 z-50 max-w-6xl mx-auto rounded-3xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-2xl shadow-2xl p-6 lg:p-8 overflow-hidden"
-              : "relative z-10 border-l border-zinc-800/60 p-5 hidden xl:flex h-full bg-zinc-950/40 backdrop-blur-xl shrink-0"
+              ? "fixed inset-4 lg:inset-8 z-50 max-w-6xl mx-auto rounded-3xl border border-shell-hairline bg-zinc-950/95 backdrop-blur-2xl shadow-2xl p-6 lg:p-8 overflow-hidden"
+              : "relative z-10 border-l border-shell-hairline p-5 hidden xl:flex h-full bg-shell-surface backdrop-blur-xl shrink-0"
           } print:hidden`}
         >
           {!isAiMaximized && (
@@ -718,9 +921,29 @@ function DashboardContent() {
 
           <div className="mb-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2 font-mono">
-                <Sparkles size={13} className="text-amber-400" />
-                ReSolve AI
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2 font-serif">
+                <Sparkles size={13} className="text-amber-400 shrink-0" />
+                <FoldText
+                  text="ReSolve AI"
+                  foldStyle="paper"
+                  splitBy="char"
+                  hinge="top"
+                  trigger="mount"
+                  foldAngle={92}
+                  duration={0.65}
+                  stagger={0.045}
+                  staggerFrom="start"
+                  ease="power3.out"
+                  loopDelay={1.4}
+                  hoverRefold
+                  refoldRadius={140}
+                  refoldAngle={45}
+                  perspective={700}
+                  creaseShading={0.55}
+                  fontSize={26}
+                  fontWeight={700}
+                  className="text-foreground"
+                />
                 {isAiMaximized && (
                   <span className="text-[10px] text-zinc-500 lowercase font-sans font-normal">
                     · modo extendido
@@ -734,7 +957,7 @@ function DashboardContent() {
                 type="button"
                 onClick={() => setIsAiMaximized(!isAiMaximized)}
                 title={isAiMaximized ? "Restaurar tamaño (Esc)" : "Expandir a pantalla completa"}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 transition-colors flex items-center gap-1 text-xs font-mono"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-shell-hover transition-colors flex items-center gap-1 text-xs font-mono"
               >
                 {isAiMaximized ? (
                   <>
@@ -753,7 +976,7 @@ function DashboardContent() {
                   setIsAiOpen(false);
                 }}
                 title="Ocultar asistente IA"
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 transition-colors"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-shell-hover transition-colors"
               >
                 <PanelRightClose size={15} />
               </button>
@@ -765,6 +988,72 @@ function DashboardContent() {
           </div>
         </aside>
       )}
+
+      {/* Drawer del asistente para pantallas < xl */}
+      <AnimatePresence>
+        {isAiDrawerOpen && (
+          <>
+            <motion.div
+              key="ai-drawer-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setIsAiDrawerOpen(false)}
+              className="fixed inset-0 z-40 bg-zinc-950/70 backdrop-blur-sm xl:hidden print:hidden"
+            />
+            <motion.aside
+              key="ai-drawer"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 380, damping: 36 }}
+              role="dialog"
+              aria-label="Asistente ReSolve AI"
+              className="fixed inset-y-0 right-0 z-50 w-[92vw] max-w-md border-l border-shell-hairline bg-shell-surface-strong backdrop-blur-2xl flex flex-col p-5 xl:hidden print:hidden"
+            >
+              <div className="mb-4 flex items-center justify-between shrink-0">
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2 font-serif">
+                  <Sparkles size={13} className="text-amber-400 shrink-0" />
+                  <FoldText
+                    text="ReSolve AI"
+                    foldStyle="paper"
+                    splitBy="char"
+                    hinge="top"
+                    trigger="mount"
+                    foldAngle={92}
+                    duration={0.65}
+                    stagger={0.045}
+                    staggerFrom="start"
+                    ease="power3.out"
+                    loopDelay={1.4}
+                    hoverRefold
+                    refoldRadius={140}
+                    refoldAngle={45}
+                    perspective={700}
+                    creaseShading={0.55}
+                    fontSize={26}
+                    fontWeight={700}
+                    className="text-foreground"
+                  />
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsAiDrawerOpen(false)}
+                  title="Cerrar asistente"
+                  aria-label="Cerrar asistente"
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-shell-hover transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="flex-1 min-h-0 flex flex-col">
+                <AIAssistant />
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* MODAL DE PERFIL */}
       <ProfileModal
@@ -784,14 +1073,16 @@ export default function DashboardPage() {
   return (
     <Suspense
       fallback={
-        <div className="h-screen w-screen bg-zinc-950 flex items-center justify-center text-xs text-zinc-500 font-mono">
+        <div className="h-[100dvh] w-full bg-zinc-950 flex items-center justify-center text-xs text-zinc-500 font-mono">
           Cargando ReSolve...
         </div>
       }
     >
-      <AIContextProvider>
-        <DashboardContent />
-      </AIContextProvider>
+      <MotionConfig reducedMotion="user">
+        <AIContextProvider>
+          <DashboardContent />
+        </AIContextProvider>
+      </MotionConfig>
     </Suspense>
   );
 }

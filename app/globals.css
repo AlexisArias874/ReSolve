@@ -11,6 +11,25 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  /* Tokens semánticos del shell (superficies de navegación y paneles) */
+  --color-shell-surface: var(--shell-surface);
+  --color-shell-surface-strong: var(--shell-surface-strong);
+  --color-shell-hairline: var(--shell-hairline);
+  --color-shell-hover: var(--shell-hover);
+  --color-shell-active: var(--shell-active);
+  --color-shell-active-fg: var(--shell-active-fg);
+  --color-shell-muted: var(--shell-muted);
+  /* Escala tipográfica persistente: piso legible + crecimiento por resolución.
+     Al vivir en @theme, todos los utilities text-* (incluidas sus variantes
+     responsive) heredan la misma relación tamaño/legibilidad. */
+  --text-xs: max(11.5px, 0.75rem);
+  --text-sm: max(12.5px, 0.875rem);
+  --text-base: max(14px, 1rem);
+  --text-lg: max(15.5px, 1.125rem);
+  --text-xl: max(17.5px, 1.25rem);
+  --text-2xl: max(20px, 1.5rem);
+  --text-3xl: max(23px, 1.875rem);
+  --text-4xl: max(27px, 2.25rem);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -92,6 +111,15 @@
   --slider-thumb: #10b981;
   --slider-thumb-border: #09090b;
 
+  /* Shell (tema oscuro por defecto) */
+  --shell-surface: rgba(24, 24, 27, 0.42);
+  --shell-surface-strong: rgba(9, 9, 11, 0.72);
+  --shell-hairline: rgba(255, 255, 255, 0.09);
+  --shell-hover: rgba(39, 39, 42, 0.55);
+  --shell-active: #f4f4f5;
+  --shell-active-fg: #09090b;
+  --shell-muted: #a1a1aa;
+
   color-scheme: dark;
 }
 
@@ -106,6 +134,49 @@
 
   html {
     @apply font-sans;
+  }
+}
+
+/* =============================================================================
+   ESCALA TIPOGRÁFICA DE REFERENCIA
+   -----------------------------------------------------------------------------
+   El tamaño raíz cambia por resolución (12.5px en laptops, 15px base, 18px en
+   4K). Para que los títulos y controles no se vuelvan ilegibles en pantallas
+   compactas pero sigan creciendo en pantallas grandes, cada paso usa max():
+   un piso en px + un valor en rem.
+   Esta es la escala que deben adoptar las demás vistas.
+============================================================================= */
+@layer components {
+  .type-eyebrow {
+    font-size: max(11.5px, 0.82rem);
+    line-height: 1.25;
+    font-weight: 500;
+  }
+
+  .type-title {
+    font-size: max(26px, 2rem);
+    line-height: 1.14;
+    letter-spacing: 0.02em;
+  }
+
+  .type-subtitle {
+    font-size: max(13.5px, 0.98rem);
+    line-height: 1.55;
+  }
+
+  .type-nav-label {
+    font-size: max(13px, 0.9rem);
+    line-height: 1.25;
+  }
+
+  .type-nav-desc {
+    font-size: max(11px, 0.76rem);
+    line-height: 1.35;
+  }
+
+  .type-control {
+    font-size: max(12.5px, 0.86rem);
+    line-height: 1.2;
   }
 }
 
@@ -377,6 +448,14 @@ input[type="range"]::-moz-range-thumb {
 
   --accent: #e2e8f0;
   --accent-foreground: #0f172a;
+
+  --shell-surface: rgba(255, 255, 255, 0.88);
+  --shell-surface-strong: rgba(255, 255, 255, 0.96);
+  --shell-hairline: rgba(15, 23, 42, 0.10);
+  --shell-hover: rgba(226, 232, 240, 0.75);
+  --shell-active: #0f172a;
+  --shell-active-fg: #ffffff;
+  --shell-muted: #64748b;
 }
 
 [data-theme="light"] body,
@@ -619,6 +698,14 @@ input[type="range"]::-moz-range-thumb {
   --input: oklch(0.85 0.03 80);
   --accent: #e2c99a;
   --accent-foreground: #453322;
+
+  --shell-surface: rgba(251, 240, 217, 0.82);
+  --shell-surface-strong: rgba(251, 240, 217, 0.95);
+  --shell-hairline: rgba(120, 90, 50, 0.20);
+  --shell-hover: rgba(226, 201, 154, 0.50);
+  --shell-active: #453322;
+  --shell-active-fg: #fbf0d9;
+  --shell-muted: #7c6247;
 }
 
 [data-theme="sepia"] body,
@@ -836,6 +923,14 @@ input[type="range"]::-moz-range-thumb {
   --input: oklch(0.3 0.15 150);
   --accent: #064e26;
   --accent-foreground: #ecfdf5;
+
+  --shell-surface: rgba(5, 36, 17, 0.55);
+  --shell-surface-strong: rgba(2, 8, 4, 0.85);
+  --shell-hairline: rgba(16, 185, 129, 0.32);
+  --shell-hover: rgba(6, 78, 38, 0.50);
+  --shell-active: #10b981;
+  --shell-active-fg: #020804;
+  --shell-muted: #6ee7b7;
 }
 
 [data-theme="matrix"] body,
@@ -911,5 +1006,51 @@ input[type="range"]::-moz-range-thumb {
    Sube las etiquetas más pequeñas (9px/10px) para evitar texto ilegible
    en paneles densos (tablas, ejes de gráficas, tarjetas de estadísticos).
 ============================================================================= */
-.text-\[9px\] { font-size: 11px !important; }
-.text-\[10px\] { font-size: 11px !important; }
+.text-\[9px\] { font-size: 11.5px !important; }
+.text-\[10px\] { font-size: 11.5px !important; }
+.text-\[11px\] { font-size: 12px !important; }
+
+/* =============================================================================
+   5. ACCESIBILIDAD · MOVIMIENTO REDUCIDO
+   Respeta la preferencia del sistema: sin transiciones ni animaciones
+   decorativas. Los estados (hover/focus/activo) siguen siendo visibles.
+============================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =============================================================================
+   6. EFECTOS DECORATIVOS OPCIONALES (fondo animado + logo tech)
+   Controlados por <html data-effects="on|off">. Se desactivan por completo
+   desde el switch de la interfaz y respetan prefers-reduced-motion.
+============================================================================= */
+@keyframes fx-float {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(0, -18px, 0) rotate(6deg); }
+}
+
+@keyframes fx-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(16px, -12px, 0); }
+}
+
+html[data-effects="off"] .fx-layer {
+  display: none !important;
+}
+
+.fx-shape {
+  animation: fx-float 20s ease-in-out infinite;
+  will-change: transform;
+}
+
+.fx-drift {
+  animation: fx-drift 24s ease-in-out infinite;
+  will-change: transform;
+}

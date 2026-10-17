@@ -21,8 +21,10 @@ import {
   ShieldCheck,
   AlertTriangle,
   Compass,
-  Cpu
+  Cpu,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import { useAIContext } from "@/lib/context/ai-context";
 import {
   fetchUserHistory,
@@ -124,6 +126,7 @@ export default function DeterminantsView({
   initialExpression?: string;
 }) {
   const [matrixSize, setMatrixSize] = useState<number>(3);
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
   const [matrix, setMatrix] = useState<number[][]>([
     [1, 2, 3],
     [0, 4, 5],
@@ -646,10 +649,10 @@ export default function DeterminantsView({
           </div>
 
           {/* FILA INFERIOR: DESGLOSE PASO A PASO + HISTORIAL */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-[640px]">
             
             {/* Panel Izquierdo: Pasos del Método Seleccionado */}
-            <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+            <div className={`${isHistoryHidden ? "lg:col-span-12" : "lg:col-span-8"} border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20`}>
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <ListOrdered size={15} className="text-zinc-400" /> Deducción por Método: {method.toUpperCase()}
@@ -689,11 +692,22 @@ export default function DeterminantsView({
             </div>
 
             {/* Panel Derecho: Historial */}
+            {isHistoryHidden ? null : (
+
             <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Determinantes
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryHidden(true)}
+                  title="Ocultar historial"
+                  aria-label="Ocultar historial"
+                  className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+                >
+                  <PanelRightClose size={14} />
+                </button>
                 {history.length > 0 && (
                   <button
                     type="button"
@@ -735,6 +749,8 @@ export default function DeterminantsView({
                 )}
               </div>
             </div>
+
+            )}
 
           </div>
         </div>

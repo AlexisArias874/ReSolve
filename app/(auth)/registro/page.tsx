@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Calculator, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import BrandLogo from "@/components/shared/brand-logo";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -52,9 +53,7 @@ export default function RegisterPage() {
           <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center shadow-sm">
             <Calculator className="text-zinc-950" size={20} />
           </div>
-          <span className="text-2xl font-bold font-serif tracking-wide text-zinc-100">
-            Re<span className="text-zinc-500">Solve</span>
-          </span>
+          <BrandLogo size="md" />
         </div>
 
         <div className="text-center mb-6">

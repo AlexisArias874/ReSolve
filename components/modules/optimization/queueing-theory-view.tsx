@@ -28,8 +28,10 @@ import {
   Users,
   Percent,
   ArrowRight,
-  Terminal
+  Terminal,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import { useAIContext } from "@/lib/context/ai-context";
 import {
   fetchUserHistory,
@@ -284,6 +286,7 @@ export default function QueueingTheoryView({
   initialExpression?: string;
 }) {
   const [modelType, setModelType] = useState<QueueModelType>("MM1");
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
   const [lambda, setLambda] = useState<number>(45);
   const [mu, setMu] = useState<number>(60);
   const [servers, setServers] = useState<number>(3);
@@ -683,12 +686,12 @@ export default function QueueingTheoryView({
           </div>
 
           {/* SECCIÓN INFERIOR: VISUALIZADOR TOPOLOGÍA / PROBABILIDADES P_n (REGLAS 1, 3, 4, 9) */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-0">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-[640px]">
             <div
               className={`${
                 isExpanded
                   ? "absolute inset-0 z-30 bg-zinc-950/95 backdrop-blur-2xl border border-zinc-700/80 rounded-3xl p-6 shadow-2xl flex flex-col min-h-0 overflow-hidden"
-                  : "xl:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4 overflow-hidden"
+                  : `${isHistoryHidden ? "xl:col-span-12" : "xl:col-span-8"} border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 space-y-4 overflow-hidden`
               }`}
             >
               <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3 shrink-0">
@@ -734,11 +737,11 @@ export default function QueueingTheoryView({
               <div className="flex-1 min-h-0 min-w-0 flex flex-col justify-end p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 overflow-hidden">
                 {/* 1. VISTA TOPOLOGÍA DEL SISTEMA */}
                 {activeTab === "topology" && (
-                  <div className="w-full flex-1 min-h-0 flex flex-col items-center justify-center space-y-6 overflow-hidden">
+                  <div className="w-full flex-1 min-h-0 flex flex-col justify-center space-y-6 overflow-hidden">
                     {/* Flujo de Llegada -> Cola -> Servidores */}
-                    <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-mono">
+                    <div className="flex flex-wrap items-center justify-between gap-4 text-xs font-mono w-full">
                       {/* Llegada */}
-                      <div className="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-center space-y-1">
+                      <div className="flex-1 min-w-[150px] p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-center space-y-1">
                         <span className="text-[10px] text-zinc-500 uppercase block">Arribo λ</span>
                         <strong className="text-emerald-400 text-sm block">{analysis.lambda}</strong>
                         <span className="text-[10px] text-zinc-500">Poisson</span>
@@ -747,7 +750,7 @@ export default function QueueingTheoryView({
                       <ArrowRight size={16} className="text-zinc-600" />
 
                       {/* Búfer / Cola */}
-                      <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-dashed border-zinc-700 text-center space-y-1.5 min-w-[140px]">
+                      <div className="flex-1 min-w-[180px] p-3.5 rounded-2xl bg-zinc-900/60 border border-dashed border-zinc-700 text-center space-y-1.5">
                         <span className="text-[10px] text-zinc-400 uppercase tracking-wider block">Cola de Espera</span>
                         <div className="flex items-center justify-center gap-1 text-emerald-400 font-bold text-base">
                           <Users size={16} />
@@ -759,7 +762,7 @@ export default function QueueingTheoryView({
                       <ArrowRight size={16} className="text-zinc-600" />
 
                       {/* Servidores en Paralelo */}
-                      <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-col gap-1.5 flex-1 min-w-[180px]">
                         {Array.from({ length: Math.min(6, analysis.servers) }).map((_, idx) => (
                           <div
                             key={idx}
@@ -820,11 +823,22 @@ export default function QueueingTheoryView({
             </div>
 
             {/* Panel Historial */}
+            {isHistoryHidden ? null : (
+
             <div className="xl:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryHidden(true)}
+                  title="Ocultar historial"
+                  aria-label="Ocultar historial"
+                  className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+                >
+                  <PanelRightClose size={14} />
+                </button>
                 {history.length > 0 && (
                   <button
                     type="button"
@@ -864,6 +878,8 @@ export default function QueueingTheoryView({
                 )}
               </div>
             </div>
+
+            )}
           </div>
         </div>
       )}

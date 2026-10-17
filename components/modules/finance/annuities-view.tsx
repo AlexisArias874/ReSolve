@@ -26,8 +26,10 @@ import {
   User,
   Activity,
   Layers,
-  ChevronRight
+  ChevronRight,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import { useAIContext } from "@/lib/context/ai-context";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -131,6 +133,7 @@ export default function AnnuitiesView({
   initialExpression?: string;
 }) {
   const [annuityType, setAnnuityType] = useState<AnnuityType>("vencida");
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
   const [unknownVar, setUnknownVar] = useState<AnnuityUnknown>("R");
 
   const [rentaInput, setRentaInput] = useState<string>("9984.77");
@@ -791,7 +794,7 @@ export default function AnnuitiesView({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
               
               {/* Tabla Periódica de Cuotas */}
-              <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+              <div className={`${isHistoryHidden ? "lg:col-span-12" : "lg:col-span-8"} relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden`}>
                 <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                     <ListOrdered size={15} className="text-zinc-400" /> Cronograma de Amortización / Acumulación
@@ -828,11 +831,22 @@ export default function AnnuitiesView({
               </div>
 
               {/* Historial */}
+              {isHistoryHidden ? null : (
+
               <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
                 <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                     <History size={15} className="text-zinc-400" /> Historial de Anualidades
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsHistoryHidden(true)}
+                    title="Ocultar historial"
+                    aria-label="Ocultar historial"
+                    className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+                  >
+                    <PanelRightClose size={14} />
+                  </button>
                   {history.length > 0 && (
                     <button
                       type="button"
@@ -872,6 +886,8 @@ export default function AnnuitiesView({
                   )}
                 </div>
               </div>
+
+              )}
 
             </div>
           </div>

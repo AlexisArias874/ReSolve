@@ -327,7 +327,7 @@ export default function FunctionsView({
     <div className="h-full flex flex-col gap-6 min-h-0 relative">
       {viewMode === "calc" && (
         <div className="flex-1 flex flex-col gap-6 min-h-0">
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-0">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-[640px]">
             {/* CANVAS GRAFICADOR CENTRAL */}
             <div className="xl:col-span-7 min-h-[460px] flex flex-col">
               <MathGrapher
@@ -621,23 +621,23 @@ export default function FunctionsView({
                 {/* VISTA SECUNDARIA: ANÁLISIS CUALITATIVO O TABLA DINÁMICA */}
                 {activeTab === "graph" ? (
                   <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-2.5">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block font-semibold">
+                    <span className="text-xs font-mono uppercase tracking-wider text-zinc-500 block font-semibold">
                       Resumen del Comportamiento Analítico
                     </span>
-                    <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                      <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60">
-                        <span className="text-[10px] text-zinc-500 block">Corte Eje Y (f(0))</span>
-                        <strong className="text-zinc-200">
+                    <div className="grid grid-cols-1 gap-2.5 text-sm font-mono">
+                      <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60">
+                        <span className="text-xs text-zinc-500 block">Corte Eje Y (f(0))</span>
+                        <strong className="text-zinc-200 text-base">
                           {analysis.yIntercept !== null ? analysis.yIntercept : "Indefinido"}
                         </strong>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60">
-                        <span className="text-[10px] text-zinc-500 block">Simetría Funcional</span>
-                        <strong className="text-zinc-200 truncate block">{analysis.symmetry}</strong>
+                      <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60">
+                        <span className="text-xs text-zinc-500 block">Simetría Funcional</span>
+                        <strong className="text-zinc-200 text-base truncate block">{analysis.symmetry}</strong>
                       </div>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60 text-xs font-mono">
-                      <span className="text-[10px] text-zinc-500 block">
+                    <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60 text-sm font-mono">
+                      <span className="text-xs text-zinc-500 block">
                         Puntos Críticos Detectados ({analysis.extremes.length})
                       </span>
                       <div className="flex flex-wrap gap-1.5 mt-1">
@@ -645,13 +645,13 @@ export default function FunctionsView({
                           analysis.extremes.map((ext, i) => (
                             <span
                               key={i}
-                              className="px-2 py-0.5 bg-cyan-950/40 border border-cyan-800/60 text-cyan-300 rounded text-[11px]"
+                              className="px-2.5 py-1 bg-cyan-950/40 border border-cyan-800/60 text-cyan-300 rounded text-xs"
                             >
                               {ext.type}: ({ext.x}, {ext.y})
                             </span>
                           ))
                         ) : (
-                          <span className="text-zinc-500 text-[11px]">
+                          <span className="text-zinc-500 text-xs">
                             Curva monótona sin puntos críticos locales
                           </span>
                         )}

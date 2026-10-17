@@ -21,8 +21,12 @@ import {
   TrendingUp,
   Cpu,
   Layers,
-  Tangent
+  Tangent,
+  Maximize2,
+  Minimize2,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import MathGrapher from "@/components/shared/math-grapher";
 import { useAIContext } from "@/lib/context/ai-context";
 import {
@@ -315,6 +319,8 @@ export default function DerivativesView({
   const [copied, setCopied] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isMethodInfoOpen, setIsMethodInfoOpen] = useState(false);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
 
   const { setAIContext, injectedExpression, clearInjectedExpression } = useAIContext();
 
@@ -404,7 +410,7 @@ export default function DerivativesView({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0">
             
             {/* Consola de Entrada */}
-            <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
+            <div className="lg:col-span-7 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
               <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10 space-y-4">
@@ -528,7 +534,7 @@ export default function DerivativesView({
             </div>
 
             {/* Caja Derecha: Pendiente y Recta Tangente */}
-            <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
+            <div className="lg:col-span-5 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden">
               <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
 
               <div className="relative z-10">
@@ -596,10 +602,10 @@ export default function DerivativesView({
           </div>
 
           {/* FILA INFERIOR: GRÁFICA / PASOS + HISTORIAL */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-[640px]">
             
             {/* Panel Izquierdo: Graficador con Recta Tangente y f'(x) */}
-            <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20">
+            <div className={`${isHistoryHidden ? "lg:col-span-12" : isHistoryExpanded ? "lg:col-span-7" : "lg:col-span-9"} border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20`}>
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <Activity size={15} className="text-zinc-400" /> Representación Gráfica y Tangente
@@ -643,11 +649,28 @@ export default function DerivativesView({
             </div>
 
             {/* Panel Derecho: Historial */}
-            <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+            <div className={`${isHistoryHidden ? "hidden" : isHistoryExpanded ? "lg:col-span-5" : "lg:col-span-3"} relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden`}>
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
-                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryExpanded((v) => !v)}
+                  title={isHistoryExpanded ? "Contraer historial" : "Expandir historial"}
+                  aria-label={isHistoryExpanded ? "Contraer historial" : "Expandir historial"}
+                  aria-pressed={isHistoryExpanded}
+                  className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2 hover:text-zinc-100 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 rounded"
+                >
                   <History size={15} className="text-zinc-400" /> Historial
-                </span>
+                  {isHistoryExpanded ? <Minimize2 size={13} className="text-zinc-500" /> : <Maximize2 size={13} className="text-zinc-500" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryHidden(true)}
+                  title="Ocultar historial"
+                  aria-label="Ocultar historial"
+                  className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+                >
+                  <PanelRightClose size={14} />
+                </button>
                 {history.length > 0 && (
                   <button
                     type="button"

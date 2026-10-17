@@ -8,10 +8,10 @@ import remarkBreaks from "remark-breaks";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import { useAIContext, type AIMessage } from "@/lib/context/ai-context";
+import CurvedLoop from "@/components/shared/curved-loop";
 
 const AI_MODELS = [
-  { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", badge: "Más Preciso" },
-  { id: "qwen/qwen3.6-27b", name: "Qwen 3.6 27B", badge: "Matemáticas" },
+  { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", badge: "Preciso" },
   { id: "qwen/qwen3.8-27b", name: "Qwen 3.8 27B", badge: "Lógica" },
   { id: "openai/gpt-oss-20b", name: "GPT-OSS 20B", badge: "Rápido" },
 ];
@@ -164,15 +164,17 @@ export default function AIAssistant() {
     <div data-ai-chat className="flex-1 min-h-0 border border-zinc-800/60 rounded-3xl bg-zinc-900/30 backdrop-blur-md p-4 flex flex-col justify-between shadow-xl shadow-black/20">
       
       {/* Selector de Motor de IA */}
-      <div className="mb-2.5 flex items-center justify-between gap-2 shrink-0">
-        <div className="flex items-center gap-1.5 text-[10px] uppercase font-mono text-zinc-400 tracking-wider">
+      <div className="mb-2.5 flex min-w-0 items-center justify-between gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-1.5 text-[10px] uppercase font-mono text-zinc-400 tracking-wider" title="Motor de IA">
           <Cpu size={12} className="text-zinc-500" />
-          <span>Motor:</span>
+          <span className="sr-only">Motor de IA</span>
         </div>
         <select
           value={selectedModel}
           onChange={(e) => setSelectedModel(e.target.value)}
-          className="bg-zinc-950/80 border border-zinc-800/80 rounded-xl px-2.5 py-1 text-[11px] font-mono text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors cursor-pointer"
+          aria-label="Motor de IA"
+          title={AI_MODELS.find((m) => m.id === selectedModel)?.name ?? "Motor de IA"}
+          className="min-w-0 flex-1 max-w-full truncate bg-zinc-950/80 border border-zinc-800/80 rounded-xl px-2.5 py-1 text-[11px] font-mono text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors cursor-pointer"
         >
           {AI_MODELS.map((m) => (
             <option key={m.id} value={m.id} className="bg-zinc-950 text-zinc-200">
@@ -182,16 +184,29 @@ export default function AIAssistant() {
         </select>
       </div>
 
-      {/* Insignia de Contexto */}
+      {/* Insignia de Contexto: marquesina que recorre la operación completa
+          dentro de la misma etiqueta (CurvedLoop, React Bits). */}
       {activeContext.expression && (
-        <div className="mb-2 px-3 py-1.5 rounded-xl bg-zinc-950/70 border border-zinc-800/80 flex items-center gap-2 text-[11px] font-mono text-zinc-400 shrink-0">
+        <div className="mb-2 px-3 py-1.5 rounded-xl bg-zinc-950/70 border border-zinc-800/80 flex items-center gap-2 text-[11px] font-mono text-zinc-300 shrink-0 overflow-hidden">
           <Eye size={12} className="text-emerald-400 shrink-0 animate-pulse" />
-          <span className="truncate">
-            <span className="text-zinc-200">{activeContext.expression}</span>
-            {activeContext.result && activeContext.result !== "--" && (
-              <span className="text-emerald-400 font-bold"> = {activeContext.result}</span>
-            )}
-          </span>
+          <div className="flex-1 min-w-0">
+            <CurvedLoop
+              marqueeText={`${activeContext.expression}${
+                activeContext.result && activeContext.result !== "--"
+                  ? ` = ${activeContext.result}`
+                  : ""
+              }`}
+              shape="line"
+              speed={1.4}
+              fontSize={84}
+              fontWeight={600}
+              separator="•"
+              separatorColor="#34d399"
+              edgeFade={0.1}
+              interactive
+              pauseOnHover
+            />
+          </div>
         </div>
       )}
 

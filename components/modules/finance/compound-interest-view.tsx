@@ -56,9 +56,10 @@ import {
 
   Zap,
 
-  ChevronRight
-
+  ChevronRight,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 
 import { useAIContext } from "@/lib/context/ai-context";
 import { createClient } from "@/lib/supabase/client";
@@ -276,6 +277,7 @@ export default function CompoundInterestView({
 }) {
 
   const [unknownVar, setUnknownVar] = useState<CompoundUnknown>("M");
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
 
   const [capitalInput, setCapitalInput] = useState<string>("100000");
 
@@ -1286,7 +1288,7 @@ export default function CompoundInterestView({
 
             {/* Tabla de Capitalización Periódica */}
 
-            <div className="lg:col-span-8 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+            <div className={`${isHistoryHidden ? "lg:col-span-12" : "lg:col-span-8"} relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden`}>
               <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
               <div className="relative z-10 flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
@@ -1353,12 +1355,24 @@ export default function CompoundInterestView({
 
             {/* Historial */}
 
+            {isHistoryHidden ? null : (
+
+
             <div className="lg:col-span-4 relative border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="pointer-events-none absolute -bottom-20 -right-20 w-56 h-56 bg-zinc-700/10 rounded-full blur-3xl" />
               <div className="relative z-10 flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Inversiones
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryHidden(true)}
+                  title="Ocultar historial"
+                  aria-label="Ocultar historial"
+                  className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+                >
+                  <PanelRightClose size={14} />
+                </button>
                 {history.length > 0 && (
                   <button
                     type="button"
@@ -1398,6 +1412,9 @@ export default function CompoundInterestView({
                 )}
               </div>
             </div>
+
+
+            )}
 
           </div>
 

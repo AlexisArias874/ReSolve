@@ -23,8 +23,10 @@ import {
   Activity,
   Zap,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  PanelRightClose,
 } from "lucide-react";
+import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -170,6 +172,7 @@ export default function NumericalRootsView({
   initialExpression?: string;
 }) {
   const [method, setMethod] = useState<RootMethod>("bisection");
+  const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
   const [funcInput, setFuncInput] = useState<string>(initialExpression || "x^2 - 5");
 
   // Parámetros de aproximación
@@ -804,10 +807,10 @@ export default function NumericalRootsView({
           </div>
 
           {/* FILA INFERIOR: TABLA ITERATIVA / GRÁFICA + HISTORIAL */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-[640px]">
             
             {/* Panel Izquierdo: Tabla de Iteraciones y Graficador */}
-            <div className="lg:col-span-8 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
+            <div className={`${isHistoryHidden ? "lg:col-span-12" : "lg:col-span-8"} border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden`}>
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <ListOrdered size={15} className="text-zinc-400" /> Tabla de Convergencia Iterativa ({calculation.methodName})
@@ -868,11 +871,22 @@ export default function NumericalRootsView({
             </div>
 
             {/* Panel Derecho: Historial */}
+            {isHistoryHidden ? null : (
+
             <div className="lg:col-span-4 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col min-h-0 shadow-xl shadow-black/20 overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/60 shrink-0">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-300 font-semibold flex items-center gap-2">
                   <History size={15} className="text-zinc-400" /> Historial de Raíces
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryHidden(true)}
+                  title="Ocultar historial"
+                  aria-label="Ocultar historial"
+                  className="ml-auto mr-1.5 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
+                >
+                  <PanelRightClose size={14} />
+                </button>
                 {history.length > 0 && (
                   <button
                     type="button"
@@ -912,6 +926,8 @@ export default function NumericalRootsView({
                 )}
               </div>
             </div>
+
+            )}
 
           </div>
         </div>
