@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Calculator, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import BrandLogo from "@/components/shared/brand-logo";
+import AuthShell from "@/components/auth/auth-shell";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,28 +41,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center p-6 select-none relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#09090b_90%)]" />
-
-      <div className="relative z-10 w-full max-w-md border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-xl rounded-2xl p-8 shadow-2xl">
-        
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center shadow-sm">
-            <Calculator className="text-zinc-950" size={20} />
-          </div>
-          <BrandLogo size="md" />
-        </div>
-
-        <div className="text-center mb-6">
+    <AuthShell tagline="Cálculo, álgebra y métodos numéricos con explicaciones paso a paso.">
+      <div className="relative w-full rounded-2xl border border-zinc-800/80 bg-zinc-900/50 p-8 shadow-2xl backdrop-blur-xl">
+        <div className="mb-6 text-center">
           <h2 className="text-xl font-semibold tracking-tight text-zinc-100">Iniciar Sesión</h2>
-          <p className="text-xs text-zinc-400 mt-1">
-            Accede a tu plataforma matemática universitaria.
+          <p className="mt-1 text-xs text-zinc-400">
+            Accede a tu historial de operaciones
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-red-950/30 border border-red-900/50 flex items-center gap-2 text-xs text-red-300">
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/30 p-3 text-xs text-red-300">
             <AlertCircle size={15} className="shrink-0 text-red-400" />
             <span>{error}</span>
           </div>
@@ -70,7 +59,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="text-xs font-mono uppercase tracking-wider text-zinc-400 block mb-1.5">
+            <label className="mb-1.5 block font-mono text-xs uppercase tracking-wider text-zinc-400">
               Correo Electrónico
             </label>
             <input
@@ -79,12 +68,12 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu.correo@universidad.edu"
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors font-sans"
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 font-sans text-sm text-zinc-100 transition-colors placeholder:text-zinc-600 focus:border-zinc-500 focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="text-xs font-mono uppercase tracking-wider text-zinc-400 block mb-1.5">
+            <label className="mb-1.5 block font-mono text-xs uppercase tracking-wider text-zinc-400">
               Contraseña
             </label>
             <input
@@ -93,26 +82,26 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors font-sans"
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 font-sans text-sm text-zinc-100 transition-colors placeholder:text-zinc-600 focus:border-zinc-500 focus:outline-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-zinc-100 hover:bg-zinc-300 text-zinc-950 py-3 rounded-xl font-medium text-sm transition-all shadow-md mt-2 disabled:opacity-50"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 py-3 text-sm font-medium text-zinc-950 shadow-md transition-all hover:bg-zinc-300 disabled:opacity-50"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <>Ingresar <ArrowRight size={16} /></>}
           </button>
         </form>
 
-        <div className="mt-6 pt-5 border-t border-zinc-800/60 text-center text-xs text-zinc-400">
+        <div className="mt-6 border-t border-zinc-800/60 pt-5 text-center text-xs text-zinc-400">
           ¿No tienes una cuenta aún?{" "}
-          <Link href="/registro" className="text-zinc-200 hover:underline font-medium">
+          <Link href="/registro" className="font-medium text-zinc-200 hover:underline">
             Regístrate aquí
           </Link>
         </div>
       </div>
-    </div>
+    </AuthShell>
   );
 }

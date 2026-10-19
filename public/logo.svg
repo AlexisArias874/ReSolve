@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="200" viewBox="0 0 640 200" role="img" aria-labelledby="title">
+  <title id="title">ReSolve</title>
+  <text
+    x="320"
+    y="145"
+    text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="150"
+    font-weight="700"
+    letter-spacing="-7"
+    fill="#ffffff"
+  >ReSolve</text>
+</svg>

@@ -2,9 +2,11 @@
 
 import { useSyncExternalStore } from "react";
 
-// Preferencia global de animaciones decorativas (fondos). Por defecto están
-// DESACTIVADAS: el usuario debe activarlas desde el switch. El logo TechText
-// no pasa por esta preferencia: su animación es siempre activa.
+// Preferencia global de animaciones decorativas (fondos). Cada página decide
+// su valor por defecto: la landing y el acceso las muestran, el dashboard las
+// mantiene apagadas. Si el usuario usa el switch, su elección se guarda y
+// prevalece sobre el valor por defecto. El logo TechText no pasa por esta
+// preferencia: su animación es siempre activa.
 const STORAGE_KEY = "resolve_effects";
 const listeners = new Set<() => void>();
 
@@ -16,14 +18,18 @@ function applyAttribute(value: boolean): void {
   );
 }
 
-function getSnapshot(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(STORAGE_KEY) === "1";
+function readPreference(defaultEnabled: boolean): boolean {
+  if (typeof window === "undefined") return defaultEnabled;
+  const stored = window.localStorage.getItem(STORAGE_KEY);
+  if (stored === "1") return true;
+  if (stored === "0") return false;
+  return defaultEnabled;
 }
 
-function getServerSnapshot(): boolean {
-  return false;
-}
+const getSnapshotOn = () => readPreference(true);
+const getSnapshotOff = () => readPreference(false);
+const getServerSnapshotOn = () => true;
+const getServerSnapshotOff = () => false;
 
 function subscribe(callback: () => void): () => void {
   listeners.add(callback);
@@ -44,16 +50,16 @@ export function setEffectsEnabled(value: boolean): void {
   listeners.forEach((listener) => listener());
 }
 
-export function useEffectsPreference() {
+export function useEffectsPreference(defaultEnabled = false) {
   const effectsEnabled = useSyncExternalStore(
     subscribe,
-    getSnapshot,
-    getServerSnapshot
+    defaultEnabled ? getSnapshotOn : getSnapshotOff,
+    defaultEnabled ? getServerSnapshotOn : getServerSnapshotOff
   );
 
   return {
     effectsEnabled,
     setEffectsEnabled,
-    toggleEffects: () => setEffectsEnabled(!getSnapshot()),
+    toggleEffects: () => setEffectsEnabled(!readPreference(defaultEnabled)),
   };
 }

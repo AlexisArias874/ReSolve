@@ -186,7 +186,7 @@ const BackgroundSymbols = () => {
 // --- Landing Page ---
 export default function LandingPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const { effectsEnabled, setEffectsEnabled } = useEffectsPreference();
+  const { effectsEnabled, setEffectsEnabled } = useEffectsPreference(true);
 
   useEffect(() => {
     const supabase = createClient();

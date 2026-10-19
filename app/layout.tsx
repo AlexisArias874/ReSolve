@@ -45,7 +45,11 @@ export default function RootLayout({
                 const savedTheme = localStorage.getItem('resolve_theme') || 'dark';
                 document.documentElement.setAttribute('data-theme', isApp ? savedTheme : 'dark');
                 const savedEffects = localStorage.getItem('resolve_effects');
-                document.documentElement.setAttribute('data-effects', savedEffects === '1' ? 'on' : 'off');
+                const defaultEffects = isApp ? 'off' : 'on';
+                document.documentElement.setAttribute(
+                  'data-effects',
+                  savedEffects === '1' ? 'on' : savedEffects === '0' ? 'off' : defaultEffects
+                );
               } catch(e) {}
             `,
           }}
