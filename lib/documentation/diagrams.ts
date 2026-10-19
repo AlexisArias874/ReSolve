@@ -101,7 +101,7 @@ export interface DiagramDef {
 // -----------------------------------------------------------------------------
 const organigrama: DiagramDef = {
   id: "organigrama",
-  title: "Organigrama del Equipo 1",
+  title: "Organigrama del Equipo 2",
   category: "Organización",
   description:
     "Estructura plana con liderazgo de proyecto: un representante coordina nueve roles principales con sus apoyos.",
@@ -110,7 +110,7 @@ const organigrama: DiagramDef = {
   nodes: [
     {
       id: "lider",
-      label: "Ficher Navarro Ethan Axel",
+      label: "Fischer Navarro Ethan Axel",
       sub: "Representante · Líder de Proyecto · Arquitecto",
       tone: "actor",
       width: 250,

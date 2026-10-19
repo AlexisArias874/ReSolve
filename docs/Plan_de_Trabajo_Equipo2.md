@@ -5,7 +5,7 @@
 ---
 
 **Asignatura:** Laboratorio de Sistemas de Información
-**Equipo:** Equipo 1
+**Equipo:** Equipo 2
 **Proyecto:** ReSolve — Plataforma analítica de matemáticas universitarias
 **Periodo:** Semestre Agosto – Octubre 2026
 **Fecha de entrega:** 18 de octubre de 2026
@@ -16,7 +16,7 @@
 > Los diagramas se entregan en **Mermaid** (código) y con un **respaldo en texto/ASCII** para que se lean aunque no se rendericen.
 > Sustituir los campos entre `[corchetes]` (p. ej. `[Nombre de la Institución]`) por los datos oficiales.
 > Comando sugerido para exportar a Word:
-> `pandoc docs/Plan_de_Trabajo_Equipo1.md -o Plan_de_Trabajo_Equipo1.docx --toc`
+> `pandoc docs/Plan_de_Trabajo_Equipo2.md -o Plan_de_Trabajo_Equipo2.docx --toc`
 > Para incrustar los diagramas como imagen, renderizar los bloques Mermaid con `mmdc` (mermaid-cli) e insertarlos.
 
 ---
@@ -70,7 +70,7 @@ El equipo se organizó bajo una estructura **plana con liderazgo de proyecto**, 
 
 | # | Integrante | Rol principal | Rol de apoyo |
 |---|------------|---------------|--------------|
-| 1 | **Ficher Navarro Ethan Axel** | **Representante del equipo / Líder de proyecto y Arquitecto de software** | Revisión final y control de calidad de la entrega |
+| 1 | **Fischer Navarro Ethan Axel** | **Representante del equipo / Líder de proyecto y Arquitecto de software** | Revisión final y control de calidad de la entrega |
 | 2 | Gallardo Nava Rodrigo | Analista funcional (levantamiento de requerimientos y *Charter*) | Redacción del análisis del problema |
 | 3 | Corona Díaz Luis Enrique | Administrador de Base de Datos (DBA) | Diseño del modelo E-R / relacional / físico |
 | 4 | Huerta Zarate Ernesto | Desarrollador Backend (API y persistencia) | Integración con Supabase |
@@ -87,7 +87,7 @@ Leyenda: **L** = Lidera · **E** = Ejecuta · **R** = Revisa · **A** = Apoya.
 
 | Integrante | Inicio | Análisis | Diseño | Desarrollo | Pruebas | Despliegue | Cierre |
 |------------|:------:|:--------:|:------:|:----------:|:-------:|:----------:|:------:|
-| Ficher Navarro (Líder) | L | L | L | A | R | L | L |
+| Fischer Navarro (Líder) | L | L | L | A | R | L | L |
 | Gallardo Nava | E | L | A | A | R | A | E |
 | Corona Díaz (DBA) | A | A | L | E | R | E | A |
 | Huerta Zarate | A | A | A | L | E | R | A |
@@ -98,11 +98,11 @@ Leyenda: **L** = Lidera · **E** = Ejecuta · **R** = Revisa · **A** = Apoya.
 | Acevedo Esparza | R | A | R | E | E | L | E |
 | Peña Arias | E | E | A | A | E | E | L |
 
-### 3.2 Organigrama del Equipo 1
+### 3.2 Organigrama del Equipo 2
 
 ```mermaid
 graph TD
-    A["Ficher Navarro Ethan Axel<br/>Representante / Líder de Proyecto<br/>Arquitecto de Software"]
+    A["Fischer Navarro Ethan Axel<br/>Representante / Líder de Proyecto<br/>Arquitecto de Software"]
     B["Gallardo Nava Rodrigo<br/>Analista Funcional"]
     C["Corona Díaz Luis Enrique<br/>Administrador de BD (DBA)"]
     D["Huerta Zarate Ernesto<br/>Desarrollo Backend"]
@@ -126,7 +126,7 @@ graph TD
 **Respaldo en texto (organigrama):**
 
 ```text
-              [ Ficher Navarro — Representante / Líder / Arquitecto ]
+              [ Fischer Navarro — Representante / Líder / Arquitecto ]
                                              |
     +-----------+-----------+-----------+----+----+-----------+-----------+
     |           |           |           |         |           |           |
@@ -144,7 +144,7 @@ graph TD
 |-------|-------------|
 | **Nombre del proyecto** | ReSolve — Plataforma analítica de matemáticas universitarias |
 | **Patrocinador** | Laboratorio de Sistemas de Información — [Nombre de la Institución] |
-| **Líder de proyecto** | Ficher Navarro Ethan Axel (Representante del Equipo 1) |
+| **Líder de proyecto** | Fischer Navarro Ethan Axel (Representante del Equipo 2) |
 | **Cliente / usuario final** | Estudiantes universitarios de Matemáticas I a VI y docentes de apoyo |
 | **Duración** | 10 semanas (agosto – octubre de 2026) |
 | **Tipo de proyecto** | Desarrollo de software web (aplicación analítica) |
@@ -186,9 +186,9 @@ Se justifica porque los estudiantes suelen tener dificultades para: (a) comprend
 >
 > **ACTA DE INICIO DEL PROYECTO**
 >
-> En la ciudad de [Ciudad], a los 18 días del mes de agosto de 2026, se reúne el Equipo 1, en su calidad de equipo de desarrollo, para formalizar el inicio del proyecto **ReSolve — Plataforma analítica de matemáticas universitarias**.
+> En la ciudad de [Ciudad], a los 18 días del mes de agosto de 2026, se reúne el Equipo 2, en su calidad de equipo de desarrollo, para formalizar el inicio del proyecto **ReSolve — Plataforma analítica de matemáticas universitarias**.
 >
-> **Primero.** Se designa como Representante y Líder de Proyecto al C. **Ficher Navarro Ethan Axel**, quien coordinará las actividades, dará seguimiento al calendario y representará al equipo ante el docente.
+> **Primero.** Se designa como Representante y Líder de Proyecto al C. **Fischer Navarro Ethan Axel**, quien coordinará las actividades, dará seguimiento al calendario y representará al equipo ante el docente.
 >
 > **Segundo.** Se aprueba el *Charter* del proyecto, sus objetivos, alcance y entregables descritos en el presente documento.
 >
@@ -202,7 +202,7 @@ Se justifica porque los estudiantes suelen tener dificultades para: (a) comprend
 >
 > | Integrante | Función | Firma |
 > |-----------|---------|-------|
-> | Ficher Navarro Ethan Axel | Líder / Representante | ______ |
+> | Fischer Navarro Ethan Axel | Líder / Representante | ______ |
 > | Gallardo Nava Rodrigo | Analista funcional | ______ |
 > | Corona Díaz Luis Enrique | Administrador de BD | ______ |
 > | Huerta Zarate Ernesto | Backend | ______ |
@@ -221,7 +221,7 @@ El proyecto se planificó en **10 semanas**, del **18 de agosto al 18 de octubre
 
 ```mermaid
 gantt
-    title Cronograma ReSolve — Equipo 1 (2026)
+    title Cronograma ReSolve — Equipo 2 (2026)
     dateFormat  YYYY-MM-DD
     axisFormat  %d/%m
     section Fase de Inicio
@@ -250,7 +250,7 @@ gantt
 
 | Semana | Fechas (2026) | Actividad principal | Responsable líder |
 |--------|---------------|---------------------|-------------------|
-| S1 | 18 – 22 ago | Formación del equipo, roles y organigrama | Ficher Navarro |
+| S1 | 18 – 22 ago | Formación del equipo, roles y organigrama | Fischer Navarro |
 | S2 | 25 – 29 ago | *Charter*, carta de inicio | Gallardo Nava |
 | S3 | 01 – 05 sep | Análisis del problema y propuesta de solución | Gallardo Nava |
 | S4 | 08 – 12 sep | Modelo E-R y modelo relacional | Corona Díaz |
@@ -259,7 +259,7 @@ gantt
 | S7 | 29 sep – 03 oct | Desarrollo de módulos e integración de IA | Huerta / Martinez |
 | S8 | 06 – 10 oct | Pruebas de calidad y correcciones | Perez Torres |
 | S9 | 13 – 16 oct | Despliegue, manuales y capacitación | Acevedo / Palma |
-| S10 | 17 – 18 oct | Cierre, carta de cierre y entrega | Ficher / Peña |
+| S10 | 17 – 18 oct | Cierre, carta de cierre y entrega | Fischer / Peña |
 
 ---
 
@@ -1161,7 +1161,7 @@ gantt
 >
 > **ACTA DE CIERRE DEL PROYECTO**
 >
-> En la ciudad de [Ciudad], a los 18 días del mes de octubre de 2026, el Equipo 1 hace constar la conclusión del proyecto **ReSolve — Plataforma analítica de matemáticas universitarias**, iniciado el 18 de agosto de 2026.
+> En la ciudad de [Ciudad], a los 18 días del mes de octubre de 2026, el Equipo 2 hace constar la conclusión del proyecto **ReSolve — Plataforma analítica de matemáticas universitarias**, iniciado el 18 de agosto de 2026.
 >
 > **Primero.** Se declaran entregados los productos comprometidos: el presente plan de trabajo, el modelo de base de datos (conceptual, lógico y físico) con su script SQL, los diagramas UML (casos de uso, actividades e Ishikawa), el código fuente funcional, el manual administrativo y el manual de usuario.
 >
@@ -1177,7 +1177,7 @@ gantt
 >
 > | Integrante | Rol | Firma |
 > |-----------|-----|-------|
-> | Ficher Navarro Ethan Axel | Líder / Representante | ______ |
+> | Fischer Navarro Ethan Axel | Líder / Representante | ______ |
 > | Gallardo Nava Rodrigo | Analista funcional | ______ |
 > | Corona Díaz Luis Enrique | Administrador de BD | ______ |
 > | Huerta Zarate Ernesto | Backend | ______ |
@@ -1223,10 +1223,10 @@ gantt
 ### Minuta 01 — Formación del equipo y roles
 
 - **Fecha:** 18 de agosto de 2026 · **Hora:** 10:00 · **Lugar:** [Aula / Sala]
-- **Asistentes:** Equipo 1 (10 integrantes).
+- **Asistentes:** Equipo 2 (10 integrantes).
 - **Orden del día:** integración del equipo; definición de roles.
 - **Acuerdos:**
-  1. Designar a **Ficher Navarro Ethan Axel** como Representante y Líder de Proyecto.
+  1. Designar a **Fischer Navarro Ethan Axel** como Representante y Líder de Proyecto.
   2. Asignar los roles documentados en la sección 3.
   3. Definir el nombre del proyecto: **ReSolve**.
 - **Responsables:** Líder de Proyecto; apoyo de Peña Arias (minuta).
@@ -1234,7 +1234,7 @@ gantt
 ### Minuta 02 — Charter y carta de inicio
 
 - **Fecha:** 25 de agosto de 2026 · **Hora:** 10:00
-- **Asistentes:** Equipo 1.
+- **Asistentes:** Equipo 2.
 - **Orden del día:** elaboración del *Charter* y de la carta de inicio.
 - **Acuerdos:**
   1. Aprobar objetivos, alcance y entregables.
@@ -1245,7 +1245,7 @@ gantt
 ### Minuta 03 — Análisis del problema y propuesta de solución
 
 - **Fecha:** 1 de septiembre de 2026 · **Hora:** 10:00
-- **Asistentes:** Equipo 1.
+- **Asistentes:** Equipo 2.
 - **Orden del día:** narrativa del proceso actual, planteamiento y solución propuesta.
 - **Acuerdos:**
   1. Documentar el proceso manual y el planteamiento del problema.
@@ -1256,7 +1256,7 @@ gantt
 ### Minuta 04 — Modelo E-R y modelo relacional
 
 - **Fecha:** 8 de septiembre de 2026 · **Hora:** 10:00
-- **Asistentes:** Equipo 1.
+- **Asistentes:** Equipo 2.
 - **Orden del día:** diseño conceptual y lógico de la base de datos.
 - **Acuerdos:**
   1. Aprobar las entidades **Usuario** y **Cálculo (Historial)** y su relación 1:N.
@@ -1267,7 +1267,7 @@ gantt
 ### Minuta 05 — Modelo físico, diccionario de datos y SQL
 
 - **Fecha:** 15 de septiembre de 2026 · **Hora:** 10:00
-- **Asistentes:** Equipo 1.
+- **Asistentes:** Equipo 2.
 - **Orden del día:** modelo físico y script SQL.
 - **Acuerdos:**
   1. Aprobar la tabla `user_history` con índices y restricciones.
@@ -1278,7 +1278,7 @@ gantt
 ### Minuta 06 — Diagramas UML e Ishikawa
 
 - **Fecha:** 22 de septiembre de 2026 · **Hora:** 10:00
-- **Asistentes:** Equipo 1.
+- **Asistentes:** Equipo 2.
 - **Orden del día:** diagramas de casos de uso, actividades e Ishikawa.
 - **Acuerdos:**
   1. Aprobar los casos de uso y sus actores.
@@ -1289,7 +1289,7 @@ gantt
 ### Minuta 07 — Avance de desarrollo e integración de IA
 
 - **Fecha:** 29 de septiembre de 2026 · **Hora:** 10:00
-- **Asistentes:** Equipo 1.
+- **Asistentes:** Equipo 2.
 - **Orden del día:** avance de frontend, backend y motor de IA.
 - **Acuerdos:**
   1. Integrar los seis módulos con sus tres vistas.
@@ -1300,7 +1300,7 @@ gantt
 ### Minuta 08 — Pruebas de calidad y correcciones
 
 - **Fecha:** 6 de octubre de 2026 · **Hora:** 10:00
-- **Asistentes:** Equipo 1.
+- **Asistentes:** Equipo 2.
 - **Orden del día:** resultados de pruebas y correcciones.
 - **Acuerdos:**
   1. Ejecutar casos de prueba por módulo y por flujo de autenticación.
@@ -1311,7 +1311,7 @@ gantt
 ### Minuta 09 — Configuración, despliegue y documentación
 
 - **Fecha:** 13 de octubre de 2026 · **Hora:** 10:00
-- **Asistentes:** Equipo 1.
+- **Asistentes:** Equipo 2.
 - **Orden del día:** puesta a punto, seguridad y manuales.
 - **Acuerdos:**
   1. Fijar las variables de entorno y políticas de seguridad.
@@ -1322,16 +1322,16 @@ gantt
 ### Minuta 10 — Cierre y entrega
 
 - **Fecha:** 17 de octubre de 2026 · **Hora:** 10:00
-- **Asistentes:** Equipo 1.
+- **Asistentes:** Equipo 2.
 - **Orden del día:** revisión final y entrega.
 - **Acuerdos:**
   1. Verificar la integridad del paquete de entrega.
   2. Firmar la carta de cierre.
   3. Archivar la documentación en el repositorio.
-- **Responsables:** **Ficher Navarro** (coordinación); **Peña Arias** (documentación de minutas).
+- **Responsables:** **Fischer Navarro** (coordinación); **Peña Arias** (documentación de minutas).
 
 ---
 
-*Fin del documento — ReSolve · Equipo 1 · Laboratorio de Sistemas de Información © 2026.*
+*Fin del documento — ReSolve · Equipo 2 · Laboratorio de Sistemas de Información © 2026.*
 
-*Control de versiones: v1.0 (18/10/2026) — elaborado por Palma Lascano Jesús Alejandro con revisión del Líder de Proyecto. Para exportar a Word: `pandoc docs/Plan_de_Trabajo_Equipo1.md -o Plan_de_Trabajo_Equipo1.docx --toc`.*
+*Control de versiones: v1.0 (18/10/2026) — elaborado por Palma Lascano Jesús Alejandro con revisión del Líder de Proyecto. Para exportar a Word: `pandoc docs/Plan_de_Trabajo_Equipo2.md -o Plan_de_Trabajo_Equipo2.docx --toc`.*

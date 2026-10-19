@@ -18,12 +18,12 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const root = process.cwd();
-const SRC = path.join(root, "docs", "Plan_de_Trabajo_Equipo1.md");
+const SRC = path.join(root, "docs", "Plan_de_Trabajo_Equipo2.md");
 const BUILD = path.join(root, "docs", "build");
 const DIAGRAMS = path.join(BUILD, "diagrams");
 const PUPPETEER_CFG = path.join(BUILD, "puppeteer-config.json");
-const OUT_DOCX = path.join(root, "docs", "Plan_de_Trabajo_Equipo1.docx");
-const OUT_PDF = path.join(root, "docs", "Plan_de_Trabajo_Equipo1.pdf");
+const OUT_DOCX = path.join(root, "docs", "Plan_de_Trabajo_Equipo2.docx");
+const OUT_PDF = path.join(root, "docs", "Plan_de_Trabajo_Equipo2.pdf");
 
 const MMDC = "C:\\nvm4w\\nodejs\\mmdc.cmd";
 const PANDOC =
@@ -122,7 +122,7 @@ run(
     "Plan.docx.md",
     "-o", OUT_DOCX,
     "--toc", "--toc-depth=3",
-    '--metadata', "title=Plan de Trabajo - ReSolve (Equipo 1)",
+    '--metadata', "title=Plan de Trabajo - ReSolve (Equipo 2)",
   ],
   { cwd: BUILD, shell: false }
 );
@@ -164,7 +164,7 @@ run(
     "Plan.html.md",
     "-o", "Plan.html",
     "--standalone", "--embed-resources", "--css", "style.css",
-    '--metadata', "title=Plan de Trabajo - ReSolve (Equipo 1)",
+    '--metadata', "title=Plan de Trabajo - ReSolve (Equipo 2)",
     "--toc", "--toc-depth=3",
   ],
   { cwd: BUILD, shell: false }
