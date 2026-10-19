@@ -34,6 +34,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 import ReactMarkdown from "react-markdown";
@@ -262,6 +263,12 @@ function computeLinearRegression(points: DataPoint[]): RegressionAnalysis | null
   };
 }
 
+/** Snapshot de entradas para restaurar un modelo desde el historial. */
+interface RegressionSnapshot {
+  pairsInput: string;
+  predictX: number;
+}
+
 export default function RegressionView({
   viewMode,
   initialExpression = "",
@@ -365,9 +372,18 @@ export default function RegressionView({
     if (!analysis) return;
     const title = `Regresión OLS (n = ${analysis.n} pares)`;
     const resSummary = `y = ${analysis.slope}x + ${analysis.intercept} | R² = ${analysis.rSquared}`;
-    await saveUserCalculation("mat5", "regresion_lineal", title, resSummary);
+    const snapshot: RegressionSnapshot = { pairsInput, predictX };
+    await saveUserCalculation("mat5", "regresion_lineal", title, resSummary, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat5", "regresion_lineal");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un modelo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<RegressionSnapshot>(item);
+    if (!snap) return;
+    setPairsInput(snap.pairsInput ?? "");
+    if (snap.predictX !== undefined) setPredictX(snap.predictX);
   };
 
   const clearHistory = async () => {
@@ -908,13 +924,12 @@ export default function RegressionView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setPairsInput(item.expression)}
+                      onClick={() => restoreHistory(item)}
                       title={`Recargar: ${item.expression}`}
-                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
+                      className="group w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300 group-hover:text-zinc-100">
                         {item.expression}
@@ -922,7 +937,7 @@ export default function RegressionView({
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

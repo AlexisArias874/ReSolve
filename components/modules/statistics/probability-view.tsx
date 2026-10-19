@@ -36,6 +36,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 import ReactMarkdown from "react-markdown";
@@ -179,6 +180,19 @@ function formatLatexNumber(value: number): string {
     return `${Number(mantissa.toFixed(3))} \\times 10^{${exponent}}`;
   }
   return `${value}`;
+}
+
+/** Snapshot de entradas para restaurar un cálculo desde el historial. */
+interface ProbabilitySnapshot {
+  subtopic: ProbabilitySubtopic;
+  hypotheses: BayesHypothesis[];
+  probA: number;
+  probB: number;
+  eventRelation: EventRelation;
+  customIntersection: number;
+  combN: number;
+  combR: number;
+  combType: CombinatoricsType;
 }
 
 export default function ProbabilityView({
@@ -384,9 +398,35 @@ export default function ProbabilityView({
       res = `Formas = ${combinatoricsAnalysis.resultValue}`;
     }
 
-    await saveUserCalculation("mat5", "probabilidad", title, res);
+    const snapshot: ProbabilitySnapshot = {
+      subtopic,
+      hypotheses,
+      probA,
+      probB,
+      eventRelation,
+      customIntersection,
+      combN,
+      combR,
+      combType,
+    };
+    await saveUserCalculation("mat5", "probabilidad", title, res, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat5", "probabilidad");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<ProbabilitySnapshot>(item);
+    if (!snap) return;
+    if (snap.subtopic) setSubtopic(snap.subtopic);
+    if (Array.isArray(snap.hypotheses) && snap.hypotheses.length > 0) setHypotheses(snap.hypotheses);
+    if (snap.probA !== undefined) setProbA(snap.probA);
+    if (snap.probB !== undefined) setProbB(snap.probB);
+    if (snap.eventRelation) setEventRelation(snap.eventRelation);
+    if (snap.customIntersection !== undefined) setCustomIntersection(snap.customIntersection);
+    if (snap.combN !== undefined) setCombN(snap.combN);
+    if (snap.combR !== undefined) setCombR(snap.combR);
+    if (snap.combType) setCombType(snap.combType);
   };
 
   const clearHistory = async () => {
@@ -1128,18 +1168,20 @@ export default function ProbabilityView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
+                      onClick={() => restoreHistory(item)}
                       title={`Recargar: ${item.expression}`}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between text-sm"
+                      className="group w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm"
                     >
-                      <div className="truncate pr-2 font-mono text-[13px] text-zinc-300">
+                      <div className="truncate pr-2 font-mono text-[13px] text-zinc-300 group-hover:text-zinc-100">
                         {item.expression}
                       </div>
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

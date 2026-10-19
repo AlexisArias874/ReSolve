@@ -30,6 +30,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 
@@ -123,6 +124,20 @@ const MODULE_EXAMPLES: ModuleExample[] = [
     desc: "Cálculo de pagaré corporativo con año calendario exacto de 365 días.",
   },
 ];
+
+/** Snapshot de entradas para restaurar un cálculo desde el historial. */
+interface SimpleInterestSnapshot {
+  unknownVar: UnknownVar;
+  capitalInput: string;
+  montoInput: string;
+  interestInput: string;
+  rateInput: string;
+  rateFreq: RateFrequency;
+  timeInput: string;
+  timeUnit: TimeUnit;
+  baseDays: "360" | "365";
+  currency: string;
+}
 
 export default function SimpleInterestView({
   viewMode,
@@ -400,14 +415,43 @@ export default function SimpleInterestView({
 
   const saveCalculation = async () => {
     const title = `Interés Simple (${unknownVar}): C=${currency}${calculation.capital}, t=${calculation.timeValue} ${timeUnit}`;
+    const snapshot: SimpleInterestSnapshot = {
+      unknownVar,
+      capitalInput,
+      montoInput,
+      interestInput,
+      rateInput,
+      rateFreq,
+      timeInput,
+      timeUnit,
+      baseDays,
+      currency,
+    };
     await saveUserCalculation(
       "mat3",
       "interes-simple",
       title,
-      calculation.primaryResultValue
+      calculation.primaryResultValue,
+      JSON.stringify(snapshot)
     );
     const refreshed = await fetchUserHistory("mat3", "interes-simple");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<SimpleInterestSnapshot>(item);
+    if (!snap) return;
+    if (snap.unknownVar) setUnknownVar(snap.unknownVar);
+    if (snap.rateFreq) setRateFreq(snap.rateFreq);
+    if (snap.timeUnit) setTimeUnit(snap.timeUnit);
+    if (snap.baseDays) setBaseDays(snap.baseDays);
+    setCapitalInput(snap.capitalInput ?? "");
+    setMontoInput(snap.montoInput ?? "");
+    setInterestInput(snap.interestInput ?? "");
+    setRateInput(snap.rateInput ?? "");
+    setTimeInput(snap.timeInput ?? "");
+    if (snap.currency) setCurrency(snap.currency);
   };
 
   const clearHistory = async () => {
@@ -945,10 +989,12 @@ export default function SimpleInterestView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      title={item.expression}
-                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-sm"
+                      onClick={() => restoreHistory(item)}
+                      title={`Cargar estos datos · ${item.expression}`}
+                      className="group w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-sm cursor-pointer"
                     >
                       <span className="truncate pr-2 font-mono text-[13px] text-zinc-300 group-hover:text-zinc-100 transition-colors">
                         {item.expression}
@@ -956,7 +1002,7 @@ export default function SimpleInterestView({
                       <span className="font-mono font-bold text-emerald-400 shrink-0">
                         {item.result}
                       </span>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

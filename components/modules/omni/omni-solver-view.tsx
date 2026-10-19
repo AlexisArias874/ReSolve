@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
@@ -18,15 +18,30 @@ import {
   CheckCircle2,
   CornerDownLeft,
   PanelRightClose,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import katex from "katex";
 import "katex/dist/katex.min.css";
 
 import SolutionCard, { type SolutionData } from "@/components/shared/solution-card";
 import { solveLocally, buildFallback, type EngineResult } from "@/lib/math/universal-engine";
+import { toMathSymbols, toLatexSymbols, wrapAlignedLatex, hasRichMath, toKatexText, repairLatex, latexToPlainText, containsProse } from "@/lib/math/unicode-math";
+
+// Valida el LaTeX con KaTeX antes de renderizarlo; si la IA devuelve sintaxis
+// inválida (p. ej. `\frac3pmsqrt3 2`), se muestra como texto plano legible.
+function isValidKatex(latex: string): boolean {
+  try {
+    katex.renderToString(latex, { throwOnError: true, displayMode: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // =============================================================================
 // Calculadora Universal
@@ -75,6 +90,18 @@ const TOPICS_LIST = [
   { id: "logica", label: "Lógica Computacional y Proposiciones" },
 ];
 
+// Mapea cada tema del generador con su módulo/subtema destino para forzar que la
+// IA entregue la sintaxis plana exacta que esa vista espera.
+const TOPIC_TARGETS: Record<string, { module: string; subtopic: string }> = {
+  aritmetica: { module: "mat1", subtopic: "aritmetica" },
+  algebra: { module: "mat1", subtopic: "algebra" },
+  geometria: { module: "mat1", subtopic: "geometria" },
+  funciones: { module: "mat1", subtopic: "funciones" },
+  limites: { module: "mat1", subtopic: "limites" },
+  matrices: { module: "mat4", subtopic: "matrices" },
+  logica: { module: "mat2", subtopic: "proposiciones" },
+};
+
 const DIFFICULTY_LEVELS = [
   { id: "facil", label: "Básico" },
   { id: "intermedio", label: "Examen Universitario" },
@@ -117,6 +144,10 @@ function engineToSolution(result: EngineResult): SolutionData {
     steps: result.steps,
     graphableExpression: result.graphableExpression,
     explanation: result.explanation,
+    exactResult: result.exactResult ?? null,
+    numericApproximation: result.numericApproximation ?? null,
+    domain: result.domain ?? null,
+    warnings: result.warnings ?? [],
     matrixData: result.matrixData
       ? { matrices: result.matrixData.matrices, operation: result.matrixData.operation }
       : undefined,
@@ -137,6 +168,10 @@ function aiToSolution(data: Partial<SolutionData> & Record<string, unknown>): So
     steps: (data.steps as SolutionData["steps"]) || [],
     graphableExpression: (data.graphableExpression as string | null) ?? null,
     explanation: (data.explanation as string) || "",
+    exactResult: (data.exactResult as string | null) ?? null,
+    numericApproximation: (data.numericApproximation as string | null) ?? null,
+    domain: (data.domain as string | null) ?? null,
+    warnings: (data.warnings as string[] | undefined) ?? [],
     matrixData: data.matrixData as SolutionData["matrixData"],
     propositionData: data.propositionData as SolutionData["propositionData"],
     frequencyData: data.frequencyData as SolutionData["frequencyData"],
@@ -145,13 +180,36 @@ function aiToSolution(data: Partial<SolutionData> & Record<string, unknown>): So
   };
 }
 
+// Estado en memoria de la Calculadora Universal. Vive a nivel de módulo, por lo
+// que sobrevive a la navegación entre secciones (la vista se desmonta al salir)
+// durante la misma sesión del navegador, pero se reinicia al recargar la página.
+interface OmniSessionCache {
+  inputQuery: string;
+  solution: SolutionData | null;
+  source: "local" | "ai" | "fallback" | null;
+  errorMsg: string | null;
+  history: HistoryEntry[];
+  generatedProblem: SolutionData | null;
+  showSolution: boolean;
+}
+
+const omniSession: OmniSessionCache = {
+  inputQuery: "",
+  solution: null,
+  source: null,
+  errorMsg: null,
+  history: [],
+  generatedProblem: null,
+  showSolution: false,
+};
+
 export default function UniversalCalculatorView({ onNavigateToModule }: UniversalCalculatorProps) {
-  const [inputQuery, setInputQuery] = useState<string>("");
+  const [inputQuery, setInputQuery] = useState<string>(omniSession.inputQuery);
   const [loading, setLoading] = useState<boolean>(false);
-  const [solution, setSolution] = useState<SolutionData | null>(null);
-  const [source, setSource] = useState<"local" | "ai" | "fallback" | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [solution, setSolution] = useState<SolutionData | null>(omniSession.solution);
+  const [source, setSource] = useState<"local" | "ai" | "fallback" | null>(omniSession.source);
+  const [errorMsg, setErrorMsg] = useState<string | null>(omniSession.errorMsg);
+  const [history, setHistory] = useState<HistoryEntry[]>(omniSession.history);
   const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
 
   // --- Estados del Generador de Problemas Aleatorios ---
@@ -159,8 +217,26 @@ export default function UniversalCalculatorView({ onNavigateToModule }: Universa
   const [selectedTopic, setSelectedTopic] = useState<string>("random");
   const [selectedDiff, setSelectedDiff] = useState<string>("intermedio");
   const [generatingRandom, setGeneratingRandom] = useState<boolean>(false);
-  const [generatedProblem, setGeneratedProblem] = useState<SolutionData | null>(null);
-  const [showSolution, setShowSolution] = useState<boolean>(false);
+  const [generatedProblem, setGeneratedProblem] = useState<SolutionData | null>(omniSession.generatedProblem);
+  const [showSolution, setShowSolution] = useState<boolean>(omniSession.showSolution);
+
+  // Persiste el estado de la calculadora en la caché de sesión para que no se
+  // borre al salir y volver a entrar a la sección (solo se reinicia al recargar).
+  useEffect(() => {
+    omniSession.inputQuery = inputQuery;
+    omniSession.solution = solution;
+    omniSession.source = source;
+    omniSession.errorMsg = errorMsg;
+    omniSession.history = history;
+    omniSession.generatedProblem = generatedProblem;
+    omniSession.showSolution = showSolution;
+  }, [inputQuery, solution, source, errorMsg, history, generatedProblem, showSolution]);
+
+  // Desplazamiento horizontal de las sugerencias rápidas ("Probar:")
+  const quickScrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollQuickPrompts = (direction: 1 | -1) => {
+    quickScrollRef.current?.scrollBy({ left: direction * 260, behavior: "smooth" });
+  };
 
   const resolveWithAI = useCallback(async (text: string): Promise<SolutionData | null> => {
     const res = await fetch("/api/ai/omni-solve", {
@@ -253,10 +329,14 @@ export default function UniversalCalculatorView({ onNavigateToModule }: Universa
 
     const topicLabel = TOPICS_LIST.find((t) => t.id === selectedTopic)?.label || "matemáticas";
     const diffLabel = DIFFICULTY_LEVELS.find((d) => d.id === selectedDiff)?.label || "universitario";
+    const target = TOPIC_TARGETS[selectedTopic];
+    const targetLine = target
+      ? `\nClasifícalo EXACTAMENTE en targetModule="${target.module}" y targetSubtopic="${target.subtopic}", y entrega 'extractedFormula' en la sintaxis plana que ese subtema espera (sin LaTeX).`
+      : "";
 
     const promptText = `GENERA UN EJERCICIO DE PRÁCTICA UNIVERSITARIO NUEVO.
 Tema: ${topicLabel}.
-Dificultad: ${diffLabel}.
+Dificultad: ${diffLabel}.${targetLine}
 Redacta el enunciado completo en 'problemStatement', extrae la ecuación canónica en 'extractedFormula' y resuélvelo paso a paso con todos los detalles.`;
 
     try {
@@ -291,21 +371,20 @@ Redacta el enunciado completo en 'problemStatement', extrae la ecuación canóni
 
         <div className="relative z-10 space-y-4 max-w-4xl mx-auto">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shadow-sm">
-                <Zap size={16} />
-              </div>
-              <div>
-                <h3 className="text-base font-serif font-bold text-zinc-100 flex flex-wrap items-center gap-2">
+            <div className="hidden w-[120px] shrink-0 sm:block" aria-hidden="true" />
+            <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+              <div className="flex items-center justify-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shadow-sm">
+                  <Zap size={16} />
+                </div>
+                <h3 className="text-base font-serif font-bold text-zinc-100">
                   Calculadora Universal
-                  <span className="text-xs font-mono font-normal text-zinc-500">· resuelve todo, sin excepciones</span>
                 </h3>
-                <p className="text-xs text-zinc-400">
-                  Escribe cualquier problema. Detectamos el método, lo resolvemos y te llevamos a su módulo.
-                </p>
               </div>
+              <p className="mt-1 text-xs text-zinc-400 max-w-md">
+                Escribe cualquier problema. Detectamos el método, lo resolvemos y te llevamos a su módulo.
+              </p>
             </div>
-
             <button
               type="button"
               onClick={() => {
@@ -355,23 +434,46 @@ Redacta el enunciado completo en 'problemStatement', extrae la ecuación canóni
             </button>
           </form>
 
-          {/* Sugerencias Rápidas */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1 text-xs">
+          {/* Sugerencias Rápidas (con desplazamiento horizontal visible) */}
+          <div className="flex items-center gap-2 pt-1 text-xs">
             <span className="text-[11px] font-mono text-zinc-500 shrink-0">Probar:</span>
-            {QUICK_PROMPTS.map((qp, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => {
-                  setInputQuery(qp.prompt);
-                  handleSolve(qp.prompt);
-                }}
-                className="px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900 text-zinc-300 text-[11px] font-mono transition-colors whitespace-nowrap flex items-center gap-1.5"
-              >
-                <span className="text-amber-400/90">[{qp.badge}]</span>
-                <span className="truncate max-w-[200px]">{qp.title}</span>
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={() => scrollQuickPrompts(-1)}
+              aria-label="Desplazar sugerencias hacia la izquierda"
+              title="Desplazar a la izquierda"
+              className="shrink-0 p-1.5 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 transition-colors"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <div
+              ref={quickScrollRef}
+              className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto custom-scrollbar pb-2"
+            >
+              {QUICK_PROMPTS.map((qp, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setInputQuery(qp.prompt);
+                    handleSolve(qp.prompt);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900 text-zinc-300 text-[11px] font-mono transition-colors whitespace-nowrap flex items-center gap-1.5"
+                >
+                  <span className="text-amber-400/90">[{qp.badge}]</span>
+                  <span className="truncate max-w-[200px]">{qp.title}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => scrollQuickPrompts(1)}
+              aria-label="Desplazar sugerencias hacia la derecha"
+              title="Desplazar a la derecha"
+              className="shrink-0 p-1.5 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 transition-colors"
+            >
+              <ChevronRight size={14} />
+            </button>
           </div>
         </div>
       </div>
@@ -483,7 +585,7 @@ Redacta el enunciado completo en 'problemStatement', extrae la ecuación canóni
                   >
                     <span className="block text-[11px] font-mono text-zinc-300 truncate">{h.query}</span>
                     <span className="block text-[11px] font-serif font-bold text-emerald-400 truncate mt-0.5">
-                      {h.result.primaryResult}
+                      {toMathSymbols(h.result.primaryResult)}
                     </span>
                   </button>
                 ))
@@ -593,13 +695,13 @@ Redacta el enunciado completo en 'problemStatement', extrae la ecuación canóni
 
                       <div className="text-sm text-zinc-100 font-sans leading-relaxed pt-1">
                         <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                          {generatedProblem.problemStatement || generatedProblem.explanation || ""}
+                          {(generatedProblem.problemStatement || generatedProblem.explanation || "").replace(/\\n/g, "\n")}
                         </ReactMarkdown>
                       </div>
 
                       <div className="pt-2 text-xs font-mono text-zinc-400 border-t border-zinc-800/60">
                         Ecuación / Modelo:{" "}
-                        <code className="text-emerald-400">{generatedProblem.extractedFormula}</code>
+                        <code className="text-emerald-400">{toMathSymbols(generatedProblem.extractedFormula)}</code>
                       </div>
                     </div>
 
@@ -647,13 +749,25 @@ Redacta el enunciado completo en 'problemStatement', extrae la ecuación canóni
                         animate={{ opacity: 1, height: "auto" }}
                         className="p-5 rounded-2xl bg-zinc-950 border border-emerald-900/40 space-y-4"
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono uppercase tracking-wider text-zinc-500">
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="text-xs font-mono uppercase tracking-wider text-zinc-500 shrink-0">
                             Resultado Final
                           </span>
-                          <span className="text-lg font-serif font-bold text-emerald-400">
-                            {generatedProblem.primaryResult}
-                          </span>
+                          {hasRichMath(generatedProblem.primaryResult) && !containsProse(generatedProblem.primaryResult) ? (
+                            <div className="flex-1 min-w-0 text-sm font-serif font-semibold text-emerald-400 text-left max-h-[220px] overflow-y-auto custom-scrollbar">
+                              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                {toKatexText(generatedProblem.primaryResult)}
+                              </ReactMarkdown>
+                            </div>
+                          ) : hasRichMath(generatedProblem.primaryResult) ? (
+                            <span className="flex-1 min-w-0 text-sm font-serif font-semibold text-emerald-400 text-left max-h-[220px] overflow-y-auto custom-scrollbar">
+                              {toMathSymbols(latexToPlainText(generatedProblem.primaryResult))}
+                            </span>
+                          ) : (
+                            <span className="text-lg font-serif font-bold text-emerald-400">
+                              {toMathSymbols(generatedProblem.primaryResult)}
+                            </span>
+                          )}
                         </div>
 
                         <div className="space-y-2.5 pt-2 border-t border-zinc-900">
@@ -667,13 +781,22 @@ Redacta el enunciado completo en 'problemStatement', extrae la ecuación canóni
                             >
                               <span className="font-mono text-zinc-300 font-semibold block">{st.stage}</span>
                               <p className="text-zinc-400 text-[11px]">{st.description}</p>
-                              {st.math && (
-                                <div className="font-mono text-emerald-400 text-center font-bold text-xs pt-1 overflow-x-auto">
-                                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                    {`\n$$\n${st.math.replace(/[\$]/g, "")}\n$$\n`}
-                                  </ReactMarkdown>
-                                </div>
-                              )}
+                              {st.math && (() => {
+                                const latex = toLatexSymbols(wrapAlignedLatex(repairLatex(st.math.replace(/[\$]/g, ""))));
+                                return (
+                                  <div className="font-mono text-emerald-400 text-center font-bold text-xs pt-1 overflow-x-auto">
+                                    {isValidKatex(latex) ? (
+                                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                        {`\n$$\n${latex}\n$$\n`}
+                                      </ReactMarkdown>
+                                    ) : (
+                                      <span className="text-emerald-300 font-sans">
+                                        {toMathSymbols(latexToPlainText(st.math))}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           ))}
                         </div>

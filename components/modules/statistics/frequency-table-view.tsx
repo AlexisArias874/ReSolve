@@ -35,6 +35,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 import ReactMarkdown from "react-markdown";
@@ -238,6 +239,13 @@ function computeFrequencyDistribution(
 // -----------------------------------------------------------------------------
 // COMPONENTE DE VISTA
 // -----------------------------------------------------------------------------
+/** Snapshot de entradas para restaurar una tabulación desde el historial. */
+interface FrequencySnapshot {
+  dataInput: string;
+  method: GroupingMethod;
+  manualK: number;
+}
+
 export default function FrequencyView({
   viewMode,
   initialExpression = "",
@@ -295,9 +303,19 @@ export default function FrequencyView({
     if (!analysis) return;
     const title = `Frecuencias (n = ${analysis.n}, k = ${analysis.k} clases)`;
     const resSummary = `x̄ = ${analysis.groupedMean} | Me = ${analysis.groupedMedian} | c = ${analysis.classWidth}`;
-    await saveUserCalculation("mat5", "frecuencias", title, resSummary);
+    const snapshot: FrequencySnapshot = { dataInput, method, manualK };
+    await saveUserCalculation("mat5", "frecuencias", title, resSummary, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat5", "frecuencias");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron una tabulación del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<FrequencySnapshot>(item);
+    if (!snap) return;
+    setDataInput(snap.dataInput ?? "");
+    if (snap.method) setMethod(snap.method);
+    if (snap.manualK !== undefined) setManualK(snap.manualK);
   };
 
   const clearHistory = async () => {
@@ -862,13 +880,12 @@ export default function FrequencyView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setDataInput(item.expression)}
+                      onClick={() => restoreHistory(item)}
                       title={`Recargar: ${item.expression}`}
-                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
+                      className="group w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300 group-hover:text-zinc-100">
                         {item.expression}
@@ -876,7 +893,7 @@ export default function FrequencyView({
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

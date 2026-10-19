@@ -42,3 +42,10 @@ next-env.d.ts
 
 #APIs
 .env.local
+# generated documentation build artifacts
+/docs/build/edge-profile/
+/docs/build/*.html
+/docs/build/*.md
+/docs/build/*.png
+/docs/build/*.json
+/docs/build/*.css

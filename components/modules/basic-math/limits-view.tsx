@@ -36,6 +36,7 @@ import {
   deleteUserHistory,
   type HistoryItem,
 } from "@/lib/supabase/history";
+import { sanitizeMathExpression, expandNumericFactorials } from "@/lib/math/universal-evaluator";
 import { useSearchParams } from "next/navigation";
 
 // -----------------------------------------------------------------------------
@@ -84,7 +85,9 @@ export interface LimitResult {
 // --- Evaluador Matemático Numérico Robusto ---
 function evaluateExpr(expr: string, x: number): number {
   try {
-    let s = expr.toLowerCase().replace(/\s+/g, "");
+    let s = expandNumericFactorials(sanitizeMathExpression(expr))
+      .toLowerCase()
+      .replace(/\s+/g, "");
     s = s.replace(/([0-9])([x(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "$1*$2");
     s = s.replace(/\)([\d\w(]|sin|cos|tan|exp|ln|sqrt|abs)/g, ")*$1");
     s = s.replace(/x([0-9(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "x*$1");

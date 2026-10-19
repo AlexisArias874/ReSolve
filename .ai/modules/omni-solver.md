@@ -14,12 +14,26 @@ método, delega en la IA y, como último recurso, ofrece una interpretación gen
 - Generar problemas aleatorios por tema y dificultad.
 - Adaptar la expresión al formato del módulo destino (`adaptExpressionForModule`).
 - Navegar al módulo/subtema con la expresión y parámetros extra (`point`, `side`).
+- Conservar el estado (consulta, solución, historial, reto generado) durante la sesión de la SPA.
+- Mostrar fórmulas canónicas y sistemas con símbolos (KaTeX), no LaTeX crudo.
 
 ## Archivos principales
 
-- `components/modules/omni/omni-solver-view.tsx` (≈650 líneas): `safeFormatMath`,
-  `OmniSolveResponse`, `OmniStep`, `TOPICS_LIST`, `DIFFICULTY_LEVELS`, `QUICK_PROMPTS`.
+- `components/modules/omni/omni-solver-view.tsx` (≈730 líneas): `safeFormatMath`,
+  `OmniSolveResponse`, `OmniStep`, `TOPICS_LIST`, `DIFFICULTY_LEVELS`, `QUICK_PROMPTS`,
+  `omniSession` (caché de estado a nivel de módulo).
 - `app/api/ai/omni-solve/route.ts` (≈80 líneas): prompt con esquema JSON y clasificación de materias.
+- `lib/math/unicode-math.ts`: `toMathSymbols` (texto plano: `sqrt`→`√`, `pow`→`^`),
+  `toLatexSymbols` (`sqrt`→`\sqrt{}`, `pow`→`^{}`), `wrapAlignedLatex` (envuelve
+  `&`/`\\` en `\begin{aligned}` y repara entornos `aligned` desbalanceados que devuelve
+  la IA), `toKatexDisplay` (bloque `$$…$$` para la
+  "Fórmula Canónica" con símbolos), `hasRichMath` (detecta LaTeX: `\[ … \]`, `\frac`…)
+  y `toKatexText` (convierte `\[ … \]`/`\( … \)` en `$$ … $$`/`$ … $` para el
+  "Resultado Extraído", que ahora se renderiza con KaTeX cuando contiene matemáticas).
+  `repairLatex` repara malformaciones frecuentes de la IA (`\mathbbR`→`\mathbb{R}`,
+  `\sqrt3`→`\sqrt{3}`, `\left`/`\right` sueltos). `containsProse` distingue prosa mixta
+  de fórmula pura; `latexToPlainText` traduce LaTeX a Unicode legible (`\frac{a}{b}`→`(a)/(b)`,
+  `\sqrt{11}`→`√(11)`, `\pm`→`±`, `\mathbb{R}`→`ℝ`) para los resultados con texto.
 
 ## Dependencias
 
@@ -43,6 +57,8 @@ handleSolve(queryText?) → POST /api/ai/omni-solve { prompt } → JSON (OmniSol
         → onNavigateToModule(sol.targetModule, sol.targetSubtopic, adapted.expression,
                              adapted.queryParams)
         → dashboard.handleNavigateFromOmni → /dashboard?module&subtopic&expr&point&side
+     (la expresión `expr` solo se inyecta en ese módulo/subtema; al cambiar de
+      módulo desde el menú se descarta para no reaprovecharse en otros módulos)
 
 handleGenerateRandomProblem() → prompt "GENERA UN EJERCICIO… Tema/Dificultad"
    → genera enunciado + fórmula + solución ocultable ("Revelar")
@@ -52,6 +68,15 @@ handleGenerateRandomProblem() → prompt "GENERA UN EJERCICIO… Tema/Dificultad
 Esquema JSON exigido al modelo (en el prompt): `targetModule` (`mat1`…`mat6`), `targetSubtopic`,
 `categoryName`, `problemStatement`, `extractedFormula`, `limitPoint`, `limitSide`,
 `primaryResult`, `steps[{stage, description, math}]`, `graphableExpression`, `explanation`.
+
+**Contrato de sintaxis** (`app/api/ai/omni-solve/route.ts`): el system prompt obliga a que
+`extractedFormula` y `graphableExpression` vengan en **sintaxis plana evaluable** (`^`, `*`, `/`,
+`sqrt()`, `ln()`, `pi`, …) y **nunca** en LaTeX, detallando la forma que espera cada
+módulo/subtema (p. ej. `mat1/integrales` → solo el integrando, sin `\int` ni `dx`;
+`mat1/derivadas` → `(3*x^3-5*x^2+2*x-7)/(x^2+1)`). `problemStatement`, `primaryResult` y
+`steps[].math` sí pueden usar LaTeX. Así la sintaxis deja de ser un impedimento al saltar entre
+módulos. El generador de retos añade además `targetModule`/`targetSubtopic` exactos cuando se
+elige un tema (`TOPIC_TARGETS`), forzando la sintaxis de esa vista.
 
 ## Puntos de entrada
 
@@ -66,6 +91,10 @@ Internamente conserva el id `omni` y la ruta `/api/ai/omni-solve`. Cuenta con un
 determinista (`lib/math/universal-engine.ts`) que resuelve aritmética, ecuaciones, derivadas,
 integrales, límites, sistemas y determinantes antes de recurrir a la IA.
 
+- **Persistencia de sesión**: al salir de la sección el componente se desmonta, pero el estado se
+  respalda en `omniSession` (objeto a nivel de módulo). Al volver a entrar se rehidrata sin perder
+  consulta, solución, historial ni reto generado; se reinicia solo al recargar la página. No usa
+  `localStorage`, por lo que no persiste entre pestañas ni recargas.
 - Solo cubre temas que existen como subtemas (`TOPICS_LIST` no incluye todos los módulos).
 - `targetSubtopic` debe coincidir exactamente con un id de `SUBTOPICS_BY_MODULE`; si no, el
   dashboard cae en `renderPlaceholder`.

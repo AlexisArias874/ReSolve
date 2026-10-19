@@ -11,7 +11,17 @@
 // Como último recurso, `buildFallback` SIEMPRE produce una respuesta.
 // =============================================================================
 
-import { evaluateUniversalMath, sanitizeMathExpression } from "./universal-evaluator";
+import { evaluateUniversalMath, evaluateUniversalMathRaw, sanitizeMathExpression, expandNumericFactorials as expandFactorials } from "./universal-evaluator";
+import type { EngineStep } from "./steps";
+import {
+  generateCurveSteps,
+  generateDerivativeSteps,
+  generateEquationSteps,
+  generateIntegralSteps,
+  generateLimitSteps,
+} from "./step-generators";
+
+export type { EngineStep, StepVerification } from "./steps";
 
 // -----------------------------------------------------------------------------
 // Tipos
@@ -27,12 +37,6 @@ export type EngineKind =
   | "determinantes"
   | "sistemas-gauss"
   | "funciones";
-
-export interface EngineStep {
-  stage: string;
-  description: string;
-  math: string;
-}
 
 export interface EngineMatrixData {
   operation?: string;
@@ -58,6 +62,14 @@ export interface EngineResult {
   limitPoint?: string | null;
   limitSide?: "both" | "left" | "right" | null;
   matrixData?: EngineMatrixData | null;
+  /** Resultado simbólico/exacto cuando está disponible (p. ej. `4`, `x = 2`, `f'(x) = 3x^2`). */
+  exactResult?: string | null;
+  /** Aproximación numérica verificable, distinta del resultado exacto. */
+  numericApproximation?: string | null;
+  /** Dominio o restricciones que se conservan tras simplificar. */
+  domain?: string | null;
+  /** Limitaciones o advertencias cuando no se puede garantizar la conclusión. */
+  warnings?: string[];
 }
 
 // -----------------------------------------------------------------------------
@@ -135,16 +147,6 @@ function stripVerbs(text: string): string {
 }
 
 /** Convierte `a!` (factorial de enteros) a su valor numérico. */
-function expandFactorials(expr: string): string {
-  return expr.replace(/(\d+)\s*!/g, (_, n: string) => {
-    const k = parseInt(n, 10);
-    if (k > 170) return "Infinity";
-    let acc = 1;
-    for (let i = 2; i <= k; i++) acc *= i;
-    return `(${acc})`;
-  });
-}
-
 /** Cuerpo del resultado, listo para empujar como paso final. */
 function finalStep(math: string, description = "Resultado final"): EngineStep {
   return { stage: "Resultado", description, math };
@@ -226,6 +228,9 @@ function solveArithmetic(raw: string): EngineResult | null {
     ],
     graphableExpression: null,
     explanation: `El resultado de ${expr} es ${formatNumber(value)}.`,
+    exactResult: Number.isInteger(value) ? String(value) : null,
+    numericApproximation: formatNumber(value, 10),
+    warnings: [],
   };
 }
 
@@ -260,6 +265,8 @@ async function solveEquation(raw: string): Promise<EngineResult | null> {
       })
       .join("  ,  ");
 
+    const generated = await generateEquationSteps({ lhs, rhs, variable, solutions });
+
     return {
       kind: "algebra",
       source: "local",
@@ -269,27 +276,20 @@ async function solveEquation(raw: string): Promise<EngineResult | null> {
       problemStatement: `Resolver la ecuación ${lhs} = ${rhs}.`,
       extractedFormula: `${lhs} = ${rhs}`,
       primaryResult: `${variable} = ${pretty}`,
-      steps: [
-        {
-          stage: "1. Igualar a cero",
-          description: "Se traslada todo al lado izquierdo para obtener la forma f(x) = 0.",
-          math: `${lhs} - (${rhs}) = 0`,
-        },
-        {
-          stage: "2. Resolución simbólica",
-          description: "Se resuelve la ecuación resultante para la incógnita.",
-          math: `\\text{solve}\\left(${lhs}-(${rhs})=0,\\; ${variable}\\right)`,
-        },
-        finalStep(
-          `${variable} = ${pretty}`,
-          solutions.length > 1 ? "Se encontraron las raíces de la ecuación." : "Se despejó la incógnita."
-        ),
-      ],
+      steps: generated.steps,
       graphableExpression: `${lhs}-(${rhs})`,
       explanation:
         solutions.length > 1
           ? `La ecuación ${lhs} = ${rhs} tiene ${solutions.length} soluciones: ${variable} = ${pretty}.`
           : `La solución de ${lhs} = ${rhs} es ${variable} = ${pretty}.`,
+      exactResult: `${variable} = ${pretty}`,
+      numericApproximation: pretty,
+      warnings: [
+        ...(/[a-z]?i\b/i.test(pretty)
+          ? ["Algunas raíces son complejas; si el ejercicio pide soluciones reales, descártalas."]
+          : []),
+        ...generated.warnings,
+      ],
     };
   } catch {
     return null;
@@ -324,31 +324,8 @@ async function solveDerivative(raw: string): Promise<EngineResult | null> {
     const derivative = nerdamer(`diff(${toNerdamer(sanitized)}, ${variable})`).toString();
     const simplified = nerdamer(`simplify(${derivative})`).toString();
 
-    const steps: EngineStep[] = [
-      {
-        stage: "1. Función a derivar",
-        description: "Identificamos la función y la variable de derivación.",
-        math: `f(${variable}) = ${sanitized}`,
-      },
-      {
-        stage: "2. Aplicación de reglas de derivación",
-        description: "Se aplican las reglas de potencia, producto, cociente y cadena según corresponda.",
-        math: `f'(${variable}) = \\frac{d}{d${variable}}\\left[ ${sanitized} \\right]`,
-      },
-      finalStep(`f'(${variable}) = ${simplified}`),
-    ];
-
-    let primaryResult = `f'(${variable}) = ${simplified}`;
-
-    if (point !== null) {
-      const value = evaluateUniversalMath(simplified, { [variable]: point });
-      primaryResult = `f'(${point}) = ${formatNumber(value)}`;
-      steps.push({
-        stage: "3. Evaluación en el punto",
-        description: `Se sustituye ${variable} = ${point} en la derivada.`,
-        math: `f'(${point}) = ${formatNumber(value)}`,
-      });
-    }
+    const generated = await generateDerivativeSteps({ expression: sanitized, variable, point });
+    const steps = generated.steps;
 
     return {
       kind: "derivadas",
@@ -358,10 +335,16 @@ async function solveDerivative(raw: string): Promise<EngineResult | null> {
       categoryName: point !== null ? "Derivada en un Punto" : "Derivada Simbólica",
       problemStatement: `Calcular la derivada de ${sanitized}${point !== null ? ` en ${variable} = ${point}` : ""}.`,
       extractedFormula: sanitized,
-      primaryResult,
+      primaryResult: generated.primaryResult,
       steps,
       graphableExpression: sanitized,
       explanation: `La derivada de ${sanitized} respecto a ${variable} es ${simplified}.`,
+      exactResult: generated.exactResult,
+      numericApproximation:
+        point !== null
+          ? formatNumber(evaluateUniversalMath(simplified, { [variable]: point }))
+          : null,
+      warnings: generated.warnings,
     };
   } catch {
     return null;
@@ -403,6 +386,20 @@ async function solveIntegral(raw: string): Promise<EngineResult | null> {
       const value = nerdamer(`defint(${toNerdamer(sanitized)}, ${a}, ${b}, ${variable})`).toString();
       const numeric = evaluateUniversalMath(value);
       const shown = isNaN(numeric) ? value : formatNumber(numeric);
+      let antiderivative: string | null = null;
+      try {
+        antiderivative = nerdamer(`integrate(${toNerdamer(sanitized)}, ${variable})`).toString();
+      } catch {
+        antiderivative = null;
+      }
+      const generated = await generateIntegralSteps({
+        expression: sanitized,
+        variable,
+        a,
+        b,
+        definiteValue: isNaN(numeric) ? null : numeric,
+        antiderivative: antiderivative ?? null,
+      });
       return {
         kind: "integrales",
         source: "local",
@@ -412,25 +409,24 @@ async function solveIntegral(raw: string): Promise<EngineResult | null> {
         problemStatement: `Calcular la integral definida de ${sanitized} entre ${a} y ${b}.`,
         extractedFormula: `\\int_{${a}}^{${b}} ${sanitized}\\, d${variable}`,
         primaryResult: shown,
-        steps: [
-          {
-            stage: "1. Planteamiento",
-            description: "Se identifica el integrando y los límites de integración.",
-            math: `\\int_{${a}}^{${b}} ${sanitized}\\, d${variable}`,
-          },
-          {
-            stage: "2. Antiderivada y Teorema Fundamental del Cálculo",
-            description: "Se obtiene la antiderivada y se evalúa en los límites.",
-            math: `F(${b}) - F(${a}) = ${shown}`,
-          },
-          finalStep(`\\int_{${a}}^{${b}} ${sanitized}\\, d${variable} = ${shown}`),
-        ],
+        steps: generated.steps,
         graphableExpression: sanitized,
         explanation: `El valor de la integral definida es ${shown}.`,
+        exactResult: value,
+        numericApproximation: shown,
+        warnings: generated.warnings,
       };
     }
 
     const antiderivative = nerdamer(`integrate(${toNerdamer(sanitized)}, ${variable})`).toString();
+    const generated = await generateIntegralSteps({
+      expression: sanitized,
+      variable,
+      a: null,
+      b: null,
+      definiteValue: null,
+      antiderivative,
+    });
     return {
       kind: "integrales",
       source: "local",
@@ -440,21 +436,12 @@ async function solveIntegral(raw: string): Promise<EngineResult | null> {
       problemStatement: `Calcular la integral indefinida de ${sanitized}.`,
       extractedFormula: `\\int ${sanitized}\\, d${variable}`,
       primaryResult: `${antiderivative} + C`,
-      steps: [
-        {
-          stage: "1. Planteamiento",
-          description: "Se identifica el integrando y la variable de integración.",
-          math: `\\int ${sanitized}\\, d${variable}`,
-        },
-        {
-          stage: "2. Antiderivada",
-          description: "Se aplican las reglas básicas de integración.",
-          math: `${antiderivative} + C`,
-        },
-        finalStep(`${antiderivative} + C`, "No olvides la constante de integración."),
-      ],
+      steps: generated.steps,
       graphableExpression: sanitized,
       explanation: `La antiderivada de ${sanitized} es ${antiderivative} + C.`,
+      exactResult: `${antiderivative} + C`,
+      numericApproximation: null,
+      warnings: generated.warnings,
     };
   } catch {
     return null;
@@ -463,10 +450,17 @@ async function solveIntegral(raw: string): Promise<EngineResult | null> {
 
 /** Límites: "lim x->2 de (x^2-4)/(x-2)", "límite al infinito de ...". */
 async function solveLimit(raw: string): Promise<EngineResult | null> {
-  if (!/(\blim\b|l[íi]mite)/i.test(raw)) return null;
+  if (!/(\blim\b|l[íi]mite|→)/i.test(raw)) return null;
 
   const lower = raw.toLowerCase();
   const toInfinity = /infinito|∞/.test(lower);
+  const negativeInfinity = /-\s*(?:infinito|∞)|menos\s+infinito/.test(lower);
+  const side: "left" | "right" | "both" =
+    /por\s+la\s+izquierda|desde\s+la\s+izquierda|lateral\s+izquierd|x\s*(?:->|→)\s*-?\d+\s*-/i.test(raw)
+      ? "left"
+      : /por\s+la\s+derecha|desde\s+la\s+derecha|lateral\s+derech|x\s*(?:->|→)\s*-?\d+\s*\+/i.test(raw)
+      ? "right"
+      : "both";
 
   // Punto finito: "x -> 2", "x→2", "en x = 2", "cuando x tiende a 2"
   let point: number | null = null;
@@ -478,16 +472,20 @@ async function solveLimit(raw: string): Promise<EngineResult | null> {
     if (pointMatch) {
       point = parseFloat(pointMatch[1].replace(",", "."));
       pointToken = match_token(pointMatch[1]);
-    } else if (/0\s*\/\s*0/.test(raw)) {
-      point = 0;
     }
   }
 
-  // Extraer integrando: quitamos el marcador de límite y el punto.
+  // Extraer la función: quitar el marcador de límite, la cláusula de tendencia
+  // y el punto, sin eliminar partes del integrando.
   const body = raw
     .replace(/\bl[íi]m(?:ite|it)?\b/gi, " ")
-    .replace(/(?:x\s*(?:->|→|tiende\s+a)|en\s+x?\s*=?|cuando\s+x\s*(?:tiende\s+a|=))\s*-?\d*(?:[.,]\d+)?/gi, " ")
-    .replace(/al\s+infinito|infinito|∞/gi, " ")
+    .replace(
+      /(?:x\s*(?:->|→)|(?:cuando|si)\s+x\s+(?:tiende\s+a))\s*-?\s*(?:infinito|∞|\d+(?:[.,]\d+)?)/gi,
+      " "
+    )
+    .replace(/\ben\s+x?\s*=?\s*-?\d+(?:[.,]\d+)?/gi, " ")
+    .replace(/\b(?:al\s+)?(?:menos\s+)?infinito\b|∞/gi, " ")
+    .replace(/\b(?:por\s+la|desde\s+la)\s+(?:izquierda|derecha)\b/gi, " ")
     .replace(/^\s*(?:de|del)\s+/i, " ")
     .trim();
 
@@ -496,90 +494,47 @@ async function solveLimit(raw: string): Promise<EngineResult | null> {
   const vars = detectVariables(sanitized);
   const variable = vars[0] || "x";
 
-  try {
-    const nerdamer = await getNerdamer();
-    let value: number;
+  const generated = await generateLimitSteps({
+    expression: sanitized,
+    variable,
+    point,
+    pointToken: pointToken || "0",
+    side,
+    toInfinity,
+    negativeInfinity,
+  });
 
-    if (toInfinity) {
-      // Aproximación numérica robusta hacia ±∞
-      const big = 1e7;
-      const v = evaluateUniversalMath(sanitized, { [variable]: big });
-      value = isNaN(v) ? NaN : Math.round(v * 1e6) / 1e6;
-    } else if (point !== null) {
-      // Primer intento: sustitución directa
-      const v = evaluateUniversalMath(sanitized, { [variable]: point });
-      if (isNaN(v) || !isFinite(v)) {
-        // Indeterminación: aproximación por ambos lados
-        const eps = 1e-6;
-        const left = evaluateUniversalMath(sanitized, { [variable]: point - eps });
-        const right = evaluateUniversalMath(sanitized, { [variable]: point + eps });
-        value = !isNaN(left) && !isNaN(right) && Math.abs(left - right) < 1e-4 ? (left + right) / 2 : v;
-      } else {
-        value = v;
-      }
-    } else {
-      // Sin punto explícito: intentamos simbólico en 0
-      value = evaluateUniversalMath(sanitized, { [variable]: 0 });
-    }
+  const target = toInfinity ? (negativeInfinity ? "-\\infty" : "\\infty") : pointToken || "0";
 
-    const symbolic = toInfinity ? null : safeNerdamerLimit(nerdamer, sanitized, variable, point ?? 0);
-    const shown = !isNaN(value) && isFinite(value)
-      ? formatNumber(value)
-      : symbolic !== null && isFinite(symbolic)
-      ? formatNumber(symbolic)
-      : "Indeterminado / requiere análisis";
-
-    return {
-      kind: "limites",
-      source: "local",
-      targetModule: "mat1",
-      targetSubtopic: "limites",
-      categoryName: toInfinity ? "Límite al Infinito" : "Límite en un Punto",
-      problemStatement: `Calcular ${toInfinity ? "el límite al infinito" : `el límite cuando ${variable} → ${pointToken}`} de ${sanitized}.`,
-      extractedFormula: sanitized,
-      primaryResult: shown,
-      steps: [
-        {
-          stage: "1. Planteamiento del límite",
-          description: "Se identifica la función y el valor al que tiende la variable.",
-          math: `\\lim_{${variable} \\to ${toInfinity ? "\\infty" : pointToken}} ${sanitized}`,
-        },
-        {
-          stage: "2. Análisis de la tendencia",
-          description: toInfinity
-            ? "Se analiza el comportamiento de la función cuando la variable crece indefinidamente."
-            : "Se sustituye el valor y, si hay indeterminación, se racionaliza o factoriza.",
-          math: `= ${shown}`,
-        },
-        finalStep(`\\lim_{${variable} \\to ${toInfinity ? "\\infty" : pointToken}} ${sanitized} = ${shown}`),
-      ],
-      graphableExpression: sanitized,
-      explanation: `El límite es ${shown}.`,
-      limitPoint: toInfinity ? "inf" : pointToken,
-      limitSide: "both",
-    };
-  } catch {
-    return null;
-  }
+  return {
+    kind: "limites",
+    source: "local",
+    targetModule: "mat1",
+    targetSubtopic: "limites",
+    categoryName: toInfinity
+      ? "Límite al Infinito"
+      : side === "both"
+      ? "Límite en un Punto"
+      : `Límite Lateral ${side === "left" ? "Izquierdo" : "Derecho"}`,
+    problemStatement: `Calcular el límite de ${sanitized} cuando ${variable} tiende a ${
+      toInfinity ? (target.startsWith("-") ? "menos infinito" : "infinito") : target
+    }${side === "left" ? " por la izquierda" : side === "right" ? " por la derecha" : ""}.`,
+    extractedFormula: sanitized,
+    primaryResult: generated.shown,
+    steps: generated.steps,
+    graphableExpression: sanitized,
+    explanation: `El límite es ${generated.shown}.`,
+    limitPoint: toInfinity ? "inf" : pointToken || "0",
+    limitSide: side,
+    exactResult: generated.exactResult,
+    numericApproximation: generated.numericApproximation,
+    domain: generated.domain,
+    warnings: generated.warnings,
+  };
 }
 
 function match_token(value: string): string {
   return value.replace(",", ".");
-}
-
-function safeNerdamerLimit(
-  nerdamer: NerdamerFn,
-  expr: string,
-  variable: string,
-  point: number
-): number | null {
-  try {
-    const raw = nerdamer(`limit(${toNerdamer(expr)}, ${variable}, ${point})`).toString();
-    const v = evaluateUniversalMath(raw);
-    return isNaN(v) ? null : v;
-  } catch {
-    return null;
-  }
 }
 
 /** Sistemas de ecuaciones lineales: "x+y=5, x-y=1". */
@@ -656,6 +611,9 @@ async function solveSystem(raw: string): Promise<EngineResult | null> {
           { label: "[A|b]", data: augmented, kind: "matrix" },
         ],
       },
+      exactResult: pretty,
+      numericApproximation: pretty,
+      warnings: [],
     };
   } catch {
     return null;
@@ -715,6 +673,9 @@ function solveDeterminant(raw: string): EngineResult | null {
       operation: "Cálculo de determinante",
       matrices: [{ label: "A", data: matrix, kind: "matrix" }],
     },
+    exactResult: formatNumber(det),
+    numericApproximation: formatNumber(det, 10),
+    warnings: [],
   };
 }
 
@@ -812,13 +773,57 @@ export async function solveLocally(input: string): Promise<EngineResult | null> 
     if (r) return r;
   }
 
-  // 9. Aritmética pura
+  // 9. Análisis de curvas
+  {
+    const r = await solveCurveAnalysis(raw, lower);
+    if (r) return r;
+  }
+
+  // 10. Aritmética pura
   {
     const r = solveArithmetic(raw);
     if (r) return r;
   }
 
   return null;
+}
+
+/** Análisis de curvas: "analiza la curva (x^3-3x^2-4x+12)/(x^2-4)". */
+async function solveCurveAnalysis(raw: string, lower: string): Promise<EngineResult | null> {
+  if (!/analiz|an[áa]lisis|curva|estudia|grafic|dominio|as[íi]ntota|puntos?\s+cr[íi]tico/i.test(lower)) {
+    return null;
+  }
+
+  const expr = stripVerbs(raw)
+    .replace(/^\s*(analiza|analizar|estudia|estudiar|grafica|graficar|dibuja)\s+(la\s+|el\s+)?/i, "")
+    .replace(/\b(curva|funci[óo]n|gr[áa]fic[ao])\b/gi, " ")
+    .replace(/^\s*(?:de|del|y)\s*=\s*/i, "")
+    .replace(/^\s*[a-z]\s*=\s*/i, "")
+    .trim();
+
+  const sanitized = sanitizeMathExpression(expr);
+  if (!sanitized) return null;
+  const vars = detectVariables(sanitized);
+  if (vars.length === 0) return null;
+  const variable = vars[0];
+
+  const generated = await generateCurveSteps({ expression: sanitized, variable });
+  if (generated.steps.length === 0) return null;
+
+  return {
+    kind: "funciones",
+    source: "local",
+    targetModule: "mat1",
+    targetSubtopic: "funciones",
+    categoryName: "Análisis de Curvas",
+    problemStatement: `Analizar la función f(${variable}) = ${sanitized}.`,
+    extractedFormula: sanitized,
+    primaryResult: `Análisis de f(${variable}) = ${sanitized}`,
+    steps: generated.steps,
+    graphableExpression: sanitized,
+    explanation: `Se analizaron dominio, cortes, monotonía, extremos y concavidad de f(${variable}) = ${sanitized}.`,
+    warnings: generated.warnings,
+  };
 }
 
 /** Factorización, expansión y simplificación simbólicas. */

@@ -40,6 +40,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 
@@ -68,6 +69,14 @@ export interface AssignmentResult {
   steps: HungarianStep[];
   assignments: { worker: string; task: string; cost: number }[];
   totalOptimalCost: number;
+}
+
+/** Snapshot de entradas para restaurar un problema de asignación desde el historial. */
+interface AssignmentSnapshot {
+  sense: AssignmentSense;
+  workers: string[];
+  tasks: string[];
+  costMatrix: number[][];
 }
 
 interface ModuleExample {
@@ -560,9 +569,31 @@ export default function AssignmentView({
   const saveCalculation = async () => {
     const title = `Asignación ${sense.toUpperCase()} (${workers.length}×${tasks.length})`;
     const resSummary = `Z* = ${result.totalOptimalCost} (${result.isBalanced ? "Balanceada" : "Dummy Padded"})`;
-    await saveUserCalculation("mat6", "asignacion", title, resSummary);
+    const snapshot: AssignmentSnapshot = {
+      sense,
+      workers,
+      tasks,
+      costMatrix,
+    };
+    await saveUserCalculation(
+      "mat6",
+      "asignacion",
+      title,
+      resSummary,
+      JSON.stringify(snapshot)
+    );
     const refreshed = await fetchUserHistory("mat6", "asignacion");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<AssignmentSnapshot>(item);
+    if (!snap) return;
+    if (snap.sense) setSense(snap.sense);
+    if (snap.workers !== undefined) setWorkers(snap.workers);
+    if (snap.tasks !== undefined) setTasks(snap.tasks);
+    if (snap.costMatrix !== undefined) setCostMatrix(snap.costMatrix);
   };
 
   const clearHistory = async () => {
@@ -1035,10 +1066,12 @@ export default function AssignmentView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      title={item.expression}
-                      className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-xs"
+                      onClick={() => restoreHistory(item)}
+                      title={`Cargar estos datos · ${item.expression}`}
+                      className="w-full text-left p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-xs cursor-pointer"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">
                         {item.expression}
@@ -1046,7 +1079,7 @@ export default function AssignmentView({
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

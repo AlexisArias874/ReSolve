@@ -35,6 +35,7 @@ import {
   deleteUserHistory,
   type HistoryItem,
 } from "@/lib/supabase/history";
+import { sanitizeMathExpression, expandNumericFactorials } from "@/lib/math/universal-evaluator";
 
 // -----------------------------------------------------------------------------
 // TIPOS Y CATÁLOGO DE EJEMPLOS A NIVEL DE ARCHIVO
@@ -82,7 +83,9 @@ export interface DerivativeResult {
 // Evaluador numérico seguro
 function evaluateMath(expr: string, x: number): number {
   try {
-    let s = expr.toLowerCase().replace(/\s+/g, "");
+    let s = expandNumericFactorials(sanitizeMathExpression(expr))
+      .toLowerCase()
+      .replace(/\s+/g, "");
     if (!s) return NaN;
 
     if (s === "gauss") s = "exp(-x^2)";

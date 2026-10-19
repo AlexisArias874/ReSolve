@@ -1,6 +1,6 @@
 "use client";
 
-import { sanitizeMathExpression, evaluateUniversalMath } from "@/lib/math/universal-evaluator";
+import { sanitizeMathExpression, evaluateUniversalMath, expandNumericFactorials } from "@/lib/math/universal-evaluator";
 import { useState, useMemo, useEffect } from "react";
 import { useAIContext } from "@/lib/context/ai-context";
 import { motion, AnimatePresence } from "framer-motion";
@@ -43,8 +43,9 @@ function solveStepByStep(rawExpr: string): {
   finalResult: string;
   error?: string;
 } {
-  // 1. Sanitizar la expresión (soporta √, sqrt, abs, etc.) y quitar espacios
-  let expr = sanitizeMathExpression(rawExpr).replace(/\s+/g, "");
+  // 1. Sanitizar la expresión (soporta √, sqrt, abs, etc.), expandir factoriales
+  //    numéricos (5! → 120) y quitar espacios
+  let expr = expandNumericFactorials(sanitizeMathExpression(rawExpr)).replace(/\s+/g, "");
   if (!expr) return { steps: [], finalResult: "--" };
 
   const steps: StepDetail[] = [];

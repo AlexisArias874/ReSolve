@@ -1,0 +1,6 @@
+graph LR
+    U["Usuario / Navegador"] -->|HTTPS| N["Aplicación Next.js<br/>(Frontend + API Routes)"]
+    N -->|Cliente JS| DB[("PostgreSQL<br/>Supabase")]
+    N -->|Auth| AU["Supabase Auth<br/>(correo y contraseña)"]
+    N -->|HTTPS / JSON| IA["Servicio de IA (Groq)<br/>Clasificación y respaldo"]
+    DB --- AU

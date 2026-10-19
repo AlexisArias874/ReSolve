@@ -1054,3 +1054,54 @@ html[data-effects="off"] .fx-layer {
   animation: fx-drift 24s ease-in-out infinite;
   will-change: transform;
 }
+
+/* =============================================================================
+   React Flow · Página /documentacion
+   Ajustes oscuros para controles, minimapa y aristas.
+   ============================================================================= */
+.rf-doc {
+  width: 100%;
+  height: 100%;
+}
+.rf-doc .react-flow__attribution {
+  display: none;
+}
+.rf-doc .react-flow__controls {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(63, 63, 70, 0.7);
+}
+.rf-doc .react-flow__controls-button {
+  width: 26px;
+  height: 26px;
+  background: rgba(24, 24, 27, 0.92);
+  border-bottom: 1px solid rgba(63, 63, 70, 0.6);
+  color: #d4d4d8;
+}
+.rf-doc .react-flow__controls-button:hover {
+  background: rgba(39, 39, 42, 0.98);
+}
+.rf-doc .react-flow__controls-button svg {
+  fill: currentColor;
+}
+.rf-doc .react-flow__minimap {
+  background: rgba(9, 9, 11, 0.85) !important;
+  border: 1px solid rgba(63, 63, 70, 0.6);
+  border-radius: 10px;
+}
+.rf-doc .react-flow__minimap-mask {
+  fill: rgba(9, 9, 11, 0.6);
+}
+.rf-doc .react-flow__edge-path {
+  stroke-linecap: round;
+}
+.rf-doc .react-flow__handle {
+  opacity: 0.55;
+}
+.rf-doc .react-flow__node {
+  cursor: grab;
+}
+.rf-doc .react-flow__node:active {
+  cursor: grabbing;
+}

@@ -31,6 +31,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 import ReactMarkdown from "react-markdown";
@@ -132,6 +133,13 @@ function augmentedMatrixToLaTeX(m: number[][]): string {
   });
 
   return `\\left[\\begin{array}{${colAlignment}} ${rows.join(" \\\\ ")} \\end{array}\\right]`;
+}
+
+/** Snapshot de entradas para restaurar un cálculo desde el historial. */
+interface GaussJordanSnapshot {
+  numVars: number;
+  method: "gauss_jordan" | "gaussian_elim";
+  matrix: number[][];
 }
 
 export default function GaussJordanView({
@@ -408,9 +416,23 @@ export default function GaussJordanView({
   const saveCalculation = async () => {
     const title = `Sistema ${numVars}×${numVars} por ${method === "gauss_jordan" ? "Gauss-Jordan" : "Gauss"}`;
     const resSummary = calculation.solutions.map((s) => `${s.varName}=${s.value}`).join(", ");
-    await saveUserCalculation("mat4", "sistemas-gauss", title, resSummary);
+    const snapshot: GaussJordanSnapshot = {
+      numVars,
+      method,
+      matrix,
+    };
+    await saveUserCalculation("mat4", "sistemas-gauss", title, resSummary, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat4", "sistemas-gauss");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<GaussJordanSnapshot>(item);
+    if (!snap) return;
+    if (snap.numVars !== undefined) setNumVars(snap.numVars);
+    if (Array.isArray(snap.matrix)) setMatrix(snap.matrix);
+    if (snap.method) setMethod(snap.method);
   };
 
   const clearHistory = async () => {
@@ -770,10 +792,12 @@ export default function GaussJordanView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      title={item.expression}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-default transition-colors flex items-center justify-between gap-3 text-xs"
+                      onClick={() => restoreHistory(item)}
+                      title={`Cargar estos datos · ${item.expression}`}
+                      className="w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-colors flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">
                         {item.expression}
@@ -781,7 +805,7 @@ export default function GaussJordanView({
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[110px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

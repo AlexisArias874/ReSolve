@@ -1,0 +1,13 @@
+flowchart TD
+    S([Inicio]) --> AB["Abrir Historial"]
+    AB --> C0{"¿Sesión iniciada?"}
+    C0 -- Sí --> LOAD["Cargar registros desde Supabase"]
+    C0 -- No --> LOCAL["Cargar registros locales"]
+    LOAD --> LIST["Mostrar listado"]
+    LOCAL --> LIST
+    LIST --> ACC{"¿Acción?"}
+    ACC -- "Buscar/filtrar" --> FIL["Aplicar filtros"] --> LIST
+    ACC -- "Repetir" --> REP["Cargar en la calculadora"] --> F([Fin])
+    ACC -- "Copiar" --> COP["Copiar resultado al portapapeles"] --> LIST
+    ACC -- "Eliminar" --> DEL["Eliminar registro"] --> LIST
+    ACC -- "Vaciar todo" --> CLEAR["Borrar todos los registros"] --> F

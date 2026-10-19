@@ -38,6 +38,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 
@@ -76,6 +77,15 @@ export interface SimplexResult {
   iterationsCount: number;
   enteringVars: string[];
   leavingVars: string[];
+}
+
+/** Snapshot de entradas para restaurar un tablero Simplex desde el historial. */
+interface SimplexSnapshot {
+  method: SimplexMethodType;
+  sense: ObjectiveSense;
+  varNames: string[];
+  objective: number[];
+  constraints: SimplexConstraint[];
 }
 
 interface ModuleExample {
@@ -642,9 +652,33 @@ export default function SimplexView({
   const saveCalculation = async () => {
     const title = `Simplex ${method.toUpperCase()} (${sense.toUpperCase()} Z)`;
     const resSummary = `Z* = ${result.optimalZ} (${result.status}, ${result.iterationsCount} iter)`;
-    await saveUserCalculation("mat6", "simplex", title, resSummary);
+    const snapshot: SimplexSnapshot = {
+      method,
+      sense,
+      varNames,
+      objective,
+      constraints,
+    };
+    await saveUserCalculation(
+      "mat6",
+      "simplex",
+      title,
+      resSummary,
+      JSON.stringify(snapshot)
+    );
     const refreshed = await fetchUserHistory("mat6", "simplex");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<SimplexSnapshot>(item);
+    if (!snap) return;
+    if (snap.method) setMethod(snap.method);
+    if (snap.sense) setSense(snap.sense);
+    if (snap.varNames !== undefined) setVarNames(snap.varNames);
+    if (snap.objective !== undefined) setObjective(snap.objective);
+    if (snap.constraints !== undefined) setConstraints(snap.constraints);
   };
 
   const clearHistory = async () => {
@@ -1183,10 +1217,12 @@ export default function SimplexView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      title={item.expression}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-sm"
+                      onClick={() => restoreHistory(item)}
+                      title={`Cargar estos datos · ${item.expression}`}
+                      className="w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-sm cursor-pointer"
                     >
                       <span className="truncate pr-2 font-mono text-[13px] text-zinc-300">
                         {item.expression}
@@ -1194,7 +1230,7 @@ export default function SimplexView({
                       <span className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
                       </span>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

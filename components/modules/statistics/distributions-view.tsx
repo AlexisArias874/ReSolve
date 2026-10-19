@@ -31,6 +31,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 import ReactMarkdown from "react-markdown";
@@ -179,6 +180,23 @@ function normalCDF(z: number): number {
     const t = 1.0 / (1.0 - p * z);
     return c * Math.exp((-z * z) / 2.0) * t * (t * (t * (t * (t * b5 + b4) + b3) + b2) + b1);
   }
+}
+
+/** Snapshot de entradas para restaurar una evaluación desde el historial. */
+interface DistributionSnapshot {
+  family: DistributionFamily;
+  queryType: IntervalQueryType;
+  normMean: number;
+  normStdDev: number;
+  binomN: number;
+  binomP: number;
+  poissonLambda: number;
+  expLambda: number;
+  hypPopN: number;
+  hypPopK: number;
+  hypSampleN: number;
+  valA: number;
+  valB: number;
 }
 
 export default function DistributionsView({
@@ -521,9 +539,43 @@ export default function DistributionsView({
   const saveCalculation = async () => {
     const title = `Dist. ${FAMILY_LABELS[family].toUpperCase()} (${queryType})`;
     const resSummary = `P = ${calculation.prob} (${calculation.probPct}%) | E[X] = ${calculation.expected}`;
-    await saveUserCalculation("mat5", "distribuciones", title, resSummary);
+    const snapshot: DistributionSnapshot = {
+      family,
+      queryType,
+      normMean,
+      normStdDev,
+      binomN,
+      binomP,
+      poissonLambda,
+      expLambda,
+      hypPopN,
+      hypPopK,
+      hypSampleN,
+      valA,
+      valB,
+    };
+    await saveUserCalculation("mat5", "distribuciones", title, resSummary, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat5", "distribuciones");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron una evaluación del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<DistributionSnapshot>(item);
+    if (!snap) return;
+    if (snap.family) setFamily(snap.family);
+    if (snap.queryType) setQueryType(snap.queryType);
+    if (snap.normMean !== undefined) setNormMean(snap.normMean);
+    if (snap.normStdDev !== undefined) setNormStdDev(snap.normStdDev);
+    if (snap.binomN !== undefined) setBinomN(snap.binomN);
+    if (snap.binomP !== undefined) setBinomP(snap.binomP);
+    if (snap.poissonLambda !== undefined) setPoissonLambda(snap.poissonLambda);
+    if (snap.expLambda !== undefined) setExpLambda(snap.expLambda);
+    if (snap.hypPopN !== undefined) setHypPopN(snap.hypPopN);
+    if (snap.hypPopK !== undefined) setHypPopK(snap.hypPopK);
+    if (snap.hypSampleN !== undefined) setHypSampleN(snap.hypSampleN);
+    if (snap.valA !== undefined) setValA(snap.valA);
+    if (snap.valB !== undefined) setValB(snap.valB);
   };
 
   const clearHistory = async () => {
@@ -1321,18 +1373,20 @@ export default function DistributionsView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
+                      onClick={() => restoreHistory(item)}
                       title={`Recargar: ${item.expression}`}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between text-sm"
+                      className="group w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between text-sm"
                     >
-                      <div className="truncate pr-2 font-mono text-[13px] text-zinc-300">
+                      <div className="truncate pr-2 font-mono text-[13px] text-zinc-300 group-hover:text-zinc-100">
                         {item.expression}
                       </div>
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

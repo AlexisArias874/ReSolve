@@ -12,6 +12,7 @@ historial de cálculos, con dos backends: Supabase (autenticado) y `localStorage
 - Callback de Supabase para intercambiar el código por sesión.
 - Actualizar `full_name` y contraseña desde el modal de perfil.
 - Leer/escribir/borrar historial por módulo+subtema.
+- Restaurar las entradas de un cálculo desde el historial (snapshot opcional `payload`).
 - Mostrar el historial global con búsqueda, filtro por subtema, repetir y borrar.
 
 ## Archivos principales
@@ -25,7 +26,7 @@ historial de cálculos, con dos backends: Supabase (autenticado) y `localStorage
 | `components/profile/profile-modal.tsx` | `updateUser` (nombre y contraseña) |
 | `app/historial/page.tsx` | Historial global (`select *`, borrar uno/todo, repetir) |
 | `lib/supabase/client.ts` | `createClient()` → `createBrowserClient` |
-| `lib/supabase/history.ts` | `fetchUserHistory`, `saveUserCalculation`, `deleteUserHistory` |
+| `lib/supabase/history.ts` | `fetchUserHistory`, `saveUserCalculation`, `deleteUserHistory`, `readHistoryPayload` |
 
 ## Dependencias
 
@@ -63,10 +64,20 @@ SESIÓN EN EL DASHBOARD
 
 HISTORIAL DEL MÓDULO
   montaje de la vista → fetchUserHistory("matN","subtema") → setHistory
-  botón Guardar → saveUserCalculation(...) → fetchUserHistory(...) → setHistory
+  botón Guardar → saveUserCalculation(..., payload?) → fetchUserHistory(...) → setHistory
+  clic en una entrada → readHistoryPayload<Snapshot>(item) → restoreHistory → setState(inputs)
   botón Vaciar → deleteUserHistory("subtema") → setHistory([])
       (history.ts decide Supabase si hay usuario; si no, localStorage
        con clave resolve_history_<subtema>, máximo 20 entradas)
+
+PAYLOAD DE RESTAURACIÓN (snapshot de entradas)
+  saveUserCalculation guarda `payload` (JSON) en una caché de localStorage indexada
+  por `resolve_history_payload_<subtema>_<hash(expression|result)>` (más un Map en
+  memoria). `fetchUserHistory` lo vuelve a adjuntar a `item.payload` para invitados
+  y autenticados en el mismo navegador; `readHistoryPayload` lo parsea al tipo del
+  snapshot de la vista. No altera el esquema de `user_history`: es un extra opcional
+  y, si falta (p. ej. entradas antiguas u otro dispositivo), el clic simplemente no
+  restaura nada.
 
 HISTORIAL GLOBAL (/historial)
   getUser → si hay usuario: select * FROM user_history ORDER BY created_at DESC
@@ -79,7 +90,8 @@ HISTORIAL GLOBAL (/historial)
 ## Puntos de entrada
 
 - Rutas: `/registro`, `/login`, `/verificar`, `/historial`, `GET /auth/callback`.
-- Funciones: `createClient()`, `fetchUserHistory`, `saveUserCalculation`, `deleteUserHistory`.
+- Funciones: `createClient()`, `fetchUserHistory`, `saveUserCalculation`, `deleteUserHistory`,
+  `readHistoryPayload`.
 - Auth API usada: `signUp`, `signInWithPassword`, `verifyOtp`, `resend`, `signOut`, `getUser`,
   `onAuthStateChange`, `updateUser`, `exchangeCodeForSession`.
 
@@ -95,6 +107,10 @@ HISTORIAL GLOBAL (/historial)
   expondrían registros de otros usuarios.
 - `deleteUserHistory(subtopic)` no filtra por `module`.
 - El invitado en `/historial` solo ve aritmética (clave hardcodeada `resolve_history_aritmetica`).
+- El `payload` de restauración vive en una caché local (localStorage + memoria) indexada por
+  `subtema` + hash de `expression|result`; no viaja en la nube ni sobrevive a un borrado de
+  localStorage, así que las entradas de otro dispositivo o anteriores a esta función no restauran
+  datos (colisión posible si dos cálculos comparten título y resultado).
 - Nombres de tabla/columnas inferidos del uso: **No determinado** el esquema oficial ni las RLS.
 - `onAuthStateChange` en `/verificar` ignora el parámetro `event` de la suscripción.
 - No hay manejo de tokens expirados ni refresh explícito en el cliente.

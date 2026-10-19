@@ -66,7 +66,37 @@ REGLAS DE RELLENO:
    - Si el problema es de lógica/tablas de verdad: llena 'propositionData'.
    - Si el problema es de tablas de frecuencia/estadística agrupada: llena 'frequencyData'.
    - Si el problema es de cuotas/amortizaciones: llena 'amortizationData'.
-   - Si no aplica ninguna tabla, deja esos campos en null.`;
+   - Si no aplica ninguna tabla, deja esos campos en null.
+
+CONTRATO DE SINTAXIS (CRÍTICO):
+- 'extractedFormula' y 'graphableExpression' deben ir en SINTAXIS PLANA EVALUABLE (estilo calculadora científica), NUNCA en LaTeX:
+  * Potencias: usa ^  ->  "x^3 - 5*x + 2"  (PROHIBIDO "x^{3}").
+  * Multiplicación: usa *  ->  "3*x"  (no pegues coeficientes a variables; "sin(x)" sí es válido).
+  * Fracciones: usa / con paréntesis  ->  "(3*x^3-5*x^2+2*x-7)/(x^2+1)"  (PROHIBIDO "\\frac{...}{...}").
+  * Raíces: sqrt(x), cbrt(x). Valor absoluto: abs(x). Constantes: pi, e. Factorial: 5!.
+  * Funciones: sin(x), cos(x), tan(x), ln(x), log(x) [base 10], exp(x).
+  * PROHIBIDO en esos dos campos: \\frac, \\sqrt, \\left, \\right, \\,, llaves {}, delimitadores $...$ o \\[...\\], y cualquier comando LaTeX.
+- 'problemStatement', 'primaryResult' y 'steps[].math' SÍ pueden usar LaTeX (con llaves balanceadas) para verse bien; solo la fórmula extraída debe ser plana.
+- REGLAS DE LaTeX VÁLIDO (OBLIGATORIAS) para 'problemStatement', 'primaryResult' y 'steps[].math':
+  * Escribe SIEMPRE las llaves de los comandos: \\frac{a}{b}, \\sqrt{x}, \\sqrt[3]{x}, \\mathbb{R}, \\setminus\\{-2,2\\}, \\text{...}. PROHIBIDO omitirlas: nunca "\\frac3 2", "\\sqrt3", "\\mathbbR" ni "\\setminus−2,2".
+  * Delimita cada fórmula matemática con $...$ (en línea) o \\[...\\] (desplegada); el texto fuera de las fórmulas debe ser prosa normal sin comandos LaTeX sueltos.
+  * Si usas alineación, incluye SIEMPRE el \\begin{aligned} y el \\end{aligned} completos (nunca dejes un \\end{aligned} suelto ni un & fuera de un entorno).
+  * NO escribas secuencias de escape literales como \\n dentro de 'problemStatement'; usa saltos de línea reales.
+  * En 'primaryResult' escribe el resultado como fórmula breve y limpia; evita mezclar frases largas con comandos LaTeX (si necesitas explayarte, usa 'explanation').
+  * Potencias como x^{2} (con llaves) o $x^2$; no escribas "x2".
+- ADAPTA la forma de 'extractedFormula' al módulo/subtema destino:
+  * mat1/aritmetica  -> operación numérica directa: "sqrt(3782)+5!".
+  * mat1/algebra     -> ecuación con "=" y una incógnita: "x^2-5*x+6=0".
+  * mat1/funciones | mat1/derivadas -> solo la función f(x): "(3*x^3-5*x^2+2*x-7)/(x^2+1)".
+  * mat1/limites     -> función en x y además devuelve 'limitPoint' y 'limitSide'.
+  * mat1/integrales  -> SOLO el integrando en x, sin \\int y sin dx: "x^2+1".
+  * mat1/geometria   -> puntos como "(x1, y1), (x2, y2)".
+  * mat2/proposiciones -> fórmula con ¬ ∧ ∨ → (o ! & | ->).
+  * mat3 (financiero) -> 'extractedFormula' resume la fórmula usada, p. ej. "M = C*(1+i)^n".
+  * mat4/matrices    -> usa 'matrixData'; mat4/sistemas-gauss -> "x+y=5; x-y=1".
+  * mat5/descriptiva -> datos separados por comas: "12, 15, 11, 18".
+  * mat6/prog-lineal -> coeficientes separados por comas.
+- Si el ejercicio pide evaluar en un punto (p. ej. "en x=2"), descríbelo en 'problemStatement' y úsalo en los pasos; 'extractedFormula' debe contener solo la expresión simbólica.`;
     const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {

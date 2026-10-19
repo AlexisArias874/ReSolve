@@ -30,6 +30,11 @@ import MathGrapher, {
   type LegendItem,
   evaluateMath,
 } from "@/components/shared/math-grapher";
+import {
+  analyzeFunction,
+  analyzeDefiniteIntegral,
+  type FunctionAnalysis,
+} from "@/lib/math/function-analysis";
 
 
 // Inyector numérico para MathGrapher (reemplaza variables a, b, c por constantes)
@@ -92,93 +97,41 @@ export default function FunctionsView({
   const { setAIContext, injectedExpression, clearInjectedExpression } = useAIContext();
 
   // ---------------------------------------------------------------------------
-  // ANÁLISIS NUMÉRICO DE ALTA RESOLUCIÓN
+  // ANÁLISIS MATEMÁTICO UNIFICADO (dominio, discontinuidades, raíces, integral)
+  // Una única representación alimenta la gráfica, el resumen y los pasos.
   // ---------------------------------------------------------------------------
   const analysis = useMemo(() => {
+    const params = { a: paramA, b: paramB, c: paramC };
+    const fa: FunctionAnalysis = analyzeFunction(funcInput, "x", params);
+    const integral = analyzeDefiniteIntegral(funcInput, integralA, integralB, "x", params);
+
     const f = (x: number) => evaluateMath(funcInput, x, paramA, paramB, paramC);
-
-    const yIntercept = f(0);
-    const yAtTangent = f(tangentX);
-
-    // Detección de raíces por bisección
-    const roots: number[] = [];
-    const step = 0.08;
-    let prev = f(-15);
-    for (let x = -15; x <= 15; x += step) {
-      const curr = f(x);
-      if (!isNaN(prev) && !isNaN(curr)) {
-        if (prev * curr <= 0) {
-          let left = x - step;
-          let right = x;
-          for (let k = 0; k < 12; k++) {
-            const mid = (left + right) / 2;
-            if (f(left) * f(mid) <= 0) right = mid;
-            else left = mid;
-          }
-          const rootVal = Number(((left + right) / 2).toFixed(3));
-          if (!roots.some((r) => Math.abs(r - rootVal) < 0.05)) {
-            roots.push(rootVal);
-          }
-        }
-      }
-      prev = curr;
-    }
-
-    // Detección de máximos y mínimos (cambio de signo en derivada numérica)
-    const extremes: { x: number; y: number; type: "Máximo" | "Mínimo" }[] = [];
+    const yAtTangentRaw = f(tangentX);
     const h = 0.001;
-    const df = (x: number) => (f(x + h) - f(x - h)) / (2 * h);
-
-    let prevD = df(-10);
-    for (let x = -10; x <= 10; x += 0.08) {
-      const currD = df(x);
-      if (!isNaN(prevD) && !isNaN(currD) && prevD * currD < 0) {
-        const rootX = Number(x.toFixed(3));
-        const valY = Number(f(rootX).toFixed(3));
-        const type = prevD > 0 ? "Máximo" : "Mínimo";
-        extremes.push({ x: rootX, y: valY, type });
-      }
-      prevD = currD;
-    }
-
-    // Análisis de simetría
-    const t1 = f(2);
-    const t2 = f(-2);
-    let symmetry = "Sin simetría";
-    if (!isNaN(t1) && !isNaN(t2)) {
-      if (Math.abs(t1 - t2) < 1e-4) symmetry = "Par: f(-x) = f(x) (Simetría Eje Y)";
-      else if (Math.abs(t1 + t2) < 1e-4) symmetry = "Impar: f(-x) = -f(x) (Simetría Origen)";
-    }
-
-    const slopeAtX0 = df(tangentX);
-
-    // Integración numérica mediante regla del trapecio
-    let integralVal = 0;
-    const nTraps = 150;
-    const lowLim = Math.min(integralA, integralB);
-    const highLim = Math.max(integralA, integralB);
-    const dInt = (highLim - lowLim) / nTraps;
-
-    for (let i = 0; i < nTraps; i++) {
-      const xA = lowLim + i * dInt;
-      const xB = xA + dInt;
-      const yA = f(xA);
-      const yB = f(xB);
-      if (!isNaN(yA) && !isNaN(yB)) {
-        integralVal += ((yA + yB) / 2) * dInt;
-      }
-    }
-
-    if (integralA > integralB) integralVal = -integralVal;
+    const slopeRaw = (f(tangentX + h) - f(tangentX - h)) / (2 * h);
 
     return {
-      yIntercept: !isNaN(yIntercept) ? Number(yIntercept.toFixed(3)) : null,
-      yAtTangent: !isNaN(yAtTangent) ? Number(yAtTangent.toFixed(3)) : null,
-      roots,
-      extremes,
-      symmetry,
-      slopeAtX0: !isNaN(slopeAtX0) ? Number(slopeAtX0.toFixed(3)) : null,
-      integralVal: Number(integralVal.toFixed(3)),
+      fa,
+      roots: fa.roots.map((r) => r.x),
+      rootsDetailed: fa.roots,
+      extremes: fa.criticalPoints,
+      holes: fa.holes,
+      verticalAsymptotes: fa.verticalAsymptotes,
+      horizontalAsymptote: fa.horizontalAsymptote,
+      obliqueAsymptote: fa.obliqueAsymptote,
+      domainText: fa.domainText,
+      simplifiedExpression: fa.simplifiedExpression,
+      monotonic: fa.monotonic,
+      concavity: fa.concavity,
+      inflectionPoints: fa.inflectionPoints,
+      isExact: fa.exact,
+      symmetry: fa.symmetry,
+      yIntercept: fa.yIntercept,
+      yAtTangent: Number.isFinite(yAtTangentRaw) ? Number(yAtTangentRaw.toFixed(3)) : null,
+      slopeAtX0: Number.isFinite(slopeRaw) ? Number(slopeRaw.toFixed(3)) : null,
+      integral,
+      integralVal: integral.netArea,
+      integralAbsolute: integral.absoluteArea,
     };
   }, [funcInput, paramA, paramB, paramC, tangentX, integralA, integralB]);
 
@@ -188,33 +141,46 @@ export default function FunctionsView({
   const grapherPoints = useMemo<GraphPoint[]>(() => {
     const pts: GraphPoint[] = [];
 
-    // 1. Raíces
+    // 1. Raíces reales (válidas, dentro del dominio)
     if (showRoots) {
       analysis.roots.forEach((r) => {
+        const detail = analysis.rootsDetailed.find((d) => Math.abs(d.x - r) < 1e-6);
+        const mult = detail && detail.multiplicity > 1 ? ` (m=${detail.multiplicity})` : "";
         pts.push({
           x: r,
           y: 0,
-          label: `Raíz (${r}, 0)`,
+          label: `Raíz (${r}, 0)${mult}`,
           color: "#10b981",
           type: "solid",
         });
       });
     }
 
-    // 2. Extremos Relativos
+    // 2. Extremos Relativos (máximos / mínimos)
     if (showExtremes) {
       analysis.extremes.forEach((e) => {
         pts.push({
           x: e.x,
           y: e.y,
           label: `${e.type} (${e.x}, ${e.y})`,
-          color: "#06b6d4",
+          color: e.type === "Máximo" ? "#f97316" : "#06b6d4",
           type: "solid",
         });
       });
     }
 
-    // 3. Punto de Tangencia P0(x0, y0)
+    // 3. Discontinuidades removibles (huecos): círculos abiertos
+    analysis.holes.forEach((h) => {
+      pts.push({
+        x: h.x,
+        y: h.y,
+        label: `Hueco (${h.x}, ${h.y})`,
+        color: "#f472b6",
+        type: "hole",
+      });
+    });
+
+    // 4. Punto de Tangencia P0(x0, y0)
     if (showTangent && analysis.yAtTangent !== null) {
       pts.push({
         x: tangentX,
@@ -231,6 +197,27 @@ export default function FunctionsView({
   // Líneas Guía Verticales en el Canvas
   const grapherGuideLines = useMemo<GuideLine[]>(() => {
     const lines: GuideLine[] = [];
+
+    // Asíntotas verticales reales (NUNCA huecos: las discontinuidades removibles
+    // se representan con círculos abiertos, no con líneas verticales).
+    analysis.verticalAsymptotes.forEach((v) => {
+      lines.push({
+        type: "vertical",
+        value: v,
+        label: `Asíntota x = ${v}`,
+        color: "rgba(244, 63, 94, 0.55)",
+      });
+    });
+
+    // Asíntota horizontal, si existe.
+    if (analysis.horizontalAsymptote !== null) {
+      lines.push({
+        type: "horizontal",
+        value: analysis.horizontalAsymptote,
+        label: `Asíntota y = ${analysis.horizontalAsymptote}`,
+        color: "rgba(56, 189, 248, 0.5)",
+      });
+    }
 
     // Guía del punto de tangencia
     if (showTangent) {
@@ -258,7 +245,7 @@ export default function FunctionsView({
     }
 
     return lines;
-  }, [showTangent, tangentX, showIntegral, integralA, integralB]);
+  }, [analysis, showTangent, tangentX, showIntegral, integralA, integralB]);
 
   const grapherLegend = useMemo<LegendItem[]>(() => {
     const items: LegendItem[] = [
@@ -271,13 +258,23 @@ export default function FunctionsView({
       items.push({ label: `Tangente (m = ${analysis.slopeAtX0})`, color: "#f59e0b", shape: "line" });
     }
     if (showIntegral) {
-      items.push({ label: `Área [${integralA}, ${integralB}] = ${analysis.integralVal} u²`, color: "#34d399", shape: "area" });
+      const label =
+        analysis.integral.divergent
+          ? `Integral [${integralA}, ${integralB}] = divergente`
+          : `Área neta [${integralA}, ${integralB}] = ${analysis.integralVal ?? "—"} u²`;
+      items.push({ label, color: "#34d399", shape: "area" });
+    }
+    if (analysis.holes.length > 0) {
+      items.push({ label: `Huecos (${analysis.holes.length})`, color: "#f472b6", shape: "dot" });
     }
     if (showRoots && analysis.roots.length > 0) {
       items.push({ label: `Raíces (${analysis.roots.length})`, color: "#10b981", shape: "dot" });
     }
     if (showExtremes && analysis.extremes.length > 0) {
       items.push({ label: `Extremos (${analysis.extremes.length})`, color: "#06b6d4", shape: "dot" });
+    }
+    if (analysis.verticalAsymptotes.length > 0) {
+      items.push({ label: `Asíntotas vert. (${analysis.verticalAsymptotes.length})`, color: "#f43f5e", shape: "line" });
     }
     return items;
   }, [funcInput, compareFunc, showCompare, showTangent, analysis, showIntegral, integralA, integralB, showRoots, showExtremes]);
@@ -288,8 +285,12 @@ export default function FunctionsView({
       module: "Matemáticas I",
       subtopic: "Graficador y Funciones",
       expression: `f(x) = ${funcInput}`,
-      result: `f(0) = ${analysis.yIntercept}, Simetría: ${analysis.symmetry}, Extremos: ${analysis.extremes.length}`,
-      details: `Pendiente en x₀=${tangentX}: m=${analysis.slopeAtX0}. Integral [${integralA}, ${integralB}] = ${analysis.integralVal} u²`,
+      result: `Dominio: ${analysis.domainText}. f(0) = ${analysis.yIntercept ?? "—"}. Simetría: ${analysis.symmetry}. Raíces: ${analysis.roots.length}. Huecos: ${analysis.holes.length}.`,
+      details: `Pendiente en x₀=${tangentX}: m=${analysis.slopeAtX0 ?? "—"}. ${
+        analysis.integral.divergent
+          ? `Integral [${integralA}, ${integralB}] divergente`
+          : `Integral neta [${integralA}, ${integralB}] = ${analysis.integralVal ?? "—"} u² (${analysis.integral.kind})`
+      }`,
     });
   }, [funcInput, analysis, tangentX, integralA, integralB, setAIContext]);
 
@@ -306,7 +307,7 @@ export default function FunctionsView({
 
   const saveCalculation = async () => {
     if (!funcInput.trim()) return;
-    const summary = `f(0)=${analysis.yIntercept} | Simetría: ${analysis.symmetry} | Extremos: ${analysis.extremes.length}`;
+    const summary = `Dominio: ${analysis.domainText} | Simplificada: ${analysis.simplifiedExpression ?? funcInput} | Huecos: ${analysis.holes.length} | Asíntotas vert.: ${analysis.verticalAsymptotes.length} | Raíces: ${analysis.roots.length}`;
     await saveUserCalculation("mat1", "funciones", `f(x) = ${funcInput}`, summary);
     const refreshed = await fetchUserHistory("mat1", "funciones");
     setHistory(refreshed);
@@ -571,7 +572,7 @@ export default function FunctionsView({
                       className="w-full disabled:opacity-40"
                     />
                     <div className="text-[10px] font-mono text-zinc-500 truncate flex justify-between">
-                      <span>m = f'({tangentX})</span>
+                      <span>m = f&apos;({tangentX})</span>
                       <strong className="text-zinc-200">{analysis.slopeAtX0 ?? "Indef."}</strong>
                     </div>
                   </div>
@@ -590,7 +591,9 @@ export default function FunctionsView({
                         Integral [a, b]
                       </button>
                       <span className="text-[10px] font-mono text-emerald-300 font-bold">
-                        {analysis.integralVal} u²
+                        {analysis.integral.divergent
+                          ? "Divergente"
+                          : `${analysis.integralVal ?? "—"} u²`}
                       </span>
                     </div>
                     <div className="flex gap-2">
@@ -620,11 +623,22 @@ export default function FunctionsView({
 
                 {/* VISTA SECUNDARIA: ANÁLISIS CUALITATIVO O TABLA DINÁMICA */}
                 {activeTab === "graph" ? (
-                  <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-2.5">
+                  <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-3">
                     <span className="text-xs font-mono uppercase tracking-wider text-zinc-500 block font-semibold">
                       Resumen del Comportamiento Analítico
                     </span>
-                    <div className="grid grid-cols-1 gap-2.5 text-sm font-mono">
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-sm font-mono">
+                      <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60">
+                        <span className="text-xs text-zinc-500 block">Dominio</span>
+                        <strong className="text-zinc-200 text-sm break-words block">{analysis.domainText}</strong>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60">
+                        <span className="text-xs text-zinc-500 block">Expresión simplificada</span>
+                        <strong className="text-sky-300 text-sm break-words block">
+                          {analysis.simplifiedExpression ?? "No determinable simbólicamente"}
+                        </strong>
+                      </div>
                       <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60">
                         <span className="text-xs text-zinc-500 block">Corte Eje Y (f(0))</span>
                         <strong className="text-zinc-200 text-base">
@@ -636,6 +650,72 @@ export default function FunctionsView({
                         <strong className="text-zinc-200 text-base truncate block">{analysis.symmetry}</strong>
                       </div>
                     </div>
+
+                    {/* Huecos (discontinuidades removibles) */}
+                    <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60 text-sm font-mono">
+                      <span className="text-xs text-zinc-500 block">
+                        Discontinuidades removibles / huecos ({analysis.holes.length})
+                      </span>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {analysis.holes.length > 0 ? (
+                          analysis.holes.map((hp, i) => (
+                            <span
+                              key={i}
+                              className="px-2.5 py-1 bg-pink-950/40 border border-pink-800/60 text-pink-300 rounded text-xs"
+                            >
+                              ({hp.x}, {hp.y})
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-zinc-500 text-xs">Sin discontinuidades removibles</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Asíntotas */}
+                    <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60 text-sm font-mono space-y-1.5">
+                      <span className="text-xs text-zinc-500 block">Asíntotas</span>
+                      <div className="text-xs text-zinc-300">
+                        <span className="text-zinc-500">Verticales: </span>
+                        {analysis.verticalAsymptotes.length > 0
+                          ? analysis.verticalAsymptotes.map((v) => `x = ${v}`).join("  |  ")
+                          : "ninguna"}
+                      </div>
+                      <div className="text-xs text-zinc-300">
+                        <span className="text-zinc-500">Horizontal: </span>
+                        {analysis.horizontalAsymptote !== null ? `y = ${analysis.horizontalAsymptote}` : "ninguna"}
+                      </div>
+                      <div className="text-xs text-zinc-300">
+                        <span className="text-zinc-500">Oblicua: </span>
+                        {analysis.obliqueAsymptote
+                          ? `y = ${analysis.obliqueAsymptote.m}x ${analysis.obliqueAsymptote.b >= 0 ? "+" : "-"} ${Math.abs(analysis.obliqueAsymptote.b)}`
+                          : "ninguna"}
+                      </div>
+                    </div>
+
+                    {/* Raíces reales con multiplicidad */}
+                    <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60 text-sm font-mono">
+                      <span className="text-xs text-zinc-500 block">
+                        Raíces reales válidas ({analysis.rootsDetailed.length})
+                      </span>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {analysis.rootsDetailed.length > 0 ? (
+                          analysis.rootsDetailed.map((r, i) => (
+                            <span
+                              key={i}
+                              className="px-2.5 py-1 bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 rounded text-xs"
+                            >
+                              x = {r.x}
+                              {r.multiplicity > 1 ? ` (m = ${r.multiplicity})` : ""}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-zinc-500 text-xs">Sin raíces reales en el dominio</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Puntos críticos */}
                     <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60 text-sm font-mono">
                       <span className="text-xs text-zinc-500 block">
                         Puntos Críticos Detectados ({analysis.extremes.length})
@@ -657,6 +737,76 @@ export default function FunctionsView({
                         )}
                       </div>
                     </div>
+
+                    {/* Monotonía y concavidad */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 font-mono text-sm">
+                      <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60">
+                        <span className="text-xs text-zinc-500 block">Monotonía</span>
+                        <div className="space-y-1 mt-1 text-xs">
+                          {analysis.monotonic.length > 0 ? (
+                            analysis.monotonic.map((m, i) => (
+                              <div key={i} className="text-zinc-300">
+                                {m.behavior === "crece" ? "↗ crece" : "↘ decrece"} en ({m.from}, {m.to})
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-zinc-500">No determinable</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60">
+                        <span className="text-xs text-zinc-500 block">Concavidad e inflexión</span>
+                        <div className="space-y-1 mt-1 text-xs">
+                          {analysis.concavity.length > 0 ? (
+                            analysis.concavity.map((c, i) => (
+                              <div key={i} className="text-zinc-300">
+                                {c.behavior} en ({c.from}, {c.to})
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-zinc-500">Sin curvatura apreciable (p. ej. recta)</span>
+                          )}
+                          {analysis.inflectionPoints.length > 0 && (
+                            <div className="text-violet-300 pt-0.5">
+                              Inflexión: {analysis.inflectionPoints.map((p) => `(${p.x}, ${p.y})`).join("  |  ")}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Integral definida */}
+                    <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60 text-sm font-mono">
+                      <span className="text-xs text-zinc-500 block">
+                        Integral definida en [{integralA}, {integralB}]
+                      </span>
+                      <div className="text-xs text-zinc-300 mt-1">
+                        <span className="text-zinc-500">Naturaleza: </span>
+                        <span className={analysis.integral.divergent ? "text-rose-300" : "text-emerald-300"}>
+                          {analysis.integral.kind}
+                        </span>
+                      </div>
+                      <div className="text-xs text-zinc-300">
+                        <span className="text-zinc-500">Área neta (con signo): </span>
+                        {analysis.integralVal !== null ? `${analysis.integralVal} u²` : "—"}
+                        {analysis.integral.exact ? " (exacta)" : " (numérica)"}
+                      </div>
+                      <div className="text-xs text-zinc-300">
+                        <span className="text-zinc-500">Área absoluta: </span>
+                        {analysis.integralAbsolute !== null ? `${analysis.integralAbsolute} u²` : "—"}
+                      </div>
+                      <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">
+                        {analysis.integral.message}
+                      </p>
+                    </div>
+
+                    {!analysis.isExact && analysis.fa.warnings.length > 0 && (
+                      <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/50 text-[11px] font-mono text-amber-300/90 space-y-0.5">
+                        {analysis.fa.warnings.map((w, i) => (
+                          <p key={i}>⚠ {w}</p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-3">
@@ -780,47 +930,102 @@ export default function FunctionsView({
             <div>
               {[
                 {
+                  title: "Dominio y Restricciones de la Función",
+                  desc: "El dominio queda determinado por los valores que anulan el denominador de la expresión ORIGINAL. La simplificación algebraica posterior NO elimina estas restricciones.",
+                  value:
+                    analysis.holes.length > 0
+                      ? `Dom f = ${analysis.domainText}  (huecos en ${analysis.holes
+                          .map((h) => `x = ${h.x}`)
+                          .join(", ")})`
+                      : `Dom f = ${analysis.domainText}`,
+                  tone: "text-pink-400",
+                },
+                {
+                  title: "Expresión Simplificada (conservando el dominio)",
+                  desc: "Tras cancelar los factores comunes del numerador y denominador se obtiene una expresión equivalente salvo en los puntos excluidos:",
+                  value: analysis.simplifiedExpression
+                    ? `f(x) = ${analysis.simplifiedExpression},  ${analysis.domainText}`
+                    : "Simplificación simbólica no disponible para esta expresión",
+                  tone: "text-sky-400",
+                },
+                {
                   title: "Intersección con el Eje Vertical (Ordenada al Origen)",
-                  desc: "Evaluamos la función en el punto neutro x = 0 para encontrar el cruce con el eje Y:",
+                  desc: "Evaluamos la función en x = 0, siempre que 0 pertenezca al dominio:",
                   value:
                     analysis.yIntercept !== null
                       ? `f(0) = ${analysis.yIntercept}`
-                      : "f(0) = No definido en el dominio real",
+                      : "f(0) = No definido (x = 0 fuera del dominio)",
                   tone: "text-emerald-400",
                 },
                 {
-                  title: "Detección de Raíces y Ceros de la Función",
-                  desc: "Soluciones de la ecuación f(x) = 0 aproximadas mediante métodos numéricos de bisección:",
+                  title: "Detección de Raíces Reales Válidas",
+                  desc: "Ceros del numerador que pertenecen al dominio (se excluyen los puntos cancelados con el denominador y los complejos):",
                   value:
-                    analysis.roots.length > 0
-                      ? analysis.roots.map((r) => `x = ${r}`).join("  |  ")
-                      : "No se identificaron cruces por cero en el rango [-15, 15]",
+                    analysis.rootsDetailed.length > 0
+                      ? analysis.rootsDetailed
+                          .map((r) => `x = ${r.x}${r.multiplicity > 1 ? ` (mult. ${r.multiplicity})` : ""}`)
+                          .join("  |  ")
+                      : "Sin raíces reales en el dominio",
                   tone: "text-emerald-400",
+                },
+                {
+                  title: "Asíntotas y Discontinuidades",
+                  desc: "Diferenciamos discontinuidades removibles (huecos) de las asíntotas reales:",
+                  value: [
+                    analysis.holes.length > 0
+                      ? `Huecos: ${analysis.holes.map((h) => `(${h.x}, ${h.y})`).join(", ")}`
+                      : "Huecos: ninguno",
+                    analysis.verticalAsymptotes.length > 0
+                      ? `AV: ${analysis.verticalAsymptotes.map((v) => `x = ${v}`).join(", ")}`
+                      : "AV: ninguna",
+                    analysis.horizontalAsymptote !== null ? `AH: y = ${analysis.horizontalAsymptote}` : null,
+                    analysis.obliqueAsymptote
+                      ? `AO: y = ${analysis.obliqueAsymptote.m}x ${analysis.obliqueAsymptote.b >= 0 ? "+" : "-"} ${Math.abs(analysis.obliqueAsymptote.b)}`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join("  |  "),
+                  tone: "text-rose-400",
                 },
                 {
                   title: "Puntos Críticos y Extremos Relativos",
-                  desc: "Ubicaciones donde la primera derivada se anula (f'(x) = 0):",
+                  desc: "Ubicaciones donde la primera derivada se anula (f'(x) = 0), clasificadas por el signo de f'':",
                   value:
                     analysis.extremes.length > 0
-                      ? analysis.extremes
-                          .map((e) => `${e.type} en (${e.x}, ${e.y})`)
-                          .join("  |  ")
+                      ? analysis.extremes.map((e) => `${e.type} en (${e.x}, ${e.y})`).join("  |  ")
                       : "Curva monótona sin extremos relativos",
                   tone: "text-cyan-400",
                 },
                 {
+                  title: "Monotonía y Concavidad",
+                  desc: "Intervalos de crecimiento/decrecimiento (signo de f') y de curvatura (signo de f''):",
+                  value: [
+                    analysis.monotonic.length > 0
+                      ? analysis.monotonic
+                          .map((m) => `${m.behavior === "crece" ? "↗" : "↘"} (${m.from}, ${m.to})`)
+                          .join(" ")
+                      : "Monotonía no determinable",
+                    analysis.concavity.length > 0
+                      ? analysis.concavity.map((c) => `${c.behavior} (${c.from}, ${c.to})`).join("  ")
+                      : "Sin curvatura (recta)",
+                  ].join("  ||  "),
+                  tone: "text-violet-400",
+                },
+                {
                   title: `Ecuación de la Recta Tangente en x₀ = ${tangentX}`,
                   desc: "Pendiente instantánea m = f'(x₀) y modelo punto-pendiente y - y₀ = m(x - x₀):",
-                  value: `m = ${analysis.slopeAtX0}  ⇒  y = ${analysis.slopeAtX0}·(x - ${tangentX}) + ${analysis.yAtTangent}`,
+                  value: `m = ${analysis.slopeAtX0 ?? "Indef."}  ⇒  y = ${analysis.slopeAtX0 ?? "—"}·(x - ${tangentX}) + ${analysis.yAtTangent ?? "—"}`,
                   tone: "text-amber-400",
                 },
                 {
                   title: "Integración Definida y Área de Riemann",
-                  desc: `Aproximación de la integral definida en el intervalo [${integralA}, ${integralB}]:`,
-                  value: `∫ f(x) dx ≈ ${analysis.integralVal} u²`,
+                  desc: "Se integra la expresión simplificada cuando las singularidades interiores son removibles; si hay asíntotas verticales interiores se declara divergente.",
+                  value: analysis.integral.divergent
+                    ? `∫ f(x) dx en [${integralA}, ${integralB}] = DIVERGENTE`
+                    : `Área neta = ${analysis.integralVal ?? "—"} u² · Área absoluta = ${analysis.integralAbsolute ?? "—"} u²  (${analysis.integral.kind})`,
                   tone: "text-emerald-400",
                 },
-              ].map((step, index) => (
+              ].map((step, index, arr) => (
                 <div key={index} className="relative pl-13 pb-5 last:pb-0">
                   <span
                     className="absolute left-0 top-0 w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 flex items-center justify-center text-xs font-mono font-bold shadow-inner"
@@ -828,7 +1033,7 @@ export default function FunctionsView({
                   >
                     {index + 1}
                   </span>
-                  {index < 4 && (
+                  {index < arr.length - 1 && (
                     <span
                       className="absolute left-[15px] top-10 bottom-0 w-px bg-zinc-800/70"
                       aria-hidden="true"

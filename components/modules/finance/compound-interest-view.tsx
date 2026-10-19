@@ -72,6 +72,8 @@ import {
 
   deleteUserHistory,
 
+  readHistoryPayload,
+
   type HistoryItem,
 
 } from "@/lib/supabase/history";
@@ -261,6 +263,18 @@ const MODULE_EXAMPLES: ModuleExample[] = [
   },
 
 ];
+
+/** Snapshot de entradas para restaurar un cálculo desde el historial. */
+interface CompoundInterestSnapshot {
+  unknownVar: CompoundUnknown;
+  capitalInput: string;
+  montoInput: string;
+  rateInput: string;
+  capFreq: CapFrequency;
+  timeInput: string;
+  timeUnit: TimeUnit;
+  currency: string;
+}
 
 export default function CompoundInterestView({
 
@@ -723,12 +737,46 @@ export default function CompoundInterestView({
 
     const title = `Interés Compuesto (${unknownVar}): C=${currency}${calculation.capital}, t=${calculation.timeValue} ${timeUnit}, TEA=${calculation.teaValue}%`;
 
-    await saveUserCalculation("mat3", "interes-compuesto", title, calculation.primaryResultValue);
+    const snapshot: CompoundInterestSnapshot = {
+
+      unknownVar,
+
+      capitalInput,
+
+      montoInput,
+
+      rateInput,
+
+      capFreq,
+
+      timeInput,
+
+      timeUnit,
+
+      currency,
+
+    };
+
+    await saveUserCalculation("mat3", "interes-compuesto", title, calculation.primaryResultValue, JSON.stringify(snapshot));
 
     const refreshed = await fetchUserHistory("mat3", "interes-compuesto");
 
     setHistory(refreshed);
 
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<CompoundInterestSnapshot>(item);
+    if (!snap) return;
+    if (snap.unknownVar) setUnknownVar(snap.unknownVar);
+    if (snap.capFreq) setCapFreq(snap.capFreq);
+    if (snap.timeUnit) setTimeUnit(snap.timeUnit);
+    setCapitalInput(snap.capitalInput ?? "");
+    setMontoInput(snap.montoInput ?? "");
+    setRateInput(snap.rateInput ?? "");
+    setTimeInput(snap.timeInput ?? "");
+    if (snap.currency) setCurrency(snap.currency);
   };
 
   const clearHistory = async () => {
@@ -1396,10 +1444,12 @@ export default function CompoundInterestView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      title={item.expression}
-                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-sm"
+                      onClick={() => restoreHistory(item)}
+                      title={`Cargar estos datos · ${item.expression}`}
+                      className="group w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-sm cursor-pointer"
                     >
                       <span className="truncate pr-2 font-mono text-[13px] text-zinc-300 group-hover:text-zinc-100 transition-colors">
                         {item.expression}
@@ -1407,7 +1457,7 @@ export default function CompoundInterestView({
                       <span className="font-mono font-bold text-emerald-400 shrink-0">
                         {item.result}
                       </span>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

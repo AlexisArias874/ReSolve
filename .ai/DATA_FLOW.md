@@ -16,18 +16,20 @@
 texto del usuario / IA
         │
         ├─(a) sanitizeMathExpression()      lib/math/universal-evaluator.ts
-        │      prefijos (f(x)=, y=), \frac→((a)/(b)), √→sqrt(), |x|→abs(),
-        │      × ÷ · − → * / * -, π→pi, quita \left \right
+        │      prefijos (f(x)=, y=), \frac→((a)/(b)), √→sqrt(), pow(a,b)→a^b,
+        │      |x|→abs(), × ÷ · − → * / * -, π→pi, quita \left \right
         │
         ├─(b) cleanMathInput()              lib/utils/math-cleaner.ts
         │      (duplicado parcial de (a); actualmente sin consumidores)
         │
         ├─(c) adaptExpressionForModule()     lib/math/module-adapters.ts
-        │      aritmetica → tal cual
+        │      normaliza a evaluable y devuelve a notación tipográfica (toMathSymbols)
+        │      aritmetica → tal cual (conserva √, !)
         │      algebra     → añade "= 0" si falta igualdad
         │      geometria   → extrae pares "(x1, y1), (x2, y2)"
         │      limites     → adjunta queryParams { point, side }
-        │      funciones/derivadas/integrales → tal cual
+        │      funciones/derivadas → tal cual
+        │      integrales  → extrae el integrando de \int_{a}^{b} f(x)\, dx
         │
         └─(d) Evaluación numérica: evaluateUniversalMath(expr, vars)
                alias e^→exp, multiplicación implícita, corrección de -x^2,

@@ -21,6 +21,7 @@ import {
   Sparkles,
   ArrowLeft,
   BookOpen,
+  BookText,
   ListOrdered,
   Equal,
   PanelLeftClose,
@@ -185,7 +186,7 @@ const THEME_OPTIONS = [
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialExpr = searchParams.get("expr") || "";
+  const urlExpr = searchParams.get("expr") || "";
 
   // Restaura módulo y subtema desde la URL (enlaces del Omni-Solver, historial o
   // recargas de página). Sin esto, el estado siempre vuelve a mat1/aritmetica.
@@ -206,6 +207,26 @@ function DashboardContent() {
   const [viewMode, setViewMode] = useState<ViewMode>("calc");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Expresión extraída desde la Calculadora Universal para inyectar de forma
+  // puntual en su módulo/subtema de destino (se limpia al navegar a otro lado).
+  const [navInjectedExpr, setNavInjectedExpr] = useState<{
+    module: ModuleId;
+    subtopic: string;
+    expr: string;
+  } | null>(null);
+
+  // La operación extraída solo se inyecta en el módulo/subtema de destino real.
+  // Así no se "copia" a todos los módulos al navegar por el menú (el parámetro
+  // `expr` sigue en la URL al cambiar de módulo).
+  const initialExpr =
+    navInjectedExpr &&
+    navInjectedExpr.module === activeModule &&
+    navInjectedExpr.subtopic === subTopic
+      ? navInjectedExpr.expr
+      : urlExpr && paramModule === activeModule && paramSubtopic === subTopic
+      ? urlExpr
+      : "";
 
   // Menú lateral: columna en escritorio (lg+) y drawer superpuesto en móvil.
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -305,6 +326,8 @@ function DashboardContent() {
   ) => {
     setActiveModule(moduleId);
     setSubTopic(subtopicId);
+    // Inyección inmediata (sin esperar a que la URL se actualice).
+    setNavInjectedExpr({ module: moduleId, subtopic: subtopicId, expr: formula });
 
     const query = new URLSearchParams();
     query.set("module", moduleId);
@@ -324,6 +347,10 @@ function DashboardContent() {
       setSubTopic(subList[0].id);
     }
     closeMobileNav();
+    // Al elegir un módulo a mano se descarta la operación extraída previamente,
+    // para que no se reaproveche en un módulo distinto al de destino.
+    setNavInjectedExpr(null);
+    router.replace("/dashboard");
   };
 
   const currentModule = MODULES.find((m) => m.id === activeModule) || MODULES[0];
@@ -336,7 +363,7 @@ function DashboardContent() {
   const crumbModuleLabel = isOmni ? "Calculadora Universal" : currentModule?.label;
   const headerTitle = isOmni ? "Calculadora Universal" : currentSubtopicConfig?.label;
   const headerDesc = isOmni
-    ? "Resuelve, grafica y explica cualquier expresión · Motor local + IA"
+    ? "Resuelve, grafica y explica cualquier expresión"
     : currentSubtopicConfig?.desc;
 
   // SplitText: se dispara cuando todas las letras del título terminan de animar.
@@ -434,9 +461,6 @@ function DashboardContent() {
                 <h1 className="leading-none">
                   <BrandLogo size="lg" />
                 </h1>
-                <p className="mt-1 type-nav-desc font-mono uppercase tracking-[0.2em] text-zinc-600">
-                  Suite matemática
-                </p>
               </div>
               <button
                 onClick={() => {
@@ -458,8 +482,10 @@ function DashboardContent() {
                 onClick={() => {
                   setActiveModule("omni");
                   closeMobileNav();
+                  setNavInjectedExpr(null);
+                  router.replace("/dashboard");
                 }}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left transition-all border outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 ${
+                className={`w-full flex items-center justify-center gap-3 px-3.5 py-2.5 rounded-2xl text-left transition-all border outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 ${
                   activeModule === "omni"
                     ? "bg-amber-400/10 border-amber-400/30 text-amber-300 font-semibold shadow-lg shadow-amber-400/5"
                     : "bg-zinc-900/40 border-zinc-800/80 text-zinc-300 hover:border-zinc-700 hover:text-zinc-100"
@@ -468,12 +494,27 @@ function DashboardContent() {
                 <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
                   <Zap size={15} />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <span className="block type-nav-label truncate">Calculadora Universal</span>
-                  <span className="block type-nav-desc text-zinc-500 font-mono">Motor local + IA</span>
-                </div>
+                <span className="type-nav-label truncate text-center">Calculadora Universal</span>
               </button>
             </div>
+
+            <div className="px-3 pt-2 pb-1">
+              <Link
+                href="/documentacion"
+                onClick={closeMobileNav}
+                className="group flex w-full items-center gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 px-3.5 py-2.5 text-left text-zinc-300 transition-all hover:border-zinc-700 hover:text-zinc-100 outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10 text-sky-400">
+                  <BookText size={15} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block type-nav-label truncate">Documentación</span>
+                  <span className="block type-nav-desc truncate text-zinc-500">Diagramas del proyecto</span>
+                </div>
+                <ChevronRight size={14} className="shrink-0 text-zinc-600 group-hover:text-zinc-300" />
+              </Link>
+            </div>
+
             <p className="px-3 pt-2 pb-2 text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-mono">
               Módulos
             </p>
@@ -787,6 +828,8 @@ function DashboardContent() {
                     onClick={() => {
                       setSubTopic(item.id);
                       closeMobileNav();
+                      setNavInjectedExpr(null);
+                      router.replace("/dashboard");
                     }}
                     aria-pressed={isActive}
                     className={`relative px-4 py-2 rounded-full whitespace-nowrap type-control transition-colors outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${

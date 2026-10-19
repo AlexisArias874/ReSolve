@@ -19,6 +19,8 @@ import {
   Eye,
   Target
 } from "lucide-react";
+import { sanitizeMathExpression, expandNumericFactorials } from "@/lib/math/universal-evaluator";
+import { isPoleJump } from "@/lib/math/curve-topology";
 
 export interface GraphPoint {
   x: number;
@@ -112,7 +114,9 @@ export function evaluateMath(
   c = 0
 ): number {
   try {
-    let s = expr.toLowerCase().replace(/\s+/g, "");
+    let s = expandNumericFactorials(sanitizeMathExpression(expr))
+      .toLowerCase()
+      .replace(/\s+/g, "");
 
     if (!s) return NaN;
 
@@ -577,51 +581,64 @@ export default function MathGrapher({
         }
       }
 
-      // Curva principal f(x)
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = themeGraphColors.curve;
-      ctx.beginPath();
-      let isDrawing = false;
-      for (let px = 0; px <= width; px += 2) {
-        const xVal = (px - originX) / scale;
-        const yVal = evaluateMath(expression, xVal, paramA, paramB, paramC);
-
-        if (!isNaN(yVal) && Math.abs(yVal) < 1500) {
-          const py = originY - yVal * scale;
-          if (!isDrawing) {
-            ctx.moveTo(px, py);
-            isDrawing = true;
-          } else {
-            ctx.lineTo(px, py);
-          }
-        } else {
-          isDrawing = false;
-        }
-      }
-      ctx.stroke();
-
-      // Curva secundaria g(x)
-      if (secondaryExpression) {
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "#f43f5e";
+      // Traza una curva por muestreo, separando los segmentos en discontinuidades
+      // y polos. Un salto vertical mayor que la vista solo se considera corte si
+      // el punto medio no es finito o explota (señal de asíntota vertical); así no
+      // se rompen rectas o curvas continuas muy empinadas.
+      const strokeCurve = (expr: string, color: string, lineWidth: number) => {
+        ctx.lineWidth = lineWidth;
+        ctx.strokeStyle = color;
         ctx.beginPath();
-        let isDrawingSec = false;
+        let drawing = false;
+        let prevX: number | null = null;
+        let prevY: number | null = null;
+
         for (let px = 0; px <= width; px += 2) {
           const xVal = (px - originX) / scale;
-          const yVal = evaluateMath(secondaryExpression, xVal, paramA, paramB, paramC);
+          const yVal = evaluateMath(expr, xVal, paramA, paramB, paramC);
+
           if (!isNaN(yVal) && Math.abs(yVal) < 1500) {
             const py = originY - yVal * scale;
-            if (!isDrawingSec) {
+
+            if (drawing && prevY !== null && prevX !== null) {
+              const midX = (xVal + prevX) / 2;
+              const midY = evaluateMath(expr, midX, paramA, paramB, paramC);
+              if (
+                isPoleJump({
+                  prevY,
+                  currY: yVal,
+                  midY,
+                  viewHeightPx: height,
+                  scale,
+                })
+              ) {
+                drawing = false;
+              }
+            }
+
+            if (!drawing) {
               ctx.moveTo(px, py);
-              isDrawingSec = true;
+              drawing = true;
             } else {
               ctx.lineTo(px, py);
             }
+            prevX = xVal;
+            prevY = yVal;
           } else {
-            isDrawingSec = false;
+            drawing = false;
+            prevX = null;
+            prevY = null;
           }
         }
         ctx.stroke();
+      };
+
+      // Curva principal f(x)
+      strokeCurve(expression, themeGraphColors.curve, 2.5);
+
+      // Curva secundaria g(x)
+      if (secondaryExpression) {
+        strokeCurve(secondaryExpression, "#f43f5e", 2);
       }
 
       // Puntos en pantalla
@@ -852,24 +869,45 @@ const executeExportPNG = () => {
     if (Math.abs(u) > 1e-6) ctx.fillText(Number(u.toFixed(2)).toString(), originX - 10, originY - u * exportScale);
   }
 
-  // ✅ Trazo de f(x) adaptado al tema
+  // ✅ Trazo de f(x) adaptado al tema, separando asíntotas verticales
   ctx.lineWidth = 4;
   ctx.strokeStyle = themeGraphColors.curve;
   ctx.beginPath();
   let isDraw = false;
+  let exportPrevX: number | null = null;
+  let exportPrevY: number | null = null;
   for (let px = 0; px <= 1920; px += 2) {
     const xVal = (px - originX) / exportScale;
     const yVal = evaluateMath(expression, xVal, paramA, paramB, paramC);
     if (!isNaN(yVal) && Math.abs(yVal) < 1500) {
       const py = originY - yVal * exportScale;
+      if (isDraw && exportPrevY !== null && exportPrevX !== null) {
+        const midX = (xVal + exportPrevX) / 2;
+        const midY = evaluateMath(expression, midX, paramA, paramB, paramC);
+        if (
+          isPoleJump({
+            prevY: exportPrevY,
+            currY: yVal,
+            midY,
+            viewHeightPx: 1080,
+            scale: exportScale,
+          })
+        ) {
+          isDraw = false;
+        }
+      }
       if (!isDraw) {
         ctx.moveTo(px, py);
         isDraw = true;
       } else {
         ctx.lineTo(px, py);
       }
+      exportPrevX = xVal;
+      exportPrevY = yVal;
     } else {
       isDraw = false;
+      exportPrevX = null;
+      exportPrevY = null;
     }
   }
   ctx.stroke();

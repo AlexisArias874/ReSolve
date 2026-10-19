@@ -1,0 +1,13 @@
+flowchart TD
+    S([Inicio]) --> R["Abrir formulario de registro"]
+    R --> D1["Capturar correo y contraseña"]
+    D1 --> C1{"¿Datos válidos?"}
+    C1 -- No --> ERR["Mostrar error"] --> R
+    C1 -- Sí --> CREAR["Crear cuenta (Supabase Auth)"]
+    CREAR --> MAIL["Enviar correo de verificación"]
+    MAIL --> V["Usuario abre el enlace"]
+    V --> CB["Confirmar cuenta (callback)"]
+    CB --> LOG["Iniciar sesión"]
+    LOG --> C2{"¿Credenciales correctas?"}
+    C2 -- No --> ERR2["Mostrar error"] --> LOG
+    C2 -- Sí --> DASH["Acceder al panel principal"] --> F([Fin])

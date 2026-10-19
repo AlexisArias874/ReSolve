@@ -38,6 +38,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 
@@ -110,6 +111,16 @@ const MODULE_EXAMPLES: ModuleExample[] = [
     desc: "El sistema alemán ahorra intereses frente al francés al amortizar capital más rápido.",
   },
 ];
+
+/** Snapshot de entradas para restaurar un cálculo desde el historial. */
+interface AmortizationSnapshot {
+  system: AmortizationSystem;
+  loanInput: string;
+  rateInput: string;
+  payFreq: PaymentFrequency;
+  periodsInput: string;
+  currency: string;
+}
 
 export default function AmortizationView({
   viewMode,
@@ -356,9 +367,29 @@ export default function AmortizationView({
   const saveCalculation = async () => {
     const title = `Amortización ${system} (${currency}${calculation.loan.toLocaleString()}, ${calculation.periods} ${payFreq}es)`;
     const resultSummary = `Cuota: ${currency}${calculation.initialPayment.toLocaleString()} | Interés: ${currency}${calculation.totalInterest.toLocaleString()}`;
-    await saveUserCalculation("mat3", "amortizacion", title, resultSummary);
+    const snapshot: AmortizationSnapshot = {
+      system,
+      loanInput,
+      rateInput,
+      payFreq,
+      periodsInput,
+      currency,
+    };
+    await saveUserCalculation("mat3", "amortizacion", title, resultSummary, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat3", "amortizacion");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<AmortizationSnapshot>(item);
+    if (!snap) return;
+    if (snap.system) setSystem(snap.system);
+    if (snap.payFreq) setPayFreq(snap.payFreq);
+    setLoanInput(snap.loanInput ?? "");
+    setRateInput(snap.rateInput ?? "");
+    setPeriodsInput(snap.periodsInput ?? "");
+    if (snap.currency) setCurrency(snap.currency);
   };
 
   const clearHistory = async () => {
@@ -753,10 +784,12 @@ export default function AmortizationView({
                     </div>
                   ) : (
                     history.map((item) => (
-                      <div
+                      <button
+                        type="button"
                         key={item.id}
-                        title={item.expression}
-                        className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm"
+                        onClick={() => restoreHistory(item)}
+                        title={`Cargar estos datos · ${item.expression}`}
+                        className="group w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm"
                       >
                         <span className="truncate pr-2 font-mono text-[13px] text-zinc-300">
                           {item.expression}
@@ -764,7 +797,7 @@ export default function AmortizationView({
                         <span className="font-mono font-bold text-emerald-400 shrink-0">
                           {item.result}
                         </span>
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>

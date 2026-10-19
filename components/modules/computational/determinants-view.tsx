@@ -30,6 +30,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 import ReactMarkdown from "react-markdown";
@@ -94,6 +95,13 @@ function matrixToLaTeX(m: number[][]): string {
   if (!m || m.length === 0 || !m[0]) return "\\begin{bmatrix} 0 \\end{bmatrix}";
   const rows = m.map((row) => row.map((v) => Number(v.toFixed(3)).toString()).join(" & "));
   return `\\begin{bmatrix} ${rows.join(" \\\\ ")} \\end{bmatrix}`;
+}
+
+/** Snapshot de entradas para restaurar un cálculo desde el historial. */
+interface DeterminantsSnapshot {
+  matrixSize: number;
+  matrix: number[][];
+  method: DeterminantMethod;
 }
 
 // Extracción de menor complementario M_ij
@@ -379,9 +387,23 @@ export default function DeterminantsView({
   const saveCalculation = async () => {
     const title = `det(A [${matrixSize}×${matrixSize}]) por ${method.toUpperCase()}`;
     const resSummary = `|A| = ${calculation.detValue} (${calculation.isSingular ? "det=0" : "Invertible"})`;
-    await saveUserCalculation("mat4", "determinantes", title, resSummary);
+    const snapshot: DeterminantsSnapshot = {
+      matrixSize,
+      matrix,
+      method,
+    };
+    await saveUserCalculation("mat4", "determinantes", title, resSummary, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat4", "determinantes");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<DeterminantsSnapshot>(item);
+    if (!snap) return;
+    if (snap.matrixSize !== undefined) setMatrixSize(snap.matrixSize);
+    if (Array.isArray(snap.matrix)) setMatrix(snap.matrix);
+    if (snap.method) setMethod(snap.method);
   };
 
   const clearHistory = async () => {
@@ -733,10 +755,12 @@ export default function DeterminantsView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      title={item.expression}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-default transition-colors flex items-center justify-between gap-3 text-xs"
+                      onClick={() => restoreHistory(item)}
+                      title={`Cargar estos datos · ${item.expression}`}
+                      className="w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-colors flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">
                         {item.expression}
@@ -744,7 +768,7 @@ export default function DeterminantsView({
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[110px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

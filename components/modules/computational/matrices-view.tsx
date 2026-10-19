@@ -32,6 +32,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 import ReactMarkdown from "react-markdown";
@@ -99,6 +100,18 @@ function matrixToLaTeX(m: number[][]): string {
   if (!m || m.length === 0 || !m[0]) return "\\begin{bmatrix} 0 \\end{bmatrix}";
   const rows = m.map((row) => row.map((v) => Number(v.toFixed(3)).toString()).join(" & "));
   return `\\begin{bmatrix} ${rows.join(" \\\\ ")} \\end{bmatrix}`;
+}
+
+/** Snapshot de entradas para restaurar un cálculo desde el historial. */
+interface MatricesSnapshot {
+  rowsA: number;
+  colsA: number;
+  matrixA: number[][];
+  rowsB: number;
+  colsB: number;
+  matrixB: number[][];
+  selectedOp: MatrixOp;
+  scalarK: number;
 }
 
 export default function MatricesView({
@@ -556,9 +569,34 @@ export default function MatricesView({
       ? JSON.stringify(calculation.resultMatrix)
       : String(calculation.scalarResult);
 
-    await saveUserCalculation("mat4", "matrices", title, resSummary);
+    const snapshot: MatricesSnapshot = {
+      rowsA,
+      colsA,
+      matrixA,
+      rowsB,
+      colsB,
+      matrixB,
+      selectedOp,
+      scalarK,
+    };
+
+    await saveUserCalculation("mat4", "matrices", title, resSummary, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat4", "matrices");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<MatricesSnapshot>(item);
+    if (!snap) return;
+    if (snap.selectedOp) setSelectedOp(snap.selectedOp);
+    if (snap.rowsA !== undefined) setRowsA(snap.rowsA);
+    if (snap.colsA !== undefined) setColsA(snap.colsA);
+    if (Array.isArray(snap.matrixA)) setMatrixA(snap.matrixA);
+    if (snap.rowsB !== undefined) setRowsB(snap.rowsB);
+    if (snap.colsB !== undefined) setColsB(snap.colsB);
+    if (Array.isArray(snap.matrixB)) setMatrixB(snap.matrixB);
+    if (snap.scalarK !== undefined) setScalarK(snap.scalarK);
   };
 
   const clearHistory = async () => {
@@ -994,10 +1032,12 @@ export default function MatricesView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      title={item.expression}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-default transition-colors flex items-center justify-between gap-3 text-xs"
+                      onClick={() => restoreHistory(item)}
+                      title={`Cargar estos datos · ${item.expression}`}
+                      className="w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-colors flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">
                         {item.expression}
@@ -1005,7 +1045,7 @@ export default function MatricesView({
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[110px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

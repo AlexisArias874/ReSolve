@@ -35,6 +35,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 import ReactMarkdown from "react-markdown";
@@ -83,6 +84,11 @@ export interface Vertex2D {
   zValue: number;
   isFeasible: boolean;
   label: string;
+}
+
+/** Snapshot de entradas para restaurar un modelo PL desde el historial. */
+interface LinearProgrammingSnapshot {
+  model: LPModel;
 }
 
 // -----------------------------------------------------------------------------
@@ -881,9 +887,23 @@ export default function LinearProgrammingView({
   const saveCalculation = async () => {
     const title = `PL ${model.type.toUpperCase()} (${model.varNames.length} vars, ${model.constraints.length} rest.)`;
     const resSummary = `Z* = ${calculation.simplexRes.optimalZ} (${calculation.simplexRes.status})`;
-    await saveUserCalculation("mat6", "programacion_lineal", title, resSummary);
+    const snapshot: LinearProgrammingSnapshot = { model };
+    await saveUserCalculation(
+      "mat6",
+      "programacion_lineal",
+      title,
+      resSummary,
+      JSON.stringify(snapshot)
+    );
     const refreshed = await fetchUserHistory("mat6", "programacion_lineal");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<LinearProgrammingSnapshot>(item);
+    if (!snap || !snap.model) return;
+    setModel(snap.model);
   };
 
   const clearHistory = async () => {
@@ -1446,16 +1466,18 @@ export default function LinearProgrammingView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      title={item.expression}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-sm"
+                      onClick={() => restoreHistory(item)}
+                      title={`Cargar estos datos · ${item.expression}`}
+                      className="w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-sm cursor-pointer"
                     >
                       <span className="truncate pr-2 font-mono text-[13px] text-zinc-300">{item.expression}</span>
                       <span className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
                       </span>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

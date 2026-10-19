@@ -33,6 +33,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 import ReactMarkdown from "react-markdown";
@@ -96,6 +97,13 @@ const MODULE_EXAMPLES: ModuleExample[] = [
     desc: "Aproximación de 1/(1+25x²) que muestra oscilaciones espurias en los extremos.",
   },
 ];
+
+/** Snapshot de entradas para restaurar un cálculo desde el historial. */
+interface InterpolationSnapshot {
+  method: InterpolationMethod;
+  points: DataPoint[];
+  targetX: string;
+}
 
 // Algoritmo para multiplicar polinomios P(x) * Q(x)
 function polyMultiply(p1: number[], p2: number[]): number[] {
@@ -373,9 +381,23 @@ export default function InterpolationView({
     if (calculation.error || calculation.expandedPoly === "--") return;
     const title = `Interpolación (${points.length} pts, Grado ${calculation.degree})`;
     const resSummary = `P(x) = ${calculation.expandedPoly} | P(${targetX}) = ${calculation.evaluatedY}`;
-    await saveUserCalculation("mat4", "interpolacion", title, resSummary);
+    const snapshot: InterpolationSnapshot = {
+      method,
+      points,
+      targetX,
+    };
+    await saveUserCalculation("mat4", "interpolacion", title, resSummary, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat4", "interpolacion");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<InterpolationSnapshot>(item);
+    if (!snap) return;
+    if (snap.method) setMethod(snap.method);
+    if (Array.isArray(snap.points)) setPoints(snap.points);
+    setTargetX(snap.targetX ?? "");
   };
 
   const clearHistory = async () => {
@@ -729,10 +751,12 @@ export default function InterpolationView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      title={item.expression}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-default transition-colors flex items-center justify-between gap-3 text-xs"
+                      onClick={() => restoreHistory(item)}
+                      title={`Cargar estos datos · ${item.expression}`}
+                      className="w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-colors flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">
                         {item.expression}
@@ -740,7 +764,7 @@ export default function InterpolationView({
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[110px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

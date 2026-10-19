@@ -37,6 +37,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 
@@ -120,6 +121,16 @@ const MODULE_EXAMPLES: ModuleExample[] = [
     desc: "Raíz real en el intervalo [1, 2] con f(1)=-10 y f(2)=4.",
   },
 ];
+
+/** Snapshot de entradas para restaurar un cálculo desde el historial. */
+interface NumericalRootsSnapshot {
+  method: RootMethod;
+  funcInput: string;
+  param1: string;
+  param2: string;
+  tolerance: string;
+  maxIterations: number;
+}
 
 // Evaluador matemático seguro
 function evaluateMath(expr: string, x: number): number {
@@ -507,9 +518,29 @@ export default function NumericalRootsView({
     if (calculation.root === null) return;
     const title = `Raíz ${method.toUpperCase()}: ${funcInput}`;
     const resSummary = `x* = ${calculation.root} (Iter: ${calculation.iterations}, εa=${calculation.finalError}%)`;
-    await saveUserCalculation("mat4", "raices-metodos", title, resSummary);
+    const snapshot: NumericalRootsSnapshot = {
+      method,
+      funcInput,
+      param1,
+      param2,
+      tolerance,
+      maxIterations,
+    };
+    await saveUserCalculation("mat4", "raices-metodos", title, resSummary, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat4", "raices-metodos");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<NumericalRootsSnapshot>(item);
+    if (!snap) return;
+    if (snap.method) setMethod(snap.method);
+    setFuncInput(snap.funcInput ?? "");
+    setParam1(snap.param1 ?? "");
+    setParam2(snap.param2 ?? "");
+    setTolerance(snap.tolerance ?? "0.0001");
+    if (snap.maxIterations !== undefined) setMaxIterations(snap.maxIterations);
   };
 
   const clearHistory = async () => {
@@ -910,10 +941,12 @@ export default function NumericalRootsView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      title={item.expression}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-default transition-colors flex items-center justify-between gap-3 text-xs"
+                      onClick={() => restoreHistory(item)}
+                      title={`Cargar estos datos · ${item.expression}`}
+                      className="w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-colors flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">
                         {item.expression}
@@ -921,7 +954,7 @@ export default function NumericalRootsView({
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[110px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

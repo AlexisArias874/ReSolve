@@ -37,6 +37,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 import ReactMarkdown from "react-markdown";
@@ -70,6 +71,15 @@ export interface QueueAnalysis {
   lossProb?: number; // P_K de descarte en capacidad finita
   effectiveLambda: number;
   pnStates: StateProbability[];
+}
+
+/** Snapshot de entradas para restaurar un análisis de colas desde el historial. */
+interface QueueingSnapshot {
+  modelType: QueueModelType;
+  lambda: number;
+  mu: number;
+  servers: number;
+  capacityK: number;
 }
 
 interface ModuleExample {
@@ -347,9 +357,33 @@ export default function QueueingTheoryView({
   const saveCalculation = async () => {
     const title = `Colas ${analysis.modelType} (λ=${analysis.lambda}, μ=${analysis.mu})`;
     const resSummary = `W = ${analysis.w} | L = ${analysis.l} | ρ = ${(analysis.rho * 100).toFixed(1)}%`;
-    await saveUserCalculation("mat6", "colas", title, resSummary);
+    const snapshot: QueueingSnapshot = {
+      modelType,
+      lambda,
+      mu,
+      servers,
+      capacityK,
+    };
+    await saveUserCalculation(
+      "mat6",
+      "colas",
+      title,
+      resSummary,
+      JSON.stringify(snapshot)
+    );
     const refreshed = await fetchUserHistory("mat6", "colas");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<QueueingSnapshot>(item);
+    if (!snap) return;
+    if (snap.modelType) setModelType(snap.modelType);
+    if (snap.lambda !== undefined) setLambda(snap.lambda);
+    if (snap.mu !== undefined) setMu(snap.mu);
+    if (snap.servers !== undefined) setServers(snap.servers);
+    if (snap.capacityK !== undefined) setCapacityK(snap.capacityK);
   };
 
   const clearHistory = async () => {
@@ -864,16 +898,18 @@ export default function QueueingTheoryView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      title={item.expression}
-                      className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-xs"
+                      onClick={() => restoreHistory(item)}
+                      title={`Cargar estos datos · ${item.expression}`}
+                      className="w-full text-left p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 transition-all flex items-center justify-between gap-3 text-xs cursor-pointer"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">{item.expression}</div>
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

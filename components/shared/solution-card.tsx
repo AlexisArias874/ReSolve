@@ -18,6 +18,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import katex from "katex";
 import "katex/dist/katex.min.css";
 
 import MathGrapher from "@/components/shared/math-grapher";
@@ -34,13 +35,32 @@ import {
 import { resolveProblemRoute } from "@/lib/math/problem-router";
 import { planRender, PrimaryVisual } from "@/lib/math/render-hints";
 import { adaptExpressionForModule } from "@/lib/math/module-adapters";
+import {
+  toMathSymbols,
+  toLatexSymbols,
+  toKatexDisplay,
+  wrapAlignedLatex,
+  hasRichMath,
+  repairLatex,
+  latexToPlainText,
+  containsProse,
+} from "@/lib/math/unicode-math";
 
 // ============================================================
-// UTILIDAD: Formateo seguro de LaTeX para KaTeX
+// UTILIDAD: Validación de LaTeX antes de renderizar con KaTeX
 // ============================================================
+function isValidKatex(latex: string): boolean {
+  try {
+    katex.renderToString(latex, { throwOnError: true, displayMode: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function safeFormatMath(content: string): string {
   if (!content) return "";
-  let text = content;
+  let text = toLatexSymbols(content);
 
   text = text.replace(
     /(?:^|[^\$])(\\begin\{(?:pmatrix|bmatrix|matrix|cases|aligned)\}[\s\S]*?\\end\{(?:pmatrix|bmatrix|matrix|cases|aligned)\})/g,
@@ -54,6 +74,12 @@ function safeFormatMath(content: string): string {
   text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_, eq) => `\n\n$$\n${eq.trim()}\n$$\n\n`);
   text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_, eq) => ` $${eq.trim()}$ `);
   text = text.replace(/\\boxed\{([^}]+)\}/g, (_, val) => `\n\n$$\\mathbf{${val.trim()}}$$\n\n`);
+
+  // Comandos LaTeX sueltos sin delimitadores de matemáticas (p. ej. `\approx`):
+  // se envuelve todo el contenido para poder renderizarlo con KaTeX.
+  if (/\\[a-zA-Z]/.test(text) && !text.includes("$")) {
+    text = `\n\n$$\n${text.trim()}\n$$\n\n`;
+  }
 
   const displayMathCount = (text.match(/\$\$/g) || []).length;
   if (displayMathCount % 2 !== 0) {
@@ -81,6 +107,11 @@ export interface SolutionData {
   steps: SolutionStep[];
   graphableExpression?: string | null;
   explanation?: string;
+  // Resultado unificado: exacto, aproximado, dominio y advertencias
+  exactResult?: string | null;
+  numericApproximation?: string | null;
+  domain?: string | null;
+  warnings?: string[];
   // Datos estructurados opcionales para renderers específicos
   matrixData?: {
     matrices: MatrixBlock[];
@@ -140,6 +171,16 @@ export default function SolutionCard({
 
   // 1. Planificar qué bloques renderizar (Checkpoint 2)
   const plan = planRender(solution);
+
+  // ¿Hay contenido visual/tabular real? Si no, solo mostramos la tarjeta verde
+  // (evita el recuadro vacío de "Resolución Analítica Directa").
+  const hasVisual = Boolean(
+    (solution.matrixData && solution.matrixData.matrices.length > 0) ||
+      (solution.propositionData && solution.propositionData.rows.length > 0) ||
+      (solution.frequencyData && solution.frequencyData.rows.length > 0) ||
+      (solution.amortizationData && solution.amortizationData.rows.length > 0) ||
+      solution.graphableExpression
+  );
 
   // 2. Adaptar fórmula según el subtema
   const adapted = adaptExpressionForModule(
@@ -267,7 +308,7 @@ export default function SolutionCard({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Panel Izquierdo: Resultado, Fórmula y Acciones */}
-        <div className="lg:col-span-6 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20">
+        <div className={`${hasVisual ? "lg:col-span-6" : "lg:col-span-12"} border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20`}>
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-400 font-semibold flex items-center gap-2">
@@ -288,7 +329,7 @@ export default function SolutionCard({
 
             {solution.explanation && (
               <p className="text-xs text-zinc-400 mb-4 font-sans leading-relaxed">
-                {solution.explanation}
+                {toMathSymbols(solution.explanation)}
               </p>
             )}
 
@@ -298,12 +339,84 @@ export default function SolutionCard({
                 Resultado Extraído
               </span>
               <div className="text-4xl lg:text-5xl font-serif font-bold text-emerald-400 tracking-tight">
-                {solution.primaryResult}
+                {hasRichMath(solution.primaryResult) && !containsProse(solution.primaryResult) ? (
+                  <div className="text-lg lg:text-2xl font-serif font-semibold text-emerald-400 leading-relaxed text-left max-h-[240px] overflow-y-auto custom-scrollbar px-1">
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {safeFormatMath(solution.primaryResult)}
+                    </ReactMarkdown>
+                  </div>
+                ) : hasRichMath(solution.primaryResult) ? (
+                  <div className="text-base lg:text-xl font-serif font-semibold text-emerald-400 leading-relaxed text-left max-h-[240px] overflow-y-auto custom-scrollbar px-1">
+                    {toMathSymbols(latexToPlainText(solution.primaryResult))}
+                  </div>
+                ) : (
+                  toMathSymbols(solution.primaryResult)
+                )}
               </div>
               {solution.extractedFormula && (
-                <div className="text-[11px] font-mono text-zinc-400 mt-2 truncate">
-                  Fórmula Canónica: <code className="text-zinc-200">{solution.extractedFormula}</code>
+                <div className="text-[11px] font-mono text-zinc-400 mt-2 flex items-center justify-center gap-1.5 flex-wrap">
+                  <span>Fórmula Canónica:</span>
+                  {/^[\[{]/.test(solution.extractedFormula.trim()) ? (
+                    <code className="text-zinc-200">{solution.extractedFormula}</code>
+                  ) : (
+                    <span className="inline-block max-w-full overflow-x-auto custom-scrollbar text-zinc-200 align-middle">
+                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                        {toKatexDisplay(solution.extractedFormula)}
+                      </ReactMarkdown>
+                    </span>
+                  )}
                 </div>
+              )}
+
+              {/* Resultado unificado: exacto, aproximado y dominio */}
+              {(solution.exactResult || solution.numericApproximation || solution.domain) && (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
+                  {solution.exactResult && (
+                    <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/40 px-3 py-2">
+                      <span className="block text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                        Resultado exacto
+                      </span>
+                      <span className="block text-sm font-serif font-semibold text-zinc-100 break-words">
+                        {toMathSymbols(solution.exactResult)}
+                      </span>
+                    </div>
+                  )}
+                  {solution.numericApproximation &&
+                    solution.numericApproximation !== solution.exactResult && (
+                      <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/40 px-3 py-2">
+                        <span className="block text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                          Aproximación numérica
+                        </span>
+                        <span className="block text-sm font-serif font-semibold text-emerald-300 break-words">
+                          {toMathSymbols(solution.numericApproximation)}
+                        </span>
+                      </div>
+                    )}
+                  {solution.domain && (
+                    <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/40 px-3 py-2">
+                      <span className="block text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                        Dominio / restricciones
+                      </span>
+                      <span className="block text-sm font-serif font-semibold text-zinc-100 break-words">
+                        {toMathSymbols(solution.domain)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {solution.warnings && solution.warnings.length > 0 && (
+                <ul className="mt-3 space-y-1 text-left">
+                  {solution.warnings.map((warning, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-1.5 text-[11px] text-amber-300/90 leading-relaxed"
+                    >
+                      <AlertCircle size={12} className="mt-0.5 shrink-0" />
+                      <span>{toMathSymbols(warning)}</span>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           </div>
@@ -346,21 +459,23 @@ export default function SolutionCard({
         </div>
 
         {/* Panel Derecho: Visualizador Dinámico (Canvas o Tabla Reutilizable) */}
-        <div className="lg:col-span-6 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
-              {plan.hasTable ? <TableIcon size={14} className="text-zinc-500" /> : <Compass size={14} className="text-zinc-500" />}
-              {plan.hasTable ? "Representación Tabular" : "Representación Visual"}
-            </span>
-            <span className="text-[10px] font-mono text-zinc-500">
-              {plan.hasTable ? "Renderer v1" : "60 FPS Canvas"}
-            </span>
-          </div>
+        {hasVisual && (
+          <div className="lg:col-span-6 border border-zinc-800/60 bg-zinc-900/30 backdrop-blur-xl rounded-3xl p-6 lg:p-7 flex flex-col justify-between shadow-xl shadow-black/20">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold flex items-center gap-2">
+                {plan.hasTable ? <TableIcon size={14} className="text-zinc-500" /> : <Compass size={14} className="text-zinc-500" />}
+                {plan.hasTable ? "Representación Tabular" : "Representación Visual"}
+              </span>
+              <span className="text-[10px] font-mono text-zinc-500">
+                {plan.hasTable ? "Renderer v1" : "60 FPS Canvas"}
+              </span>
+            </div>
 
-          <div className="flex-1 min-h-[280px] flex flex-col justify-center">
-            {renderVisualPanel()}
+            <div className="flex-1 min-h-[280px] flex flex-col justify-center">
+              {renderVisualPanel()}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* 2. PROCEDIMIENTO PASO A PASO CON KATEX */}
@@ -388,16 +503,25 @@ export default function SolutionCard({
                     </span>
                     {st.stage}
                   </span>
-                  <p className="text-xs text-zinc-400 font-sans leading-relaxed">{st.description}</p>
+                  <p className="text-xs text-zinc-400 font-sans leading-relaxed">{toMathSymbols(st.description)}</p>
                 </div>
 
-                {st.math && (
-                  <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800/80 text-emerald-400 text-center font-bold overflow-x-auto text-xs">
-                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                      {safeFormatMath(`$$${st.math.replace(/[\$]/g, "")}$$`)}
-                    </ReactMarkdown>
-                  </div>
-                )}
+                {st.math && (() => {
+                  const latex = toLatexSymbols(wrapAlignedLatex(repairLatex(st.math.replace(/[\$]/g, ""))));
+                  return (
+                    <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800/80 text-emerald-400 text-center font-bold overflow-x-auto text-xs">
+                      {isValidKatex(latex) ? (
+                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                          {safeFormatMath(`$$${latex}$$`)}
+                        </ReactMarkdown>
+                      ) : (
+                        <span className="text-emerald-300 font-sans">
+                          {toMathSymbols(latexToPlainText(st.math))}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

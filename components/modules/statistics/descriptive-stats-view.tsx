@@ -34,6 +34,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 import ReactMarkdown from "react-markdown";
@@ -274,6 +275,12 @@ function computeDescriptiveStats(data: number[], sampleType: SampleType): Descri
 // -----------------------------------------------------------------------------
 // COMPONENTE PRINCIPAL
 // -----------------------------------------------------------------------------
+/** Snapshot de entradas para restaurar un análisis desde el historial. */
+interface DescriptiveSnapshot {
+  dataInput: string;
+  sampleType: SampleType;
+}
+
 export default function DescriptiveStatisticsView({
   viewMode,
   initialExpression = "",
@@ -388,9 +395,18 @@ export default function DescriptiveStatisticsView({
     if (!stats) return;
     const title = `Estadística (n = ${stats.n}, ${sampleType === "sample" ? "Muestral" : "Poblacional"})`;
     const resSummary = `x̄ = ${stats.mean} | s = ${stats.stdDev} | Me = ${stats.median} | CV = ${stats.cv}%`;
-    await saveUserCalculation("mat5", "estadistica_descriptiva", title, resSummary);
+    const snapshot: DescriptiveSnapshot = { dataInput, sampleType };
+    await saveUserCalculation("mat5", "estadistica_descriptiva", title, resSummary, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat5", "estadistica_descriptiva");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un análisis del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<DescriptiveSnapshot>(item);
+    if (!snap) return;
+    setDataInput(snap.dataInput ?? "");
+    if (snap.sampleType) setSampleType(snap.sampleType);
   };
 
   const clearHistory = async () => {
@@ -890,13 +906,12 @@ export default function DescriptiveStatisticsView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setDataInput(item.expression)}
+                      onClick={() => restoreHistory(item)}
                       title={`Recargar: ${item.expression}`}
-                      className="group p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
+                      className="group w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500/40"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300 group-hover:text-zinc-100">
                         {item.expression}
@@ -904,7 +919,7 @@ export default function DescriptiveStatisticsView({
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[120px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

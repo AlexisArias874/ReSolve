@@ -36,6 +36,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 
@@ -124,6 +125,20 @@ const MODULE_EXAMPLES: ModuleExample[] = [
     desc: "¿Cuántos pagos mensuales de $4,500 liquidan una deuda de $80,000 al 14% anual?",
   },
 ];
+
+/** Snapshot de entradas para restaurar un cálculo desde el historial. */
+interface AnnuitiesSnapshot {
+  annuityType: AnnuityType;
+  unknownVar: AnnuityUnknown;
+  rentaInput: string;
+  vpInput: string;
+  vfInput: string;
+  rateInput: string;
+  payFreq: PaymentFrequency;
+  periodsInput: string;
+  gracePeriodsInput: string;
+  currency: string;
+}
 
 export default function AnnuitiesView({
   viewMode,
@@ -411,9 +426,37 @@ export default function AnnuitiesView({
 
   const saveCalculation = async () => {
     const title = `Anualidad ${annuityType} (${unknownVar}): R=${currency}${calculation.renta}, n=${calculation.periods} ${payFreq}es`;
-    await saveUserCalculation("mat3", "anualidades", title, calculation.primaryResultValue);
+    const snapshot: AnnuitiesSnapshot = {
+      annuityType,
+      unknownVar,
+      rentaInput,
+      vpInput,
+      vfInput,
+      rateInput,
+      payFreq,
+      periodsInput,
+      gracePeriodsInput,
+      currency,
+    };
+    await saveUserCalculation("mat3", "anualidades", title, calculation.primaryResultValue, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat3", "anualidades");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<AnnuitiesSnapshot>(item);
+    if (!snap) return;
+    if (snap.annuityType) setAnnuityType(snap.annuityType);
+    if (snap.unknownVar) setUnknownVar(snap.unknownVar);
+    if (snap.payFreq) setPayFreq(snap.payFreq);
+    setRentaInput(snap.rentaInput ?? "");
+    setVpInput(snap.vpInput ?? "");
+    setVfInput(snap.vfInput ?? "");
+    setRateInput(snap.rateInput ?? "");
+    setPeriodsInput(snap.periodsInput ?? "");
+    setGracePeriodsInput(snap.gracePeriodsInput ?? "");
+    if (snap.currency) setCurrency(snap.currency);
   };
 
   const clearHistory = async () => {
@@ -870,10 +913,12 @@ export default function AnnuitiesView({
                     </div>
                   ) : (
                     history.map((item) => (
-                      <div
+                      <button
+                        type="button"
                         key={item.id}
-                        title={item.expression}
-                        className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm"
+                        onClick={() => restoreHistory(item)}
+                        title={`Cargar estos datos · ${item.expression}`}
+                        className="group w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center justify-between gap-3 text-sm"
                       >
                         <span className="truncate pr-2 font-mono text-[13px] text-zinc-300">
                           {item.expression}
@@ -881,7 +926,7 @@ export default function AnnuitiesView({
                         <span className="font-mono font-bold text-emerald-400 shrink-0">
                           {item.result}
                         </span>
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>

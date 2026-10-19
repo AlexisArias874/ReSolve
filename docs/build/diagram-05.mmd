@@ -1,0 +1,42 @@
+graph LR
+    V(["Visitante / Invitado"])
+    E(["Estudiante registrado"])
+    D(["Docente"])
+    AD(["Administrador"])
+    IA(["Sistema de IA<br/>(Groq) - secundario"])
+
+    UC1(("Registrarse"))
+    UC2(("Iniciar sesión"))
+    UC3(("Verificar correo"))
+    UC4(("Resolver ejercicio"))
+    UC5(("Ver Paso a Paso"))
+    UC6(("Consultar Teoría"))
+    UC7(("Usar Calculadora Universal"))
+    UC8(("Consultar historial"))
+    UC9(("Buscar / filtrar historial"))
+    UC10(("Repetir / copiar cálculo"))
+    UC11(("Eliminar / vaciar historial"))
+    UC12(("Personalizar tema y animaciones"))
+    UC13(("Gestionar usuarios / política"))
+
+    V --> UC4
+    V --> UC7
+    V --> UC8
+    V --> UC12
+    E --> UC1
+    E --> UC2
+    E --> UC3
+    E --> UC4
+    E --> UC5
+    E --> UC6
+    E --> UC7
+    E --> UC8
+    E --> UC9
+    E --> UC10
+    E --> UC11
+    E --> UC12
+    D --> UC5
+    D --> UC6
+    AD --> UC13
+    UC7 -.->|"include"| IA
+    UC4 -.->|"extend (si el motor local falla)"| UC7

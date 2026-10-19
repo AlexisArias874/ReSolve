@@ -1,0 +1,15 @@
+flowchart TD
+    S([Inicio]) --> IN["Ingresar expresión o enunciado"]
+    IN --> NORM["Normalizar y adaptar expresión"]
+    NORM --> C1{"¿El motor local<br/>puede resolverlo?"}
+    C1 -- Sí --> RES["Calcular resultado y pasos"]
+    C1 -- No --> OMNI["Calculadora Universal:<br/>consultar IA"]
+    OMNI --> JSON["Recibir JSON estructurado<br/>(módulo, subtema, pasos, tablas)"]
+    JSON --> ADAPT["Adaptar y enrutar al módulo destino"]
+    ADAPT --> RES
+    RES --> SHOW["Mostrar resultado y Paso a Paso"]
+    SHOW --> SAVE{"¿Usuario registrado?"}
+    SAVE -- Sí --> DB["Guardar en la nube (Supabase)"]
+    SAVE -- No --> LS["Guardar en el historial local"]
+    DB --> F([Fin])
+    LS --> F

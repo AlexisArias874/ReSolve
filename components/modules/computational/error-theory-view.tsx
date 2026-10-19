@@ -37,6 +37,7 @@ import {
   fetchUserHistory,
   saveUserCalculation,
   deleteUserHistory,
+  readHistoryPayload,
   type HistoryItem,
 } from "@/lib/supabase/history";
 
@@ -95,6 +96,13 @@ const MODULE_EXAMPLES: ModuleExample[] = [
     desc: "Límite teórico de resolución del estándar IEEE-754 en coma flotante.",
   },
 ];
+
+/** Snapshot de entradas para restaurar un cálculo desde el historial. */
+interface ErrorTheorySnapshot {
+  exactInput: string;
+  approxInput: string;
+  targetDecimals: number;
+}
 
 // Evaluador matemático seguro
 function parseMathValue(expr: string): number {
@@ -274,9 +282,23 @@ export default function ErrorTheoryView({
     if (calculation.absError === null) return;
     const title = `Error: ${exactInput} vs ${approxInput}`;
     const resSummary = `Ea=${calculation.absError}, εp=${calculation.pctError}%, ${calculation.sigDigits} cifras`;
-    await saveUserCalculation("mat4", "errores", title, resSummary);
+    const snapshot: ErrorTheorySnapshot = {
+      exactInput,
+      approxInput,
+      targetDecimals,
+    };
+    await saveUserCalculation("mat4", "errores", title, resSummary, JSON.stringify(snapshot));
     const refreshed = await fetchUserHistory("mat4", "errores");
     setHistory(refreshed);
+  };
+
+  /** Restaura en el formulario los datos que originaron un cálculo del historial. */
+  const restoreHistory = (item: HistoryItem) => {
+    const snap = readHistoryPayload<ErrorTheorySnapshot>(item);
+    if (!snap) return;
+    setExactInput(snap.exactInput ?? "");
+    setApproxInput(snap.approxInput ?? "");
+    if (snap.targetDecimals !== undefined) setTargetDecimals(snap.targetDecimals);
   };
 
   const clearHistory = async () => {
@@ -601,10 +623,12 @@ export default function ErrorTheoryView({
                   </div>
                 ) : (
                   history.map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
-                      title={item.expression}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-default transition-colors flex items-center justify-between gap-3 text-xs"
+                      onClick={() => restoreHistory(item)}
+                      title={`Cargar estos datos · ${item.expression}`}
+                      className="w-full text-left p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/60 hover:border-emerald-500/40 hover:bg-zinc-800/60 cursor-pointer transition-colors flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="truncate pr-2 font-mono text-zinc-300">
                         {item.expression}
@@ -612,7 +636,7 @@ export default function ErrorTheoryView({
                       <div className="font-mono font-bold text-emerald-400 shrink-0 text-[11px] truncate max-w-[110px]">
                         {item.result}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

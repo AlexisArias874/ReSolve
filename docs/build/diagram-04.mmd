@@ -1,0 +1,18 @@
+erDiagram
+    USUARIO ||--o{ CALCULO : "genera"
+    USUARIO {
+        uuid id PK
+        string email UK
+        string encrypted_password
+        timestamptz created_at
+        boolean email_confirmed
+    }
+    CALCULO {
+        uuid id PK
+        uuid user_id FK
+        string module
+        string subtopic
+        string expression
+        string result
+        timestamptz created_at
+    }

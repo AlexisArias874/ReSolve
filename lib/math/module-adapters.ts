@@ -1,4 +1,5 @@
 import { sanitizeMathExpression } from "./universal-evaluator";
+import { toMathSymbols } from "./unicode-math";
 import { normalizeSubtopic } from "./problem-router";
 
 export interface AdaptedPayload {
@@ -12,7 +13,10 @@ export function adaptExpressionForModule(
   rawExpression: string,
   extraMeta?: { point?: string; side?: string }
 ): AdaptedPayload {
-  const cleaned = sanitizeMathExpression(rawExpression);
+  // Se normaliza a sintaxis evaluable (prefijos, \frac, √, |x|, × ÷ −, π...) y
+  // después se devuelve a notación matemática tipográfica, de modo que la
+  // expresión conserve símbolos (√, π, |x|, !) y pueda resolverse en su módulo.
+  const cleaned = toMathSymbols(sanitizeMathExpression(rawExpression));
   // Normaliza el subtema (alias/case) para que los `case` no fallen ante
   // variantes devueltas por el LLM ("Matrices", "tablas_frecuencia", ...).
   const subtopic = normalizeSubtopic(targetSubtopic);
@@ -49,9 +53,21 @@ export function adaptExpressionForModule(
 
     case "funciones":
     case "derivadas":
-    case "integrales":
       // Funciones puras f(x)
       return { expression: cleaned };
+
+    case "integrales": {
+      // El módulo de integrales espera solo el integrando en su campo (los
+      // límites se fijan aparte). Limpiamos la notación `\int_{a}^{b} … dx`.
+      const integrand = cleaned
+        .replace(/\\(?:int|iint|iiint|oint)\s*(?:_\{[^{}]*\})?\s*(?:\^\{[^{}]*\})?/g, " ")
+        .replace(/[∫∬∭∮]/g, " ")
+        .replace(/\\[,;:!\s]/g, " ")
+        .replace(/\bd\s*[a-zA-Z]\b/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      return { expression: integrand || cleaned };
+    }
 
     default:
       return { expression: cleaned };
