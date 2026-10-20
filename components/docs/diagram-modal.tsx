@@ -75,9 +75,9 @@ function DiagramHint({ def }: { def: DiagramDef }) {
     return (
       <Legend
         items={[
-          { label: "PK · clave primaria", cls: "bg-amber-400" },
-          { label: "FK · clave foránea", cls: "bg-sky-400" },
-          { label: "UK · valor único", cls: "bg-violet-400" },
+          { label: "CP · clave primaria", cls: "bg-amber-400" },
+          { label: "CF · clave foránea", cls: "bg-sky-400" },
+          { label: "CU · clave única", cls: "bg-violet-400" },
           { label: "1 : N · cardinalidad", cls: "bg-zinc-400" },
         ]}
       />

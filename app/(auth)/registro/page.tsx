@@ -21,7 +21,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -34,6 +34,21 @@ export default function RegisterPage() {
 
     if (signUpError) {
       setError(signUpError.message);
+      return;
+    }
+
+    // Si la confirmación por correo está desactivada en Supabase, signUp ya
+    // devuelve una sesión válida: no tiene sentido pedir un código que nunca
+    // se envió. Entramos directamente al panel.
+    if (data.session) {
+      router.push("/dashboard");
+      return;
+    }
+
+    // Supabase devuelve un usuario sin identidades cuando el correo ya existe
+    // (por seguridad no lanza error). Evita mandar a una pantalla de espera.
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setError("Ya existe una cuenta con este correo. Inicia sesión o usa otro correo.");
       return;
     }
 

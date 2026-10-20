@@ -72,6 +72,13 @@ interface EntityData extends Record<string, unknown> {
 
 export function EntityNodeView({ data }: NodeProps) {
   const { name, fields, tone = "process" } = data as EntityData;
+  // Claves mostradas en español: CP (clave primaria), CF (clave foránea),
+  // CU (clave única). El identificador interno se conserva por compatibilidad.
+  const keyLabel: Record<NonNullable<ErField["key"]>, string> = {
+    PK: "CP",
+    FK: "CF",
+    UK: "CU",
+  };
   return (
     <div
       className={`h-full w-full overflow-hidden rounded-xl border bg-zinc-900/85 shadow-lg backdrop-blur-sm ${TONES[tone]}`}
@@ -93,7 +100,7 @@ export function EntityNodeView({ data }: NodeProps) {
               {f.name}
             </span>
             <span className="font-mono text-[10.5px] text-zinc-500">
-              {f.key ? <span className="mr-1 text-amber-300">{f.key}</span> : null}
+              {f.key ? <span className="mr-1 text-amber-300">{keyLabel[f.key]}</span> : null}
               {f.type}
             </span>
           </li>

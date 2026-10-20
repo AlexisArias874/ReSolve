@@ -147,7 +147,7 @@ const cronograma: DiagramDef = {
   title: "Cronograma de Actividades",
   category: "Planificación",
   description:
-    "Plan de 10 semanas (agosto–octubre 2026) con las fases de inicio, análisis, diseño, desarrollo, pruebas y cierre.",
+    "Plan general del proyecto organizado por fases: inicio, análisis, diseño, desarrollo, pruebas, despliegue y cierre.",
   kind: "gantt",
   tasks: [
     { id: "t1", name: "Formación del equipo y roles", section: "Inicio", start: "2026-08-18", end: "2026-08-22", progress: 100 },
@@ -202,7 +202,7 @@ const entidadRelacion: DiagramDef = {
   title: "Modelo Entidad-Relación",
   category: "Base de datos",
   description:
-    "Modelo conceptual: un usuario (Supabase Auth) genera 1..N cálculos; cada cálculo pertenece a un solo usuario.",
+    "Modelo conceptual: un usuario (Autenticación de Supabase) genera 1..N cálculos; cada cálculo pertenece a un solo usuario.",
   kind: "er",
   entities: [
     {
@@ -210,25 +210,25 @@ const entidadRelacion: DiagramDef = {
       name: "USUARIO",
       tone: "data",
       fields: [
-        { name: "id", type: "uuid", key: "PK" },
-        { name: "email", type: "text", key: "UK" },
-        { name: "encrypted_password", type: "text" },
-        { name: "email_confirmed_at", type: "timestamptz" },
-        { name: "created_at", type: "timestamptz" },
+        { name: "identificador", type: "uuid", key: "PK" },
+        { name: "correo", type: "texto", key: "UK" },
+        { name: "contraseña_cifrada", type: "texto" },
+        { name: "correo_confirmado_en", type: "fecha y hora" },
+        { name: "creado_en", type: "fecha y hora" },
       ],
     },
     {
       id: "calculo",
-      name: "CALCULO (user_history)",
+      name: "CÁLCULO (HISTORIAL DE USUARIO)",
       tone: "process",
       fields: [
-        { name: "id", type: "uuid", key: "PK" },
-        { name: "user_id", type: "uuid", key: "FK" },
-        { name: "module", type: "text" },
-        { name: "subtopic", type: "text" },
-        { name: "expression", type: "text" },
-        { name: "result", type: "text" },
-        { name: "created_at", type: "timestamptz" },
+        { name: "identificador", type: "uuid", key: "PK" },
+        { name: "identificador_usuario", type: "uuid", key: "FK" },
+        { name: "módulo", type: "texto" },
+        { name: "subtema", type: "texto" },
+        { name: "expresión", type: "texto" },
+        { name: "resultado", type: "texto" },
+        { name: "creado_en", type: "fecha y hora" },
       ],
     },
   ],
@@ -498,25 +498,6 @@ const ishikawa: DiagramDef = {
 };
 
 // -----------------------------------------------------------------------------
-// 10. Calendario de capacitación
-// -----------------------------------------------------------------------------
-const capacitacion: DiagramDef = {
-  id: "capacitacion",
-  title: "Calendario de Capacitación",
-  category: "Planificación",
-  description:
-    "Cinco sesiones para estudiantes y personal de soporte, sobre el uso y la administración de la plataforma. Vista de calendario con horario y detalle por día.",
-  kind: "gantt",
-  tasks: [
-    { id: "s1", name: "Sesión 1 · Introducción y navegación", section: "Estudiantes", start: "2026-10-19", end: "2026-10-19", detail: "16:00 – 18:00" },
-    { id: "s2", name: "Sesión 2 · Módulos y vistas", section: "Estudiantes", start: "2026-10-20", end: "2026-10-20", detail: "16:00 – 18:00" },
-    { id: "s3", name: "Sesión 3 · Calculadora Universal (IA)", section: "Estudiantes", start: "2026-10-21", end: "2026-10-21", detail: "16:00 – 18:00" },
-    { id: "s4", name: "Sesión 4 · Historial", section: "Estudiantes", start: "2026-10-22", end: "2026-10-22", detail: "16:00 – 18:00" },
-    { id: "s5", name: "Sesión 5 · Administración y soporte", section: "Soporte", start: "2026-10-23", end: "2026-10-23", detail: "10:00 – 12:00" },
-  ],
-};
-
-// -----------------------------------------------------------------------------
 // Catálogo
 // -----------------------------------------------------------------------------
 export const DIAGRAMS: DiagramDef[] = [
@@ -529,7 +510,6 @@ export const DIAGRAMS: DiagramDef[] = [
   actResolver,
   actHistorial,
   ishikawa,
-  capacitacion,
 ];
 
 export const CATEGORIES: DiagramCategory[] = [

@@ -1105,3 +1105,148 @@ html[data-effects="off"] .fx-layer {
 .rf-doc .react-flow__node:active {
   cursor: grabbing;
 }
+
+/* =============================================================================
+   7. CONTROLES DEL DASHBOARD REACTIVOS AL TEMA Y AL SWITCH DE ANIMACIONES
+   Los botones superiores usan las variables --shell-* para adaptarse a cada
+   tema. Con las animaciones apagadas se elimina el movimiento y el glow.
+============================================================================= */
+.dash-control {
+  border: 1px solid var(--shell-hairline);
+  background: color-mix(in oklab, var(--shell-surface) 88%, transparent);
+  color: var(--shell-muted);
+  transition:
+    color 200ms ease,
+    background-color 200ms ease,
+    border-color 200ms ease,
+    transform 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.dash-control:hover {
+  color: var(--foreground);
+  background: var(--shell-hover);
+  border-color: color-mix(in oklab, var(--shell-active) 38%, var(--shell-hairline));
+}
+
+.dash-control:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--shell-active) 22%, transparent);
+}
+
+html[data-effects="on"] .dash-control:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px -16px color-mix(in oklab, var(--shell-active) 60%, transparent);
+}
+
+html[data-effects="off"] .dash-control,
+html[data-effects="off"] .dash-segment-button {
+  transition: none !important;
+}
+
+html[data-effects="off"] .dash-control:hover,
+html[data-effects="off"] .dash-segment-button:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.dash-segment {
+  border: 1px solid var(--shell-hairline);
+  background: color-mix(in oklab, var(--shell-surface) 88%, transparent);
+}
+
+.dash-segment-button {
+  transition: color 200ms ease, transform 200ms ease;
+}
+
+html[data-effects="on"] .dash-segment-button:hover {
+  transform: translateY(-1px);
+}
+
+/* =============================================================================
+   8. TRANSICIONES ENTRE PÁGINAS (React ViewTransition)
+   Navegación direccional dashboard → documentación y fundido suave general.
+============================================================================= */
+::view-transition {
+  pointer-events: none;
+}
+
+/* Chrome aplica un fundido cruzado de 250 ms al snapshot raíz por defecto.
+   Se anula para que solo manden las transiciones tipadas (rápidas) y la
+   navegación no se perciba como un retardo. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* Transiciones cortas: la navegación se siente inmediata. El desenfoque se
+   eliminó porque forzaba una capa GPU por cada snapshot y añadía retardo. */
+::view-transition-old(.nav-forward) {
+  --vt-slide: -18px;
+  animation:
+    80ms ease-in both vt-fade reverse,
+    120ms ease-out both vt-slide reverse;
+}
+
+::view-transition-new(.nav-forward) {
+  --vt-slide: 18px;
+  animation:
+    110ms ease-out both vt-fade,
+    120ms ease-out both vt-slide;
+}
+
+::view-transition-old(.nav-back) {
+  --vt-slide: 18px;
+  animation:
+    80ms ease-in both vt-fade reverse,
+    120ms ease-out both vt-slide reverse;
+}
+
+::view-transition-new(.nav-back) {
+  --vt-slide: -18px;
+  animation:
+    110ms ease-out both vt-fade,
+    120ms ease-out both vt-slide;
+}
+
+::view-transition-old(.page-fade) {
+  animation: 60ms ease-in both vt-fade reverse;
+}
+
+::view-transition-new(.page-fade) {
+  animation: 100ms ease-out both vt-fade;
+}
+
+@keyframes vt-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes vt-slide {
+  from {
+    translate: var(--vt-slide);
+  }
+  to {
+    translate: 0;
+  }
+}
+
+html[data-effects="off"]::view-transition-old(*),
+html[data-effects="off"]::view-transition-new(*),
+html[data-effects="off"]::view-transition-group(*) {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

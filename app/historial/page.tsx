@@ -11,11 +11,11 @@ import {
   Copy,
   Check,
   RotateCcw,
-  Calculator,
   Calendar,
   Filter
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import StaggeredMenu, { type StaggeredMenuItem } from "@/components/shared/staggered-menu";
 
 interface FullHistoryRecord {
   id: string;
@@ -93,6 +93,8 @@ export default function GlobalHistoryPage() {
   };
 
   useEffect(() => {
+    // Carga inicial desde Supabase/localStorage (sistemas externos).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadHistory();
   }, []);
 
@@ -152,6 +154,19 @@ export default function GlobalHistoryPage() {
   // Subtopics presentes en los registros para poblar el filtro dinámicamente
   const availableSubtopics = Array.from(new Set(records.map((r) => r.subtopic))).sort();
 
+  const filterMenuItems: StaggeredMenuItem[] = [
+    {
+      label: "Todas las ramas",
+      ariaLabel: "Mostrar todas las ramas",
+      onClick: () => setSelectedSubtopic("all"),
+    },
+    ...availableSubtopics.map((st) => ({
+      label: st.charAt(0).toUpperCase() + st.slice(1).replace(/-/g, " "),
+      ariaLabel: `Filtrar por ${st.replace(/-/g, " ")}`,
+      onClick: () => setSelectedSubtopic(st),
+    })),
+  ];
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans">
       
@@ -198,18 +213,20 @@ export default function GlobalHistoryPage() {
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <Filter size={14} className="text-zinc-500" />
-            <select
-              value={selectedSubtopic}
-              onChange={(e) => setSelectedSubtopic(e.target.value)}
-              className="bg-zinc-900/60 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:border-zinc-600"
-            >
-              <option value="all">Todas las ramas</option>
-              {availableSubtopics.map((st) => (
-                <option key={st} value={st}>
-                  {st.charAt(0).toUpperCase() + st.slice(1).replace(/-/g, " ")}
-                </option>
-              ))}
-            </select>
+            <StaggeredMenu
+              position="right"
+              items={filterMenuItems}
+              displaySocials={false}
+              displayItemNumbering
+              logoUrl="/logo.svg"
+              menuButtonColor="#a1a1aa"
+              openMenuButtonColor="#f4f4f5"
+              changeMenuColorOnOpen
+              accentColor="#B497CF"
+              colors={["#120F17", "#2A1740", "#5227FF"]}
+              triggerLabel="Filtrar"
+              triggerClassName="dash-control flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-mono"
+            />
           </div>
         </div>
 

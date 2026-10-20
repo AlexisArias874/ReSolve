@@ -2,12 +2,12 @@
 
 import { useSearchParams } from "next/navigation";
 import ProfileModal from "@/components/profile/profile-modal";
-import { User as UserIcon, Settings, Zap } from "lucide-react";
+import { Settings, Zap } from "lucide-react";
 import OmniSolverView from "@/components/modules/omni/omni-solver-view";
 import TechBackdrop from "@/components/shared/tech-backdrop";
 import BrandLogo from "@/components/shared/brand-logo";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense, ViewTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
@@ -39,7 +39,9 @@ import {
   Palette,
   Sun,
   Moon,
-  Terminal
+  Terminal,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -105,6 +107,8 @@ import AssignmentView from "@/components/modules/optimization/assignment-view";
 import QueueingTheoryView from "@/components/modules/optimization/queueing-theory-view";
 
 import AIAssistant from "@/components/ai/ai-assistant";
+import GlowWrap from "@/components/effects/glow-wrap";
+import SpecularButton from "@/components/effects/specular-button";
 
 export type ModuleId = "omni" | "mat1" | "mat2" | "mat3" | "mat4" | "mat5" | "mat6";
 export type ViewMode = "calc" | "steps" | "theory";
@@ -170,6 +174,14 @@ const SUBTOPICS_BY_MODULE: Record<ModuleId, { id: string; label: string; desc: s
   omni: []
 };
 
+// Adelanta la descarga de la documentación (React Flow y el fondo WebGL) al
+// pasar el cursor o enfocar el enlace, para que el cambio de página sea casi
+// instantáneo en la primera visita.
+const preloadDocs = () => {
+  void import("@/components/docs/docs-view");
+  void import("@/components/effects/antigravity");
+};
+
 const VIEW_MODES: { id: ViewMode; label: string; icon: React.ElementType }[] = [
   { id: "calc", label: "Calcular", icon: Equal },
   { id: "steps", label: "Paso a Paso", icon: ListOrdered },
@@ -207,6 +219,17 @@ function DashboardContent() {
   const [viewMode, setViewMode] = useState<ViewMode>("calc");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  // Modo enfoque: oculta el chrome superior/lateral y deja solo el título del
+  // módulo para una vista de trabajo completamente limpia.
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  // Foto del estado de las barras justo antes de entrar en enfoque, para poder
+  // devolver la vista exactamente como estaba (izquierda y derecha).
+  const focusSnapshotRef = useRef<{
+    sidebar: boolean;
+    ai: boolean;
+    aiDrawer: boolean;
+    aiMaximized: boolean;
+  } | null>(null);
 
   // Expresión extraída desde la Calculadora Universal para inyectar de forma
   // puntual en su módulo/subtema de destino (se limpia al navegar a otro lado).
@@ -247,11 +270,43 @@ function DashboardContent() {
   // Cierra el drawer de navegación al elegir contenido en pantallas pequeñas.
   const closeMobileNav = () => setIsMobileNavOpen(false);
 
+  const toggleFocusMode = () => {
+    if (!isFocusMode) {
+      focusSnapshotRef.current = {
+        sidebar: isSidebarOpen,
+        ai: isAiOpen,
+        aiDrawer: isAiDrawerOpen,
+        aiMaximized: isAiMaximized,
+      };
+      setIsFocusMode(true);
+      setIsMobileNavOpen(false);
+      setIsAiOpen(false);
+      setIsAiDrawerOpen(false);
+      setIsAiMaximized(false);
+      return;
+    }
+
+    const snapshot = focusSnapshotRef.current;
+    setIsFocusMode(false);
+    if (snapshot) {
+      setIsSidebarOpen(snapshot.sidebar);
+      setIsAiOpen(snapshot.ai);
+      setIsAiDrawerOpen(snapshot.aiDrawer);
+      setIsAiMaximized(snapshot.aiMaximized);
+      focusSnapshotRef.current = null;
+    }
+  };
+
   // --- Estado Global de Tema (Para Invitados y Autenticados) ---
   const [currentTheme, setCurrentTheme] = useState<string>("dark");
+  // El botón de restaurar usa un acabado claro/oscuro según el tema activo.
+  const isLightTheme = currentTheme === "light" || currentTheme === "sepia";
 
   useEffect(() => {
     const saved = localStorage.getItem("resolve_theme") || document.documentElement.getAttribute("data-theme") || "dark";
+    // El tema se lee de localStorage (sistema externo) al montar; el estado
+    // local solo refleja el botón activo.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentTheme(saved);
     document.documentElement.setAttribute("data-theme", saved);
   }, []);
@@ -337,7 +392,12 @@ function DashboardContent() {
     if (extraParams?.side) query.set("side", extraParams.side);
 
     closeMobileNav();
-    router.push(`/dashboard?${query.toString()}`);
+    // El cambio de módulo es estado local: se refleja en la URL con
+    // replaceState para no disparar una navegación del router (y su
+    // ViewTransition), que provocaba un destello negro al terminar de cargar
+    // cada sección. Al recargar, la URL sigue restaurando el módulo y la
+    // expresión indicados.
+    window.history.replaceState(null, "", `/dashboard?${query.toString()}`);
   };
 
   const handleSelectModule = (id: ModuleId) => {
@@ -350,7 +410,9 @@ function DashboardContent() {
     // Al elegir un módulo a mano se descarta la operación extraída previamente,
     // para que no se reaproveche en un módulo distinto al de destino.
     setNavInjectedExpr(null);
-    router.replace("/dashboard");
+    // Limpia los parámetros sin navegar: el router.replace disparaba una
+    // ViewTransition completa y un parpadeo negro entre módulos.
+    window.history.replaceState(null, "", "/dashboard");
   };
 
   const currentModule = MODULES.find((m) => m.id === activeModule) || MODULES[0];
@@ -390,7 +452,20 @@ function DashboardContent() {
   );
 
   return (
-    <div className="relative flex h-[100dvh] w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans print:h-auto print:w-full print:overflow-visible print:bg-white print:text-black">
+    <ViewTransition
+      enter={{
+        "nav-forward": "nav-forward",
+        "nav-back": "nav-back",
+        default: "page-fade",
+      }}
+      exit={{
+        "nav-forward": "nav-forward",
+        "nav-back": "nav-back",
+        default: "page-fade",
+      }}
+      default="page-fade"
+    >
+      <div className="relative flex h-[100dvh] w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans print:h-auto print:w-full print:overflow-visible print:bg-white print:text-black">
       {/* Fondo ambiental */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(63,63,70,0.25),transparent_50%),radial-gradient(circle_at_80%_90%,rgba(63,63,70,0.2),transparent_50%)]" />
@@ -443,9 +518,9 @@ function DashboardContent() {
         className={`fixed lg:relative inset-y-0 left-0 z-40 lg:z-20 h-full border-r border-shell-hairline bg-shell-surface-strong lg:bg-shell-surface backdrop-blur-xl flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0 print:hidden w-[86vw] max-w-xs ${
           isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0 lg:max-w-none ${
-          isSidebarOpen
-            ? "lg:w-72"
-            : "lg:w-0 lg:border-r-0 lg:overflow-hidden"
+          isFocusMode || !isSidebarOpen
+            ? "lg:w-0 lg:border-r-0 lg:overflow-hidden"
+            : "lg:w-72"
         }`}
       >
         <div className="flex flex-col min-h-0 flex-1">
@@ -476,14 +551,15 @@ function DashboardContent() {
             </div>
           </div>
 
-          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
             <div className="px-3 pt-2 pb-1">
+              <GlowWrap radius={16}>
               <button
                 onClick={() => {
                   setActiveModule("omni");
                   closeMobileNav();
                   setNavInjectedExpr(null);
-                  router.replace("/dashboard");
+                  window.history.replaceState(null, "", "/dashboard");
                 }}
                 className={`w-full flex items-center justify-center gap-3 px-3.5 py-2.5 rounded-2xl text-left transition-all border outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 ${
                   activeModule === "omni"
@@ -496,23 +572,25 @@ function DashboardContent() {
                 </div>
                 <span className="type-nav-label truncate text-center">Calculadora Universal</span>
               </button>
+              </GlowWrap>
             </div>
 
             <div className="px-3 pt-2 pb-1">
+              <GlowWrap radius={16}>
               <Link
                 href="/documentacion"
                 onClick={closeMobileNav}
-                className="group flex w-full items-center gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 px-3.5 py-2.5 text-left text-zinc-300 transition-all hover:border-zinc-700 hover:text-zinc-100 outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
+                onMouseEnter={preloadDocs}
+                onFocus={preloadDocs}
+                transitionTypes={["nav-forward"]}
+                className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 px-3.5 py-2.5 text-left text-zinc-300 transition-all hover:border-zinc-700 hover:text-zinc-100 outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
               >
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10 text-sky-400">
                   <BookText size={15} />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <span className="block type-nav-label truncate">Documentación</span>
-                  <span className="block type-nav-desc truncate text-zinc-500">Diagramas del proyecto</span>
-                </div>
-                <ChevronRight size={14} className="shrink-0 text-zinc-600 group-hover:text-zinc-300" />
+                <span className="type-nav-label truncate text-center">Documentación</span>
               </Link>
+              </GlowWrap>
             </div>
 
             <p className="px-3 pt-2 pb-2 text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-mono">
@@ -522,8 +600,8 @@ function DashboardContent() {
               const Icon = mod.icon;
               const isActive = activeModule === mod.id;
               return (
+                <GlowWrap key={mod.id} radius={12}>
                 <button
-                  key={mod.id}
                   onClick={() => handleSelectModule(mod.id)}
                   className={`group relative w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
                     isActive
@@ -556,6 +634,7 @@ function DashboardContent() {
                     <ChevronRight size={14} className="text-shell-active-fg/60 shrink-0" />
                   )}
                 </button>
+                </GlowWrap>
               );
             })}
           </nav>
@@ -686,42 +765,62 @@ function DashboardContent() {
 
       {/* 2. ÁREA CENTRAL */}
       <main className="relative z-10 flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <header className="px-5 lg:px-8 py-4 border-b border-shell-hairline bg-shell-surface backdrop-blur-xl flex flex-col gap-3.5 shrink-0 print:hidden">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <button
-                type="button"
-                onClick={() => setIsMobileNavOpen(true)}
-                aria-label="Abrir menú de módulos"
-                title="Abrir menú de módulos"
-                className="lg:hidden p-2 -ml-1 rounded-xl border border-shell-hairline bg-zinc-900/60 backdrop-blur text-zinc-400 hover:text-zinc-100 hover:bg-shell-hover transition-colors shrink-0"
-              >
-                <PanelLeftOpen size={18} />
-              </button>
+        <header
+          className={`relative px-5 lg:px-8 border-b border-shell-hairline bg-shell-surface backdrop-blur-xl flex flex-col shrink-0 print:hidden transition-all duration-300 ${
+            isFocusMode ? "py-3 gap-0" : "py-4 gap-3.5"
+          }`}
+        >
+          <div className={isFocusMode ? "relative grid min-h-10 grid-cols-[1fr_auto_1fr] items-center gap-2" : "flex items-start justify-between gap-4"}>
+            <div className={isFocusMode ? "col-start-2 min-w-0 max-w-full text-center" : "flex items-center gap-3 min-w-0"}>
+              {!isFocusMode && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileNavOpen(true)}
+                    aria-label="Abrir menú de módulos"
+                    title="Abrir menú de módulos"
+                    className="dash-control lg:hidden -ml-1 p-2 rounded-xl backdrop-blur shrink-0"
+                  >
+                    <PanelLeftOpen size={18} />
+                  </button>
 
-              {!isSidebarOpen && (
-                <button
-                  type="button"
-                  onClick={() => setIsSidebarOpen(true)}
-                  title="Mostrar menú lateral"
-                  aria-label="Mostrar menú lateral"
-                  className="hidden lg:flex p-2 rounded-xl border border-shell-hairline bg-zinc-900/60 backdrop-blur text-zinc-400 hover:text-zinc-100 hover:bg-shell-hover transition-colors shrink-0"
-                >
-                  <PanelLeftOpen size={16} />
-                </button>
+                  {!isSidebarOpen && (
+                    <button
+                      type="button"
+                      onClick={() => setIsSidebarOpen(true)}
+                      title="Mostrar menú lateral"
+                      aria-label="Mostrar menú lateral"
+                      className="dash-control hidden lg:flex p-2 rounded-xl backdrop-blur shrink-0"
+                    >
+                      <PanelLeftOpen size={16} />
+                    </button>
+                  )}
+                </>
               )}
 
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 type-eyebrow text-muted-foreground mb-4">
-                  <span className="truncate">{crumbModuleLabel}</span>
-                  {!isOmni && (
-                    <>
-                      <ChevronRight size={14} className="shrink-0 opacity-60" />
-                      <span className="text-foreground/75 truncate">{headerTitle}</span>
-                    </>
+              <div className={isFocusMode ? "min-w-0 text-center" : "min-w-0"}>
+                <AnimatePresence initial={false}>
+                  {!isFocusMode && (
+                    <motion.div
+                      key="dashboard-eyebrow"
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -5 }}
+                      transition={{ duration: effectsEnabled ? 0.2 : 0 }}
+                      className="flex items-center gap-1.5 type-eyebrow text-muted-foreground mb-4"
+                    >
+                      <span className="truncate">{crumbModuleLabel}</span>
+                      {!isOmni && (
+                        <>
+                          <ChevronRight size={14} className="shrink-0 opacity-60" />
+                          <span className="text-foreground/75 truncate">{headerTitle}</span>
+                        </>
+                      )}
+                    </motion.div>
                   )}
-                </div>
+                </AnimatePresence>
                 <SplitText
+                  key={`${headerTitle}-${isFocusMode ? "focus" : "normal"}`}
                   tag="h2"
                   text={headerTitle ?? ""}
                   className="type-title font-serif font-bold text-foreground"
@@ -737,133 +836,222 @@ function DashboardContent() {
                   mask={false}
                   threshold={0.1}
                   rootMargin="-100px"
-                  textAlign="left"
+                  textAlign={isFocusMode ? "center" : "left"}
                   onLetterAnimationComplete={handleLetterAnimationComplete}
                 />
-                <p className="type-subtitle text-muted-foreground mt-1 max-w-[62ch]">
-                  {headerDesc}
-                </p>
+                <AnimatePresence initial={false}>
+                  {!isFocusMode && (
+                    <motion.p
+                      key="dashboard-description"
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: effectsEnabled ? 0.2 : 0 }}
+                      className="type-subtitle text-muted-foreground mt-1 max-w-[62ch]"
+                    >
+                      {headerDesc}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="flex bg-zinc-900/60 border border-shell-hairline p-1 rounded-2xl gap-1 shrink-0 backdrop-blur">
-                {VIEW_MODES.map((vm) => {
-                  const Icon = vm.icon;
-                  const isActive = viewMode === vm.id;
-                  return (
+            <AnimatePresence initial={false}>
+              {!isFocusMode && (
+                <motion.div
+                  key="dashboard-controls"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: effectsEnabled ? 0.2 : 0 }}
+                  className="flex items-center gap-2 shrink-0"
+                >
+                  <div className="dash-segment flex p-1 rounded-2xl gap-1 shrink-0 backdrop-blur">
+                    {VIEW_MODES.map((vm) => {
+                      const Icon = vm.icon;
+                      const isActive = viewMode === vm.id;
+                      return (
+                        <button
+                          key={vm.id}
+                          onClick={() => setViewMode(vm.id)}
+                          aria-pressed={isActive}
+                          className={`dash-segment-button relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl type-control font-medium outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
+                            isActive ? "text-shell-active-fg font-semibold" : "text-shell-muted hover:text-foreground"
+                          }`}
+                        >
+                          {isActive && (
+                            <motion.span
+                              layoutId="viewModePill"
+                              className="absolute inset-0 bg-shell-active rounded-xl"
+                              transition={
+                                effectsEnabled
+                                  ? { type: "spring", stiffness: 400, damping: 30 }
+                                  : { duration: 0 }
+                              }
+                            />
+                          )}
+                          <span className="relative flex items-center gap-1.5">
+                            <Icon size={14} />
+                            <span className="hidden sm:inline">{vm.label}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <GlowWrap radius={16}>
+                  <button
+                    type="button"
+                    onClick={() => setIsHistoryHidden(!isHistoryHidden)}
+                    title={isHistoryHidden ? "Mostrar historial" : "Ocultar historial"}
+                    aria-pressed={!isHistoryHidden}
+                    className="dash-control flex items-center gap-1.5 px-3 py-2 rounded-2xl backdrop-blur type-control font-mono"
+                  >
+                    {isHistoryHidden ? (
+                      <PanelRightOpen size={13} className="text-emerald-400" />
+                    ) : (
+                      <PanelRightClose size={13} className="text-shell-muted" />
+                    )}
+                    <span className="hidden lg:inline">
+                      {isHistoryHidden ? "Mostrar historial" : "Ocultar historial"}
+                    </span>
+                  </button>
+                  </GlowWrap>
+
+                  {!isAiOpen && (
+                    <GlowWrap radius={16} className="hidden xl:block">
                     <button
-                      key={vm.id}
-                      onClick={() => setViewMode(vm.id)}
+                      type="button"
+                      onClick={() => setIsAiOpen(true)}
+                      title="Abrir asistente ReSolve AI"
+                      className="dash-control hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-2xl backdrop-blur type-control font-mono"
+                    >
+                      <Sparkles size={13} className="text-amber-400" />
+                      <span className="hidden sm:inline">ReSolve AI</span>
+                    </button>
+                    </GlowWrap>
+                  )}
+
+                  <GlowWrap radius={16} className="xl:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setIsAiDrawerOpen(true)}
+                    title="Abrir asistente ReSolve AI"
+                    aria-label="Abrir asistente ReSolve AI"
+                    className="dash-control xl:hidden flex items-center gap-1.5 px-3 py-2 rounded-2xl backdrop-blur type-control font-mono"
+                  >
+                    <Sparkles size={13} className="text-amber-400" />
+                    <span className="hidden sm:inline">IA</span>
+                  </button>
+                  </GlowWrap>
+
+                  <GlowWrap radius={16}>
+                  <button
+                    type="button"
+                    onClick={toggleFocusMode}
+                    title="Modo enfoque: ocultar el panel superior"
+                    aria-label="Activar modo enfoque"
+                    className="dash-control flex items-center gap-1.5 px-3 py-2 rounded-2xl backdrop-blur type-control font-mono"
+                  >
+                    <EyeOff size={14} />
+                    <span className="hidden xl:inline">Enfoque</span>
+                  </button>
+                  </GlowWrap>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {isFocusMode && (
+              <SpecularButton
+                size="lg"
+                radius={18}
+                tint="#ffffff"
+                tintOpacity={isLightTheme ? 0.16 : 0.04}
+                textColor={isLightTheme ? "#18181b" : "#f5f5f5"}
+                lineColor={isLightTheme ? "#3f3f46" : "#ffffff"}
+                baseColor={isLightTheme ? "#a1a1aa" : "#525252"}
+                intensity={1}
+                idleIntensity={0.35}
+                shineSize={10}
+                shineFade={34}
+                thickness={1.2}
+                glow={1}
+                speed={0.35}
+                followMouse
+                autoAnimate
+                proximity={250}
+                onClick={toggleFocusMode}
+                title="Restaurar vista anterior"
+                aria-label="Restaurar vista anterior"
+                className="col-start-3 justify-self-end type-control font-mono"
+              >
+                <Eye size={14} />
+                <span className="hidden sm:inline">Restaurar</span>
+              </SpecularButton>
+            )}
+          </div>
+
+          <AnimatePresence initial={false}>
+            {!isFocusMode && currentSubtopics.length > 0 && (
+              <motion.div
+                key="dashboard-subtopics"
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: effectsEnabled ? 0.2 : 0 }}
+                className="flex items-center gap-1.5 overflow-x-auto no-scrollbar"
+              >
+                {currentSubtopics.map((item) => {
+                  const isActive = subTopic === item.id;
+                  return (
+                    <GlowWrap key={item.id} radius={9999}>
+                    <button
+                      onClick={() => {
+                        setSubTopic(item.id);
+                        closeMobileNav();
+                        setNavInjectedExpr(null);
+                        window.history.replaceState(null, "", "/dashboard");
+                      }}
                       aria-pressed={isActive}
-                      className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl type-control font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
-                        isActive ? "text-shell-active-fg font-semibold" : "text-zinc-400 hover:text-zinc-100"
+                      className={`relative px-4 py-2 rounded-full whitespace-nowrap type-control transition-colors outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
+                        isActive
+                          ? "text-foreground font-medium"
+                          : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       {isActive && (
                         <motion.span
-                          layoutId="viewModePill"
-                          className="absolute inset-0 bg-shell-active rounded-xl"
-                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                          layoutId="subtopicPill"
+                          className="absolute inset-0 bg-accent border border-border rounded-full"
+                          transition={
+                            effectsEnabled
+                              ? { type: "spring", stiffness: 450, damping: 30 }
+                              : { duration: 0 }
+                          }
                         />
                       )}
-                      <span className="relative flex items-center gap-1.5">
-                        <Icon size={14} />
-                        <span className="hidden sm:inline">{vm.label}</span>
-                      </span>
+                      <span className="relative z-10">{item.label}</span>
                     </button>
+                    </GlowWrap>
                   );
                 })}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsHistoryHidden(!isHistoryHidden)}
-                title={isHistoryHidden ? "Mostrar historial" : "Ocultar historial"}
-                aria-pressed={!isHistoryHidden}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-shell-hairline bg-zinc-900/60 backdrop-blur type-control font-mono text-zinc-300 hover:text-zinc-100 hover:border-emerald-400/40 transition-all shadow-sm"
-              >
-                {isHistoryHidden ? (
-                  <PanelRightOpen size={13} className="text-emerald-400" />
-                ) : (
-                  <PanelRightClose size={13} className="text-zinc-400" />
-                )}
-                <span className="hidden lg:inline">
-                  {isHistoryHidden ? "Mostrar historial" : "Ocultar historial"}
-                </span>
-              </button>
-
-              {!isAiOpen && (
-                <button
-                  type="button"
-                  onClick={() => setIsAiOpen(true)}
-                  title="Abrir asistente ReSolve AI"
-                  className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-shell-hairline bg-zinc-900/60 backdrop-blur type-control font-mono text-zinc-300 hover:text-zinc-100 hover:border-amber-400/40 transition-all shadow-sm"
-                >
-                  <Sparkles size={13} className="text-amber-400" />
-                  <span className="hidden sm:inline">ReSolve AI</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setIsAiDrawerOpen(true)}
-                title="Abrir asistente ReSolve AI"
-                aria-label="Abrir asistente ReSolve AI"
-                className="xl:hidden flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-shell-hairline bg-zinc-900/60 backdrop-blur type-control font-mono text-zinc-300 hover:text-zinc-100 hover:border-amber-400/40 transition-all shadow-sm"
-              >
-                <Sparkles size={13} className="text-amber-400" />
-                <span className="hidden sm:inline">IA</span>
-              </button>
-            </div>
-          </div>
-
-          {currentSubtopics.length > 0 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-              {currentSubtopics.map((item) => {
-                const isActive = subTopic === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setSubTopic(item.id);
-                      closeMobileNav();
-                      setNavInjectedExpr(null);
-                      router.replace("/dashboard");
-                    }}
-                    aria-pressed={isActive}
-                    className={`relative px-4 py-2 rounded-full whitespace-nowrap type-control transition-colors outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
-                      isActive
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {isActive && (
-                      <motion.span
-                        layoutId="subtopicPill"
-                        className="absolute inset-0 bg-accent border border-border rounded-full"
-                        transition={{ type: "spring", stiffness: 450, damping: 30 }}
-                      />
-                    )}
-                    <span className="relative z-10">{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </header>
 
         {/* CONTENEDOR DE VISTAS CON CONTAINER QUERIES */}
         <div className="flex-1 min-h-0 p-4 lg:p-6 overflow-y-auto @container">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`${activeModule}-${subTopic}-${viewMode}`}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="h-full"
-            >
+          {/* La vista anterior se desmonta al instante y la nueva entra opaca
+              con un leve desplazamiento. Mantener ambas montadas (o fundirlas
+              con opacidad) dejaba ver el fondo negro al terminar la sección. */}
+          <motion.div
+            key={`${activeModule}-${subTopic}-${viewMode}`}
+            initial={{ y: effectsEnabled ? 10 : 0 }}
+            animate={{ y: 0 }}
+            transition={{ duration: effectsEnabled ? 0.22 : 0, ease: "easeOut" }}
+            className="h-full"
+          >
               {activeModule === "omni" ? (
                 <OmniSolverView onNavigateToModule={handleNavigateFromOmni} />
               ) : activeModule === "mat1" && subTopic === "aritmetica" ? (
@@ -927,8 +1115,7 @@ function DashboardContent() {
               ) : (
                 renderPlaceholder("Módulo en Desarrollo", "La arquitectura modular está lista para recibir las funciones de este apartado.")
               )}
-            </motion.div>
-          </AnimatePresence>
+          </motion.div>
         </div>
       </main>
 
@@ -936,15 +1123,19 @@ function DashboardContent() {
           3. ASISTENTE IA: COLUMNA EN ESCRITORIO (xl+), DRAWER EN PANTALLAS MENORES,
              CON REDIMENSIONADO POR ARRASTRE Y MODO MAXIMIZADO.
       ======================================================================== */}
-      {isAiMaximized && (
+      {isAiMaximized && !isFocusMode && (
         <div
           onClick={() => setIsAiMaximized(false)}
           className="fixed inset-0 z-40 bg-zinc-950/80 backdrop-blur-md transition-opacity"
         />
       )}
 
-      {isAiOpen && (
-        <aside
+      {isAiOpen && !isFocusMode && (
+        <motion.aside
+          key="ai-panel"
+          initial={{ opacity: 0, x: effectsEnabled ? 40 : 0 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: effectsEnabled ? 0.32 : 0, ease: [0.22, 1, 0.36, 1] }}
           style={!isAiMaximized ? { width: `${aiWidth}px` } : undefined}
           className={`transition-all duration-200 ease-out flex flex-col justify-between ${
             isAiMaximized
@@ -1029,12 +1220,12 @@ function DashboardContent() {
           <div className="flex-1 min-h-0 flex flex-col">
             <AIAssistant />
           </div>
-        </aside>
+        </motion.aside>
       )}
 
       {/* Drawer del asistente para pantallas < xl */}
       <AnimatePresence>
-        {isAiDrawerOpen && (
+        {isAiDrawerOpen && !isFocusMode && (
           <>
             <motion.div
               key="ai-drawer-backdrop"
@@ -1108,7 +1299,8 @@ function DashboardContent() {
           supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
         }}
       />
-    </div>
+      </div>
+    </ViewTransition>
   );
 }
 
