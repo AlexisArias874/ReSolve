@@ -25,6 +25,7 @@ import {
   Zap,
   Target,
   PanelRightClose,
+  Maximize2,
 } from "lucide-react";
 import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import MathGrapher from "@/components/shared/math-grapher";
@@ -178,6 +179,7 @@ export default function InterpolationView({
   const [copied, setCopied] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isMethodInfoOpen, setIsMethodInfoOpen] = useState(false);
+  const [isResultExpanded, setIsResultExpanded] = useState(false);
 
   const { setAIContext, injectedExpression, clearInjectedExpression } = useAIContext();
 
@@ -414,16 +416,17 @@ export default function InterpolationView({
 
   // Escape cierra los modales de información y de casos prácticos
   useEffect(() => {
-    if (!isMethodInfoOpen && !isHelpOpen) return;
+    if (!isMethodInfoOpen && !isHelpOpen && !isResultExpanded) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setIsMethodInfoOpen(false);
         setIsHelpOpen(false);
+        setIsResultExpanded(false);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isMethodInfoOpen, isHelpOpen]);
+  }, [isMethodInfoOpen, isHelpOpen, isResultExpanded]);
 
   return (
     <div className="h-full flex flex-col gap-6 min-h-0 relative">
@@ -592,17 +595,29 @@ export default function InterpolationView({
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold">
                     Pronóstico P(x*)
                   </span>
-                  {calculation.expandedPoly !== "--" && (
-                    <button
-                      type="button"
-                      onClick={handleCopy}
-                      aria-label="Copiar polinomio"
-                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
-                    >
-                      {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                      {copied ? "Copiado" : "Copiar"}
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {calculation.expandedPoly !== "--" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setIsResultExpanded(true)}
+                          aria-label="Expandir polinomio"
+                          className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
+                        >
+                          <Maximize2 size={13} /> Expandir
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopy}
+                          aria-label="Copiar polinomio"
+                          className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
+                        >
+                          {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                          {copied ? "Copiado" : "Copiar"}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className="py-6 text-center">
@@ -634,7 +649,7 @@ export default function InterpolationView({
                     <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">
                       Polinomio Canónico P(x):
                     </span>
-                    <div className="text-amber-400 text-xs font-bold truncate">
+                    <div className="max-h-32 overflow-y-auto custom-scrollbar overscroll-contain pr-1 text-amber-400 text-xs font-bold break-words">
                       {calculation.expandedPoly}
                     </div>
                   </div>
@@ -882,6 +897,59 @@ export default function InterpolationView({
           </div>
         </div>
       )}
+
+      {/* MODAL EXPANDIDO DEL POLINOMIO RESULTANTE */}
+      <AnimatePresence>
+        {isResultExpanded && calculation.expandedPoly !== "--" && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-md select-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Polinomio expandido"
+              className="relative w-full max-w-4xl max-h-[90vh] border border-zinc-800 bg-zinc-950 rounded-3xl p-6 lg:p-8 shadow-2xl flex flex-col gap-4 overflow-hidden"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <TrendingUp size={18} className="text-amber-400" />
+                  <h4 className="text-base font-serif font-bold text-zinc-100">
+                    Polinomio Expandido · Grado {calculation.degree}°
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsResultExpanded(false)}
+                  aria-label="Cerrar polinomio expandido"
+                  className="p-1.5 text-zinc-400 hover:text-zinc-100 rounded-lg hover:bg-zinc-800 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex-1 min-h-0 overflow-auto custom-scrollbar overscroll-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-6">
+                <p className="font-mono text-sm leading-8 text-amber-400 break-words">
+                  {calculation.expandedPoly}
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-zinc-800 shrink-0">
+                <span className="text-[11px] font-mono text-zinc-500">
+                  P(x*) = {calculation.evaluatedY ?? "--"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsResultExpanded(false)}
+                  className="px-5 py-2.5 rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* MODAL DE INFORMACIÓN */}
       <AnimatePresence>

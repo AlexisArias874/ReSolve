@@ -161,6 +161,7 @@ export default function MatricesView({
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isMethodInfoOpen, setIsMethodInfoOpen] = useState(false);
   const [expandedMatrix, setExpandedMatrix] = useState<"A" | "B" | null>(null);
+  const [isResultExpanded, setIsResultExpanded] = useState(false);
 
   // Inputs controlados para tamaños personalizados NxN
   const [customNA, setCustomNA] = useState<string>("2");
@@ -604,21 +605,48 @@ export default function MatricesView({
 
   // Sincronización con ReSolve AI
   useEffect(() => {
-    const exprTitle = `Operación [${selectedOp.toUpperCase()}] sobre Matriz A (${rowsA}×${colsA})`;
+    const binaryOp = selectedOp === "mul" || selectedOp === "add" || selectedOp === "sub";
+    const exprTitle = binaryOp
+      ? `Operación [${selectedOp.toUpperCase()}] sobre Matriz A (${rowsA}×${colsA}) y Matriz B (${rowsB}×${colsB})`
+      : `Operación [${selectedOp.toUpperCase()}] sobre Matriz A (${rowsA}×${colsA})`;
     const resSummary = calculation.resultMatrix
       ? `Matriz (${calculation.resultMatrix.length}×${calculation.resultMatrix[0]?.length})`
       : calculation.scalarResult !== null
       ? `Escalar: ${calculation.scalarResult}`
       : "Error / Incompatible";
 
+    const inputs = [
+      `Matriz A = ${JSON.stringify(matrixA)}`,
+      binaryOp ? `Matriz B = ${JSON.stringify(matrixB)}` : null,
+      selectedOp === "scalar" ? `Escalar k = ${scalarK}` : null,
+    ]
+      .filter(Boolean)
+      .join(". ");
+    const output = calculation.resultMatrix
+      ? ` Resultado = ${JSON.stringify(calculation.resultMatrix)}.`
+      : calculation.scalarResult !== null
+      ? ` Resultado = ${calculation.scalarResult}.`
+      : "";
+
     setAIContext({
       module: "Matemáticas IV",
       subtopic: "Álgebra Matricial",
       expression: exprTitle,
       result: resSummary,
-      details: `${calculation.title}. Matriz A = ${JSON.stringify(matrixA)}`,
+      details: `${calculation.title}. ${inputs}.${output}`,
     });
-  }, [selectedOp, calculation, rowsA, colsA, matrixA, setAIContext]);
+  }, [
+    selectedOp,
+    calculation,
+    rowsA,
+    colsA,
+    rowsB,
+    colsB,
+    matrixA,
+    matrixB,
+    scalarK,
+    setAIContext,
+  ]);
 
   // Inyecciones inversas del chat
   useEffect(() => {
@@ -712,6 +740,7 @@ export default function MatricesView({
         setIsHelpOpen(false);
         setIsMethodInfoOpen(false);
         setExpandedMatrix(null);
+        setIsResultExpanded(false);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -1186,16 +1215,28 @@ export default function MatricesView({
                   <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 font-semibold">
                     Resultado
                   </span>
-                  {(calculation.resultMatrix || calculation.scalarResult !== null) && (
-                    <button
-                      onClick={handleCopy}
-                      aria-label="Copiar el resultado matricial"
-                      className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
-                    >
-                      {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                      {copied ? "Copiado" : "Copiar"}
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {calculation.resultMatrix && (
+                      <button
+                        type="button"
+                        onClick={() => setIsResultExpanded(true)}
+                        aria-label="Expandir resultado matricial"
+                        className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
+                      >
+                        <Maximize2 size={13} /> Expandir
+                      </button>
+                    )}
+                    {(calculation.resultMatrix || calculation.scalarResult !== null) && (
+                      <button
+                        onClick={handleCopy}
+                        aria-label="Copiar el resultado matricial"
+                        className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/60 hover:bg-zinc-800/60"
+                      >
+                        {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                        {copied ? "Copiado" : "Copiar"}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="py-2 text-center">
@@ -1205,10 +1246,12 @@ export default function MatricesView({
 
                   {/* Renderizado de la Matriz Resultante con KaTeX con Scroll Limpio */}
                   {calculation.resultMatrix ? (
-                    <div className="py-2 flex items-center justify-center font-mono text-emerald-400 max-h-[290px] overflow-auto custom-scrollbar px-2">
-                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                        {`\n$$\n${matrixToLaTeX(calculation.resultMatrix)}\n$$\n`}
-                      </ReactMarkdown>
+                    <div className="max-h-[290px] w-full overflow-auto custom-scrollbar overscroll-contain rounded-xl border border-zinc-800/40 bg-zinc-950/20 p-2">
+                      <div className="min-w-max text-center font-mono text-emerald-400">
+                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                          {`\n$$\n${matrixToLaTeX(calculation.resultMatrix)}\n$$\n`}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   ) : calculation.scalarResult !== null ? (
                     <div className="text-5xl lg:text-7xl font-serif font-bold text-zinc-100 py-6">
@@ -1586,6 +1629,62 @@ export default function MatricesView({
                   className="px-5 py-2.5 rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-colors"
                 >
                   Confirmar y Volver
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL EXPANDIDO DEL RESULTADO MATRICIAL */}
+      <AnimatePresence>
+        {isResultExpanded && calculation.resultMatrix && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-md select-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Resultado matricial expandido"
+              className="relative w-full max-w-6xl max-h-[90vh] border border-zinc-800 bg-zinc-950 rounded-3xl p-6 lg:p-8 shadow-2xl flex flex-col gap-4 overflow-hidden"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <Grid size={18} className="text-emerald-400" />
+                  <h4 className="text-base font-serif font-bold text-zinc-100">
+                    Resultado Expandido · Matriz ({calculation.resultMatrix.length}×
+                    {calculation.resultMatrix[0]?.length})
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsResultExpanded(false)}
+                  aria-label="Cerrar resultado expandido"
+                  className="p-1.5 text-zinc-400 hover:text-zinc-100 rounded-lg hover:bg-zinc-800 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex-1 min-h-0 overflow-auto custom-scrollbar overscroll-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-6">
+                <div className="min-w-max mx-auto text-center font-mono text-emerald-400">
+                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                    {`\n$$\n${matrixToLaTeX(calculation.resultMatrix)}\n$$\n`}
+                  </ReactMarkdown>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-zinc-800 shrink-0">
+                <span className="text-[11px] font-mono text-zinc-500">
+                  Desplázate para ver la matriz completa.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsResultExpanded(false)}
+                  className="px-5 py-2.5 rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-colors"
+                >
+                  Cerrar
                 </button>
               </div>
             </motion.div>
