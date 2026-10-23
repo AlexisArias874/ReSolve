@@ -14,6 +14,7 @@ import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Plus, X } from "lucide-react";
+import { useTheme, type ThemeId } from "@/lib/hooks/use-theme";
 
 export interface StaggeredMenuItem {
   label: string;
@@ -47,9 +48,17 @@ export interface StaggeredMenuProps {
   onMenuClose?: () => void;
 }
 
+// Paletas de las capas del panel por tema. El tema oscuro conserva la suya.
+const PANEL_PALETTES: Record<ThemeId, { layers: string[]; accent: string }> = {
+  dark: { layers: ["#120F17", "#2A1740", "#5227FF"], accent: "#B497CF" },
+  light: { layers: ["#FFFFFF", "#EEF2FF", "#4F46E5"], accent: "#4F46E5" },
+  sepia: { layers: ["#FBF0D9", "#F3E2BE", "#B45309"], accent: "#B45309" },
+  matrix: { layers: ["#020804", "#052411", "#10B981"], accent: "#34D399" },
+};
+
 export default function StaggeredMenu({
   position = "right",
-  colors = ["#120F17", "#5227FF", "#B497CF"],
+  colors,
   items = [],
   socialItems = [],
   displaySocials = true,
@@ -58,12 +67,15 @@ export default function StaggeredMenu({
   menuButtonColor = "var(--shell-muted)",
   openMenuButtonColor = "var(--foreground)",
   changeMenuColorOnOpen = true,
-  accentColor = "var(--shell-active)",
+  accentColor,
   triggerLabel = "Menú",
   triggerClassName = "",
   onMenuOpen,
   onMenuClose,
 }: StaggeredMenuProps) {
+  const theme = useTheme();
+  const palette = PANEL_PALETTES[theme] ?? PANEL_PALETTES.dark;
+  const resolvedAccent = accentColor ?? palette.accent;
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
   const titleId = useId();
@@ -90,7 +102,7 @@ export default function StaggeredMenu({
   }, [open]);
 
   const offscreen = position === "left" ? "-100%" : "100%";
-  const panelColors = colors.length ? colors : ["#120F17", "#5227FF"];
+  const panelColors = colors && colors.length ? colors : palette.layers;
   const prelayers = panelColors.slice(0, 3);
 
   const close = () => setOpen(false);
@@ -217,7 +229,7 @@ export default function StaggeredMenu({
                               transitionTypes={item.transitionTypes}
                               aria-label={item.ariaLabel ?? item.label}
                               className="group flex items-baseline gap-3 py-1 text-[clamp(1.75rem,5vw,2.75rem)] font-semibold leading-none tracking-[-0.04em] text-foreground transition-colors hover:text-[var(--sm-accent)] focus-visible:outline-none focus-visible:text-[var(--sm-accent)]"
-                              style={{ ["--sm-accent" as string]: accentColor }}
+                              style={{ ["--sm-accent" as string]: resolvedAccent }}
                             >
                               {displayItemNumbering && (
                                 <span className="font-mono text-[11px] font-normal tracking-normal text-[var(--sm-accent)] opacity-80">
@@ -234,7 +246,7 @@ export default function StaggeredMenu({
                               onClick={close}
                               aria-label={item.ariaLabel ?? item.label}
                               className="group flex items-baseline gap-3 py-1 text-[clamp(1.75rem,5vw,2.75rem)] font-semibold leading-none tracking-[-0.04em] text-foreground transition-colors hover:text-[var(--sm-accent)] focus-visible:outline-none focus-visible:text-[var(--sm-accent)]"
-                              style={{ ["--sm-accent" as string]: accentColor }}
+                              style={{ ["--sm-accent" as string]: resolvedAccent }}
                             >
                               {displayItemNumbering && (
                                 <span className="font-mono text-[11px] font-normal tracking-normal text-[var(--sm-accent)] opacity-80">
@@ -252,7 +264,7 @@ export default function StaggeredMenu({
                               }}
                               aria-label={item.ariaLabel ?? item.label}
                               className="group flex w-full items-baseline gap-3 py-1 text-left text-[clamp(1.75rem,5vw,2.75rem)] font-semibold leading-none tracking-[-0.04em] text-foreground transition-colors hover:text-[var(--sm-accent)] focus-visible:outline-none focus-visible:text-[var(--sm-accent)]"
-                              style={{ ["--sm-accent" as string]: accentColor }}
+                              style={{ ["--sm-accent" as string]: resolvedAccent }}
                             >
                               {displayItemNumbering && (
                                 <span className="font-mono text-[11px] font-normal tracking-normal text-[var(--sm-accent)] opacity-80">
@@ -282,7 +294,7 @@ export default function StaggeredMenu({
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-sm font-medium text-shell-muted transition-colors hover:text-[var(--sm-accent)]"
-                              style={{ ["--sm-accent" as string]: accentColor }}
+                              style={{ ["--sm-accent" as string]: resolvedAccent }}
                             >
                               {social.label}
                             </a>

@@ -38,161 +38,371 @@ export interface StepDetail {
 }
 
 // --- Motor de Desglose Paso a Paso (PEMDAS) ---
-function solveStepByStep(rawExpr: string): {
+type ArithmeticToken =
+  | { kind: "num"; value: number; text: string }
+  | { kind: "op"; value: string };
+
+const ARITHMETIC_FUNCTIONS: Record<string, (n: number) => number> = {
+  sqrt: Math.sqrt,
+  cbrt: Math.cbrt,
+  abs: Math.abs,
+  sin: Math.sin,
+  cos: Math.cos,
+  tan: Math.tan,
+  // Convención universitaria: log() = logaritmo decimal, ln() = natural.
+  log: Math.log10,
+  ln: Math.log,
+  exp: Math.exp,
+};
+
+/** Formatea sin arrastrar ruido de coma flotante (0.1 + 0.2 -> 0.3). */
+function formatArithmeticNumber(value: number): string {
+  if (!Number.isFinite(value)) return String(value);
+  if (value === 0) return "0";
+  return String(Number(value.toPrecision(12)));
+}
+
+function renderTokens(tokens: ArithmeticToken[]): string {
+  return tokens
+    .map((token) => (token.kind === "num" ? token.text : token.value))
+    .join(" ");
+}
+
+function tokenizeArithmetic(input: string): ArithmeticToken[] {
+  const tokens: ArithmeticToken[] = [];
+  let i = 0;
+
+  while (i < input.length) {
+    const char = input[i];
+
+    if (/\s/.test(char)) {
+      i += 1;
+      continue;
+    }
+
+    if (/[0-9.]/.test(char)) {
+      const match = /^\d*\.?\d+(?:[eE][+-]?\d+)?/.exec(input.slice(i));
+      if (!match) throw new Error("Número mal formado");
+      tokens.push({ kind: "num", value: Number(match[0]), text: match[0] });
+      i += match[0].length;
+      continue;
+    }
+
+    if ("+-*/^()".includes(char)) {
+      tokens.push({ kind: "op", value: char });
+      i += 1;
+      continue;
+    }
+
+    throw new Error(`Símbolo no válido: ${char}`);
+  }
+
+  return tokens;
+}
+
+/**
+ * Reduce una lista de tokens respetando PEMDAS y emite un paso por operación.
+ * Las potencias se resuelven primero, con el signo unario fuera de la base
+ * (-2^2 = -4), las potencias son asociativas por la derecha (2^3^2 = 512) y
+ * se admite notación científica y exponentes negativos.
+ */
+function evaluateTokenList(
+  initialTokens: ArithmeticToken[],
+  onStep: (op: string, before: string, after: string, explanation: string) => void
+): number {
+  const tokens = initialTokens.slice();
+
+  const replaceRange = (
+    start: number,
+    end: number,
+    replacement: ArithmeticToken,
+    operation: string,
+    explanation: string
+  ) => {
+    const before = renderTokens(tokens);
+    tokens.splice(start, end - start + 1, replacement);
+    const after = renderTokens(tokens);
+    onStep(operation, before, after, explanation);
+  };
+
+  // 1. Potencias (asociativas por la derecha).
+  let guard = 0;
+  while (tokens.some((token) => token.kind === "op" && token.value === "^")) {
+    if (guard++ > 256) throw new Error("Expresión demasiado compleja");
+
+    let powerIndex = -1;
+    for (let i = tokens.length - 1; i >= 0; i -= 1) {
+      const token = tokens[i];
+      if (token.kind === "op" && token.value === "^") {
+        powerIndex = i;
+        break;
+      }
+    }
+
+    const baseToken = tokens[powerIndex - 1];
+    if (!baseToken || baseToken.kind !== "num") {
+      throw new Error("Potencia sin base válida");
+    }
+
+    let exponentIndex = powerIndex + 1;
+    let exponentSign = 1;
+    let exponentToken = tokens[exponentIndex];
+    if (
+      exponentToken &&
+      exponentToken.kind === "op" &&
+      (exponentToken.value === "-" || exponentToken.value === "+")
+    ) {
+      if (exponentToken.value === "-") exponentSign = -1;
+      exponentIndex += 1;
+      exponentToken = tokens[exponentIndex];
+    }
+
+    if (!exponentToken || exponentToken.kind !== "num") {
+      throw new Error("Potencia sin exponente válido");
+    }
+
+    const exponent = exponentSign * exponentToken.value;
+    const value = Math.pow(baseToken.value, exponent);
+    if (!Number.isFinite(value)) throw new Error("Potencia no definida en los reales");
+
+    replaceRange(
+      powerIndex - 1,
+      exponentIndex,
+      { kind: "num", value, text: formatArithmeticNumber(value) },
+      "Potenciación",
+      `Calcular potencia: ${baseToken.text}^${formatArithmeticNumber(exponent)} = ${formatArithmeticNumber(value)}`
+    );
+  }
+
+  // 2. Signos unarios (se pliegan sobre el número siguiente).
+  guard = 0;
+  for (let i = 0; i < tokens.length; ) {
+    if (guard++ > 512) throw new Error("Expresión demasiado compleja");
+
+    const token = tokens[i];
+    const previous = tokens[i - 1];
+    const isUnary =
+      token.kind === "op" &&
+      (token.value === "+" || token.value === "-") &&
+      (!previous || previous.kind === "op");
+
+    if (!isUnary) {
+      i += 1;
+      continue;
+    }
+
+    let sign = token.value === "-" ? -1 : 1;
+    let nextIndex = i + 1;
+    while (
+      tokens[nextIndex] &&
+      tokens[nextIndex].kind === "op" &&
+      ((tokens[nextIndex] as { value: string }).value === "+" ||
+        (tokens[nextIndex] as { value: string }).value === "-")
+    ) {
+      if ((tokens[nextIndex] as { value: string }).value === "-") sign *= -1;
+      nextIndex += 1;
+    }
+
+    const target = tokens[nextIndex];
+    if (!target || target.kind !== "num") throw new Error("Signo sin operando");
+
+    const value = sign * target.value;
+    tokens.splice(i, nextIndex - i + 1, {
+      kind: "num",
+      value,
+      text: formatArithmeticNumber(value),
+    });
+  }
+
+  // 3. Multiplicación y división, de izquierda a derecha.
+  while (tokens.length > 1) {
+    const operatorIndex = tokens.findIndex(
+      (token) => token.kind === "op" && (token.value === "*" || token.value === "/")
+    );
+    if (operatorIndex === -1) break;
+
+    const left = tokens[operatorIndex - 1];
+    const right = tokens[operatorIndex + 1];
+    if (!left || left.kind !== "num" || !right || right.kind !== "num") {
+      throw new Error("Operación no válida");
+    }
+
+    const operator = (tokens[operatorIndex] as { value: string }).value;
+    if (operator === "/" && right.value === 0) throw new Error("División por cero");
+
+    const value = operator === "*" ? left.value * right.value : left.value / right.value;
+    if (!Number.isFinite(value)) throw new Error("Resultado no definido");
+
+    replaceRange(
+      operatorIndex - 1,
+      operatorIndex + 1,
+      { kind: "num", value, text: formatArithmeticNumber(value) },
+      operator === "*" ? "Multiplicación" : "División",
+      `Resolver ${operator === "*" ? "multiplicación" : "división"}: ${left.text} ${operator} ${right.text} = ${formatArithmeticNumber(value)}`
+    );
+  }
+
+  // 4. Suma y resta, de izquierda a derecha.
+  while (tokens.length > 1) {
+    const operatorIndex = tokens.findIndex(
+      (token) => token.kind === "op" && (token.value === "+" || token.value === "-")
+    );
+    if (operatorIndex === -1) break;
+
+    const left = tokens[operatorIndex - 1];
+    const right = tokens[operatorIndex + 1];
+    if (!left || left.kind !== "num" || !right || right.kind !== "num") {
+      throw new Error("Operación no válida");
+    }
+
+    const operator = (tokens[operatorIndex] as { value: string }).value;
+    const value = operator === "+" ? left.value + right.value : left.value - right.value;
+    if (!Number.isFinite(value)) throw new Error("Resultado no definido");
+
+    replaceRange(
+      operatorIndex - 1,
+      operatorIndex + 1,
+      { kind: "num", value, text: formatArithmeticNumber(value) },
+      operator === "+" ? "Suma" : "Resta",
+      `Resolver ${operator === "+" ? "suma" : "resta"}: ${left.text} ${operator} ${right.text} = ${formatArithmeticNumber(value)}`
+    );
+  }
+
+  if (tokens.length === 0) throw new Error("Expresión incompleta");
+  if (tokens.length !== 1 || tokens[0].kind !== "num") {
+    throw new Error("Operación no válida");
+  }
+
+  return (tokens[0] as { value: number }).value;
+}
+
+/**
+ * Inserta el operador de multiplicación cuando se escribe de forma implícita:
+ * `2(3+4)` -> `2*(3+4)`, `(2+3)(4+5)` -> `(2+3)*(4+5)`, `2pi` -> `2*pi`.
+ * No toca la notación científica (`1e3`).
+ */
+function normalizeImplicitMultiplication(input: string): string {
+  const functions = "sqrt|cbrt|abs|sin|cos|tan|log|ln|exp|pi";
+  let output = input;
+
+  output = output.replace(new RegExp(`(\\d)\\s*(?=(?:${functions})\\b)`, "gi"), "$1*");
+  output = output.replace(/(\d|\))\s*(?=\()/g, "$1*");
+  output = output.replace(/\)\s*(?=\d)/g, ")*");
+  output = output.replace(new RegExp(`\\)\\s*(?=(?:${functions})\\b)`, "gi"), ")*");
+
+  return output;
+}
+
+export function solveStepByStep(rawExpr: string): {
   steps: StepDetail[];
   finalResult: string;
   error?: string;
 } {
-  // 1. Sanitizar la expresión (soporta √, sqrt, abs, etc.), expandir factoriales
-  //    numéricos (5! → 120) y quitar espacios
-  let expr = expandNumericFactorials(sanitizeMathExpression(rawExpr)).replace(/\s+/g, "");
-  if (!expr) return { steps: [], finalResult: "--" };
-
   const steps: StepDetail[] = [];
   let stepId = 1;
 
+  const pushStep = (operation: string, before: string, after: string, explanation: string) => {
+    steps.push({ id: stepId++, operation, before, after, explanation });
+  };
+
+  let expr = expandNumericFactorials(sanitizeMathExpression(rawExpr)).replace(/\s+/g, "");
+  if (!expr) return { steps: [], finalResult: "--" };
+
   try {
-    // A. Resolución de Raíces Cuadradas: sqrt(...) o √(...)
-    const sqrtRegex = /sqrt\(([^()]+)\)/;
-    while (sqrtRegex.test(expr)) {
-      const match = sqrtRegex.exec(expr);
-      if (!match) break;
-      const inner = match[1];
+    // A. Multiplicación implícita antes de eliminar paréntesis.
+    expr = normalizeImplicitMultiplication(expr);
 
-      // Evaluar el interior de la raíz con el evaluador universal
-      const innerVal = evaluateUniversalMath(inner);
-      const sqrtVal = Math.sqrt(innerVal);
-      const updated = expr.replace(
-        match[0],
-        Number(sqrtVal.toFixed(4)).toString()
-      );
-
-      steps.push({
-        id: stepId++,
-        operation: "Extracción de Raíz Cuadrada",
-        before: expr,
-        after: updated,
-        explanation: `Calculamos la raíz cuadrada de (${inner}) = ${Number(
-          sqrtVal.toFixed(4)
-        )}`,
-      });
-      expr = updated;
+    // B. Constante π.
+    if (/\bpi\b/i.test(expr)) {
+      const before = expr;
+      expr = expr.replace(/\bpi\b/gi, formatArithmeticNumber(Math.PI));
+      pushStep("Constante matemática", before, expr, "Sustituimos π ≈ 3.14159265359");
     }
 
-    // B. Resolución de Paréntesis (de dentro hacia fuera)
-    const parenRegex = /\(([^()]+)\)/;
-    while (parenRegex.test(expr)) {
-      const match = parenRegex.exec(expr);
-      if (!match) break;
-      const innerExpr = match[1];
+    // C. Funciones matemáticas (de dentro hacia fuera).
+    const functionRegex = /\b(sqrt|cbrt|abs|sin|cos|tan|log|ln|exp)\s*\(([^()]*)\)/i;
+    let functionMatch = functionRegex.exec(expr);
+    let functionGuard = 0;
 
-      const subSolved = evaluateSubExpression(
-        innerExpr,
-        (op, beforeSub, afterSub, exp) => {
-          steps.push({
-            id: stepId++,
-            operation: op,
-            before: expr,
-            after: expr.replace(`(${innerExpr})`, `(${afterSub})`),
-            explanation: exp,
-          });
+    while (functionMatch) {
+      if (functionGuard++ > 100) throw new Error("Expresión demasiado compleja");
+
+      const [fullMatch, rawName, rawArgument] = functionMatch;
+      const name = rawName.toLowerCase();
+      const argument = rawArgument.trim();
+      if (!argument) throw new Error(`Argumento vacío en ${name}()`);
+
+      const argumentValue = evaluateTokenList(tokenizeArithmetic(argument), () => undefined);
+      const fn = ARITHMETIC_FUNCTIONS[name];
+      if (!fn) throw new Error(`Función no soportada: ${name}`);
+
+      const value = fn(argumentValue);
+      if (!Number.isFinite(value)) {
+        throw new Error(`Resultado no definido en ${name}(${argument})`);
+      }
+
+      const before = expr;
+      expr = expr.replace(fullMatch, formatArithmeticNumber(value));
+      pushStep(
+        "Evaluación de función",
+        before,
+        expr,
+        `${name}(${argument}) = ${formatArithmeticNumber(value)}`
+      );
+
+      functionMatch = functionRegex.exec(expr);
+    }
+
+    // D. Paréntesis, de dentro hacia fuera.
+    const parenthesisRegex = /\(([^()]*)\)/;
+    let parenthesisMatch = parenthesisRegex.exec(expr);
+    let parenthesisGuard = 0;
+
+    while (parenthesisMatch) {
+      if (parenthesisGuard++ > 100) throw new Error("Paréntesis anidados demasiado profundos");
+
+      const innerExpr = parenthesisMatch[1];
+      if (!innerExpr.trim()) throw new Error("Paréntesis vacío");
+
+      const innerValue = evaluateTokenList(
+        tokenizeArithmetic(innerExpr),
+        (operation, beforeSub, afterSub, explanation) => {
+          pushStep(
+            operation,
+            expr.replace(`(${innerExpr})`, `(${beforeSub})`),
+            expr.replace(`(${innerExpr})`, `(${afterSub})`),
+            explanation
+          );
         }
       );
 
-      const updated = expr.replace(match[0], subSolved);
-      steps.push({
-        id: stepId++,
-        operation: "Eliminación de Paréntesis",
-        before: expr,
-        after: updated,
-        explanation: `Se resuelve el bloque agrupado (${innerExpr}) = ${subSolved}`,
-      });
-      expr = updated;
+      const solved = formatArithmeticNumber(innerValue);
+      const before = expr;
+      expr = expr.replace(parenthesisMatch[0], solved);
+      pushStep(
+        "Eliminación de paréntesis",
+        before,
+        expr,
+        `Se resuelve el bloque agrupado (${innerExpr}) = ${solved}`
+      );
+
+      parenthesisMatch = parenthesisRegex.exec(expr);
     }
 
-    // C. Resolver operaciones restantes (multiplicación, división, suma, resta)
-    const finalVal = evaluateSubExpression(
-      expr,
-      (op, beforeSub, afterSub, exp) => {
-        steps.push({
-          id: stepId++,
-          operation: op,
-          before: beforeSub,
-          after: afterSub,
-          explanation: exp,
-        });
-      }
-    );
+    // E. Operaciones restantes.
+    const finalValue = evaluateTokenList(tokenizeArithmetic(expr), pushStep);
+    if (!Number.isFinite(finalValue)) throw new Error("El resultado no es un número finito");
 
-    const parsedNum = Number(finalVal);
-    if (isNaN(parsedNum) || !isFinite(parsedNum)) {
-      throw new Error("Operación no válida o división por cero");
-    }
-
+    return { steps, finalResult: String(Number(finalValue.toFixed(6))) };
+  } catch (error) {
     return {
       steps,
-      finalResult: String(Number(parsedNum.toFixed(6))),
-    };
-  } catch (err: unknown) {
-    return {
-      steps: [],
       finalResult: "--",
-      error: err instanceof Error ? err.message : "Error de sintaxis",
+      error: error instanceof Error ? error.message : "Error de sintaxis",
     };
   }
 }
 
-function evaluateSubExpression(
-  sub: string,
-  onStep: (op: string, before: string, after: string, exp: string) => void
-): string {
-  let current = sub;
-
-  // A. Potencias (^)
-  const powRegex = /(-?\d+(?:\.\d+)?)\^(\d+(?:\.\d+)?)/;
-  while (powRegex.test(current)) {
-    const match = powRegex.exec(current);
-    if (!match) break;
-    const [full, base, exp] = match;
-    const val = Math.pow(Number(base), Number(exp));
-    const next = current.replace(full, String(val));
-    onStep("Potenciación", current, next, `Calcular potencia: ${base}^${exp} = ${val}`);
-    current = next;
-  }
-
-  // B. Multiplicación y División (*, /)
-  const mdRegex = /(-?\d+(?:\.\d+)?)([\*\/])(-?\d+(?:\.\d+)?)/;
-  while (mdRegex.test(current)) {
-    const match = mdRegex.exec(current);
-    if (!match) break;
-    const [full, n1, op, n2] = match;
-    const num1 = Number(n1);
-    const num2 = Number(n2);
-    if (op === "/" && num2 === 0) throw new Error("División por cero");
-    const val = op === "*" ? num1 * num2 : num1 / num2;
-    const next = current.replace(full, String(val));
-    const opName = op === "*" ? "Multiplicación" : "División";
-    onStep(opName, current, next, `Resolver ${opName.toLowerCase()}: ${n1} ${op} ${n2} = ${val}`);
-    current = next;
-  }
-
-  // C. Suma y Resta (+, -)
-  const asRegex = /(-?\d+(?:\.\d+)?)([+\-])(-?\d+(?:\.\d+)?)/;
-  while (asRegex.test(current) && !/^-?\d+(?:\.\d+)?$/.test(current)) {
-    const match = asRegex.exec(current);
-    if (!match) break;
-    const [full, n1, op, n2] = match;
-    const num1 = Number(n1);
-    const num2 = Number(n2);
-    const val = op === "+" ? num1 + num2 : num1 - num2;
-    const next = current.replace(full, String(val));
-    const opName = op === "+" ? "Suma" : "Resta";
-    onStep(opName, current, next, `Resolver ${opName.toLowerCase()}: ${n1} ${op} ${n2} = ${val}`);
-    current = next;
-  }
-
-  return current;
-}
 
 // --- Mapa tipográfico del teclado de operadores (se inserta el símbolo crudo,
 //     se muestra el glifo matemático) ---

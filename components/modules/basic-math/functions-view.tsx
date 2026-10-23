@@ -108,7 +108,15 @@ export default function FunctionsView({
     const f = (x: number) => evaluateMath(funcInput, x, paramA, paramB, paramC);
     const yAtTangentRaw = f(tangentX);
     const h = 0.001;
+    const slopeLeft = (f(tangentX) - f(tangentX - h)) / h;
+    const slopeRight = (f(tangentX + h) - f(tangentX)) / h;
     const slopeRaw = (f(tangentX + h) - f(tangentX - h)) / (2 * h);
+    // En puntos angulosos (|x| en 0) las derivadas laterales no coinciden:
+    // la derivada no existe, aunque la diferencia central dé un valor finito.
+    const differentiable =
+      Number.isFinite(slopeLeft) &&
+      Number.isFinite(slopeRight) &&
+      Math.abs(slopeLeft - slopeRight) <= 0.05 * Math.max(1, Math.abs(slopeLeft), Math.abs(slopeRight));
 
     return {
       fa,
@@ -128,7 +136,8 @@ export default function FunctionsView({
       symmetry: fa.symmetry,
       yIntercept: fa.yIntercept,
       yAtTangent: Number.isFinite(yAtTangentRaw) ? Number(yAtTangentRaw.toFixed(3)) : null,
-      slopeAtX0: Number.isFinite(slopeRaw) ? Number(slopeRaw.toFixed(3)) : null,
+      slopeAtX0:
+        differentiable && Number.isFinite(slopeRaw) ? Number(slopeRaw.toFixed(3)) : null,
       integral,
       integralVal: integral.netArea,
       integralAbsolute: integral.absoluteArea,

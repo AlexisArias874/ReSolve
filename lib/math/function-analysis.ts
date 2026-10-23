@@ -385,6 +385,29 @@ export function analyzeFunction(
   };
 
   const parsed = parseRational(sanitized, variable);
+
+  // Validación temprana: una entrada vacía o no evaluable no debe producir un
+  // análisis silencioso con todos los campos vacíos.
+  if (!sanitized.trim()) {
+    base.domainText = "Expresión vacía";
+    base.warnings.push("Ingresa una función de la variable indicada, por ejemplo x^3 - 3x.");
+    return base;
+  }
+
+  if (!parsed) {
+    const probes = [0.37, 1.23, 2.71, -0.73];
+    const evaluated = probes.map((value) =>
+      evaluateUniversalMath(sanitized, { [variable]: value })
+    );
+    if (evaluated.every((value) => !Number.isFinite(value))) {
+      base.domainText = "Expresión no evaluable";
+      base.warnings.push(
+        "La expresión no pudo evaluarse. Revisa la sintaxis (por ejemplo: sin(x), sqrt(x), 1/x, x^2)."
+      );
+      return base;
+    }
+  }
+
   if (!parsed) return numericFallback(sanitized, variable, base);
 
   const original: Rational = { n: trim(parsed.n), d: trim(parsed.d) };
@@ -586,7 +609,13 @@ function numericFallback(sanitized: string, variable: string, base: FunctionAnal
   const warnings: string[] = [
     "Análisis aproximado: la expresión no es polinómica ni racional; dominio y asíntotas se estiman numéricamente.",
   ];
-  const f = (x: number) => evaluateUniversalMath(sanitized, { [variable]: x });
+  const f = (x: number) => {
+    try {
+      return evaluateUniversalMath(sanitized, { [variable]: x });
+    } catch {
+      return NaN;
+    }
+  };
 
   // Raíces por cambio de signo, evitando saltos de polo.
   const roots: Array<{ x: number; multiplicity: number }> = [];
@@ -612,19 +641,123 @@ function numericFallback(sanitized: string, variable: string, base: FunctionAnal
     prevY = y;
   }
 
-  // Extremos por cambio de signo de la derivada numérica.
+  // Extremos por cambio de signo de la derivada numérica (con refinamiento).
   const h = 1e-4;
   const df = (x: number) => (f(x + h) - f(x - h)) / (2 * h);
   const criticalPoints: CriticalPoint[] = [];
   let prevD = df(-10);
+  let prevScanX = -10;
   for (let x = -10 + step; x <= 10; x += step) {
     const d = df(x);
     if (isFinite(prevD) && isFinite(d) && prevD * d < 0) {
-      const cx = Number(x.toFixed(4));
+      let lo = prevScanX;
+      let hi = x;
+      let loSign = Math.sign(prevD);
+      for (let k = 0; k < 60; k += 1) {
+        const mid = (lo + hi) / 2;
+        const midSign = Math.sign(df(mid));
+        if (midSign === 0) {
+          lo = mid;
+          hi = mid;
+          break;
+        }
+        if (midSign === loSign) lo = mid;
+        else hi = mid;
+      }
+      const cx = Number(((lo + hi) / 2).toFixed(6));
       const cy = f(cx);
-      if (isFinite(cy)) criticalPoints.push({ x: cx, y: Number(cy.toFixed(4)), type: prevD > 0 ? "Máximo" : "Mínimo" });
+      if (isFinite(cy)) {
+        const second = (df(cx + h) - df(cx - h)) / (2 * h);
+        const type: CriticalPoint["type"] = isFinite(second) && Math.abs(second) > 1e-7
+          ? second > 0
+            ? "Mínimo"
+            : "Máximo"
+          : prevD > 0
+            ? "Máximo"
+            : "Mínimo";
+        criticalPoints.push({ x: cx, y: Number(cy.toFixed(4)), type });
+      }
     }
     prevD = d;
+    prevScanX = x;
+  }
+
+  // Segunda derivada numérica: concavidad e inflexión.
+  const h2 = 1e-3;
+  const d2f = (x: number) => (f(x + h2) - 2 * f(x) + f(x - h2)) / (h2 * h2);
+  const inflectionCandidates: number[] = [];
+  let prevSecond = d2f(-10);
+  for (let x = -10 + step; x <= 10; x += step) {
+    const second = d2f(x);
+    if (isFinite(prevSecond) && isFinite(second) && prevSecond * second < 0) {
+      inflectionCandidates.push(x);
+    }
+    prevSecond = second;
+  }
+
+  const concavity: ConcavityInterval[] = [];
+  const inflectionPoints: AnalysisPoint[] = [];
+  const breakpoints = uniqueSorted(inflectionCandidates);
+  const intervals: Array<[number, number]> = [];
+  if (breakpoints.length === 0) {
+    intervals.push([-10, 10]);
+  } else {
+    intervals.push([-10, breakpoints[0]]);
+    for (let i = 0; i < breakpoints.length - 1; i += 1) {
+      intervals.push([breakpoints[i], breakpoints[i + 1]]);
+    }
+    intervals.push([breakpoints[breakpoints.length - 1], 10]);
+  }
+  for (const [start, end] of intervals) {
+    const mid = (start + end) / 2;
+    const second = d2f(mid);
+    if (isFinite(second) && Math.abs(second) > 1e-7) {
+      concavity.push({
+        from: Number(start.toFixed(4)),
+        to: Number(end.toFixed(4)),
+        behavior: second > 0 ? "cóncava" : "convexa",
+      });
+    }
+  }
+  for (const candidate of breakpoints) {
+    const x = Number(candidate.toFixed(4));
+    const y = f(x);
+    if (isFinite(y)) {
+      inflectionPoints.push({ x, y: Number(y.toFixed(4)) });
+    }
+  }
+
+  // Asíntotas verticales aproximadas: |f| explota y es finita a ambos lados.
+  const verticalAsymptotes: number[] = [];
+  for (let x = -14.98; x <= 15; x += 0.02) {
+    const value = f(x);
+    if (!isFinite(value) || Math.abs(value) < 1e6) continue;
+    const left = f(x - 0.005);
+    const right = f(x + 0.005);
+    if (
+      isFinite(left) &&
+      isFinite(right) &&
+      Math.abs(left) > 1e5 &&
+      Math.abs(right) > 1e5
+    ) {
+      const rounded = Number(x.toFixed(3));
+      if (!verticalAsymptotes.some((existing) => Math.abs(existing - rounded) < 0.1)) {
+        verticalAsymptotes.push(rounded);
+      }
+    }
+  }
+
+  // Dominio aproximado a partir de sondas puntuales.
+  let domainText = "No determinable simbólicamente (análisis numérico)";
+  const samples = [-3, -1, 0, 1, 2, 3, 5];
+  const defined = samples.map((value) => isFinite(f(value)));
+  if (defined.every(Boolean)) {
+    domainText = "ℝ (verificado numéricamente en las muestras)";
+  } else if (defined.every((value) => !value)) {
+    domainText = "Sin valores reales en las muestras analizadas";
+  } else {
+    const excluded = samples.filter((_, index) => !defined[index]);
+    domainText = `Aproximado: no definida en x ≈ ${excluded.join(", ")} (muestreo numérico)`;
   }
 
   const y0 = f(0);
@@ -632,10 +765,13 @@ function numericFallback(sanitized: string, variable: string, base: FunctionAnal
     ...base,
     exact: false,
     simplifiedExpression: null,
-    domainText: "No determinable simbólicamente (análisis numérico)",
+    domainText,
+    verticalAsymptotes,
     yIntercept: isFinite(y0) ? Number(y0.toFixed(4)) : null,
     roots,
     criticalPoints,
+    concavity,
+    inflectionPoints,
     symmetry: detectSymmetry(f),
     warnings,
   };

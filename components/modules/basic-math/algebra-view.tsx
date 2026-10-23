@@ -61,12 +61,343 @@ function det3x3(m: number[][]): number {
     m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
   );
 }
+// -----------------------------------------------------------------------------
+// Utilidades algebraicas compartidas (polinomios, sistemas y racionales)
+// -----------------------------------------------------------------------------
+interface ComplexRoot {
+  re: number;
+  im: number;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function stripOuterParens(input: string): string {
+  let text = input.trim();
+  while (text.startsWith("(") && text.endsWith(")")) {
+    let depth = 0;
+    let wrapsEverything = true;
+    for (let i = 0; i < text.length; i += 1) {
+      if (text[i] === "(") depth += 1;
+      if (text[i] === ")") depth -= 1;
+      if (depth === 0 && i < text.length - 1) {
+        wrapsEverything = false;
+        break;
+      }
+    }
+    if (!wrapsEverything) break;
+    text = text.slice(1, -1).trim();
+  }
+  return text;
+}
+
+/** Convierte un lado de la ecuación en coeficientes ascendentes de un polinomio. */
+function parsePolynomialSide(side: string, variable: string): number[] | null {
+  const clean = stripOuterParens(side).replace(/\s+/g, "").replace(/\*/g, "");
+  if (!clean) return null;
+
+  const normalized = clean.startsWith("+") || clean.startsWith("-") ? clean : `+${clean}`;
+  const variablePattern = escapeRegExp(variable);
+  const coefficients: number[] = [0];
+
+  const add = (exponent: number, value: number) => {
+    while (coefficients.length <= exponent) coefficients.push(0);
+    coefficients[exponent] += value;
+  };
+
+  const termRegex = /([+-])([^+-]+)/g;
+  let match: RegExpExecArray | null;
+  let consumed = 0;
+
+  while ((match = termRegex.exec(normalized)) !== null) {
+    if (match.index !== consumed) return null;
+    consumed += match[0].length;
+
+    const sign = match[1] === "-" ? -1 : 1;
+    const body = match[2];
+    if (!body) return null;
+
+    const withoutVariable = body.replace(new RegExp(variablePattern, "g"), "");
+    if (withoutVariable !== body) {
+      if (/[a-zA-Z]/.test(withoutVariable)) return null;
+      const termMatch = new RegExp(`^(\\d*\\.?\\d*)${variablePattern}(?:\\^(\\d+))?$`).exec(body);
+      if (!termMatch) return null;
+      const rawCoefficient = termMatch[1];
+      const coefficient =
+        rawCoefficient === "" || rawCoefficient === "." ? 1 : Number(rawCoefficient);
+      const exponent = termMatch[2] ? Number(termMatch[2]) : 1;
+      if (!Number.isFinite(coefficient) || !Number.isInteger(exponent) || exponent < 0) {
+        return null;
+      }
+      add(exponent, sign * coefficient);
+    } else {
+      if (!/^\d*\.?\d+$/.test(body)) return null;
+      const value = Number(body);
+      if (!Number.isFinite(value)) return null;
+      add(0, sign * value);
+    }
+  }
+
+  if (consumed !== normalized.length) return null;
+
+  while (coefficients.length > 1 && Math.abs(coefficients[coefficients.length - 1]) < 1e-12) {
+    coefficients.pop();
+  }
+  return coefficients;
+}
+
+function parseEquationPolynomial(input: string, variable: string): number[] | null {
+  const parts = input.split("=");
+  if (parts.length !== 2) return null;
+  const left = parsePolynomialSide(parts[0], variable);
+  const right = parsePolynomialSide(parts[1], variable);
+  if (!left || !right) return null;
+
+  const size = Math.max(left.length, right.length);
+  const result = Array.from({ length: size }, (_, i) => (left[i] ?? 0) - (right[i] ?? 0));
+  while (result.length > 1 && Math.abs(result[result.length - 1]) < 1e-12) {
+    result.pop();
+  }
+  return result;
+}
+
+function multiplyPolynomials(a: number[], b: number[]): number[] {
+  const output = new Array(a.length + b.length - 1).fill(0);
+  a.forEach((leftValue, i) => {
+    b.forEach((rightValue, j) => {
+      output[i + j] += leftValue * rightValue;
+    });
+  });
+  return output;
+}
+
+function subtractPolynomials(a: number[], b: number[]): number[] {
+  const size = Math.max(a.length, b.length);
+  const output = Array.from({ length: size }, (_, i) => (a[i] ?? 0) - (b[i] ?? 0));
+  while (output.length > 1 && Math.abs(output[output.length - 1]) < 1e-12) output.pop();
+  return output;
+}
+
+function evaluatePolynomial(coefficients: number[], value: number): number {
+  return coefficients.reduce((sum, coefficient, index) => sum + coefficient * value ** index, 0);
+}
+
+/** Detecta errores de sintaxis evidentes antes de intentar resolver. */
+function detectAlgebraSyntaxError(input: string): string | null {
+  const equations = input.split(/[,;]/).filter(Boolean);
+  if (equations.length === 0) return "Ingresa una ecuación.";
+
+  for (const equation of equations) {
+    const parts = equation.split("=");
+    if (parts.length !== 2) return "Cada ecuación debe tener exactamente un signo igual.";
+    if (!parts[0] || !parts[1]) return "Uno de los lados de la ecuación está vacío.";
+    if (/[+\-*/^]$/.test(parts[0]) || /[+\-*/^]$/.test(parts[1])) {
+      return "La ecuación termina con un operador incompleto.";
+    }
+  }
+
+  let depth = 0;
+  for (const character of input) {
+    if (character === "(") depth += 1;
+    if (character === ")") depth -= 1;
+    if (depth < 0) return "Paréntesis desbalanceados.";
+  }
+  if (depth !== 0) return "Paréntesis desbalanceados.";
+
+  return null;
+}
+
+/** Raíces (reales y complejas) por el método de Durand-Kerner. */
+function solvePolynomialRoots(coefficients: number[]): ComplexRoot[] {
+  const coeffs = coefficients.slice();
+  while (coeffs.length > 1 && Math.abs(coeffs[coeffs.length - 1]) < 1e-12) coeffs.pop();
+
+  const degree = coeffs.length - 1;
+  if (degree < 1) return [];
+  if (degree === 1) return [{ re: -coeffs[0] / coeffs[1], im: 0 }];
+
+  const leading = coeffs[degree];
+  if (!Number.isFinite(leading) || Math.abs(leading) < 1e-15) return [];
+  const monic = coeffs.map((value) => value / leading);
+
+  const radius =
+    1 + Math.max(0, ...monic.slice(0, degree).map((value) => Math.abs(value)));
+  const roots: ComplexRoot[] = Array.from({ length: degree }, (_, index) => {
+    const angle = (2 * Math.PI * index) / degree + 0.4;
+    return { re: radius * Math.cos(angle), im: radius * Math.sin(angle) };
+  });
+
+  const evaluate = (z: ComplexRoot): ComplexRoot => {
+    let re = 0;
+    let im = 0;
+    for (let i = degree; i >= 0; i -= 1) {
+      const nextRe = re * z.re - im * z.im + monic[i];
+      const nextIm = re * z.im + im * z.re;
+      re = nextRe;
+      im = nextIm;
+    }
+    return { re, im };
+  };
+
+  for (let iteration = 0; iteration < 400; iteration += 1) {
+    let maxDelta = 0;
+
+    for (let i = 0; i < degree; i += 1) {
+      let denominatorRe = 1;
+      let denominatorIm = 0;
+
+      for (let j = 0; j < degree; j += 1) {
+        if (i === j) continue;
+        const deltaRe = roots[i].re - roots[j].re;
+        const deltaIm = roots[i].im - roots[j].im;
+        const nextRe = denominatorRe * deltaRe - denominatorIm * deltaIm;
+        const nextIm = denominatorRe * deltaIm + denominatorIm * deltaRe;
+        denominatorRe = nextRe;
+        denominatorIm = nextIm;
+      }
+
+      const value = evaluate(roots[i]);
+      const denominatorNorm = denominatorRe ** 2 + denominatorIm ** 2;
+      if (denominatorNorm < 1e-18) continue;
+
+      const quotientRe =
+        (value.re * denominatorRe + value.im * denominatorIm) / denominatorNorm;
+      const quotientIm =
+        (value.im * denominatorRe - value.re * denominatorIm) / denominatorNorm;
+
+      roots[i] = {
+        re: roots[i].re - quotientRe,
+        im: roots[i].im - quotientIm,
+      };
+      maxDelta = Math.max(maxDelta, Math.hypot(quotientRe, quotientIm));
+    }
+
+    if (maxDelta < 1e-12) break;
+  }
+
+  return roots.map((root) => ({
+    re: Math.abs(root.re) < 1e-9 ? 0 : root.re,
+    im: Math.abs(root.im) < 1e-9 ? 0 : root.im,
+  }));
+}
+
+function formatAlgebraNumber(value: number): string {
+  if (!Number.isFinite(value)) return "--";
+  if (Math.abs(value) < 1e-9) return "0";
+  return String(Number(value.toFixed(4)));
+}
+
+function formatPolynomialRoots(variable: string, roots: ComplexRoot[]): string[] {
+  const labels: string[] = [];
+  const seen = new Set<string>();
+
+  const sorted = [...roots].sort((a, b) => a.re - b.re || a.im - b.im);
+  for (const root of sorted) {
+    const real = Math.abs(root.re) < 1e-6 ? 0 : Number(root.re.toFixed(4));
+    const imaginary = Math.abs(root.im) < 1e-6 ? 0 : Number(root.im.toFixed(4));
+
+    let label: string;
+    if (imaginary === 0) {
+      label = `${variable} = ${formatAlgebraNumber(real)}`;
+    } else if (real === 0) {
+      label = `${variable} = ${formatAlgebraNumber(imaginary)}i`;
+    } else {
+      label = `${variable} = ${formatAlgebraNumber(real)} ${
+        imaginary > 0 ? "+" : "-"
+      } ${formatAlgebraNumber(Math.abs(imaginary))}i`;
+    }
+
+    if (!seen.has(label)) {
+      seen.add(label);
+      labels.push(label);
+    }
+  }
+
+  return labels;
+}
+
+interface LinearSide {
+  coefficients: Record<string, number>;
+  constant: number;
+}
+
+function parseLinearSide(side: string): LinearSide | null {
+  const clean = stripOuterParens(side).replace(/\s+/g, "").replace(/\*/g, "");
+  if (!clean) return null;
+
+  const normalized = clean.startsWith("+") || clean.startsWith("-") ? clean : `+${clean}`;
+  const result: LinearSide = { coefficients: {}, constant: 0 };
+
+  const termRegex = /([+-])([^+-]+)/g;
+  let match: RegExpExecArray | null;
+  let consumed = 0;
+
+  while ((match = termRegex.exec(normalized)) !== null) {
+    if (match.index !== consumed) return null;
+    consumed += match[0].length;
+
+    const sign = match[1] === "-" ? -1 : 1;
+    const body = match[2];
+    const variableMatch = /^(\d*\.?\d*)([a-zA-Z])(?:\^(\d+))?$/.exec(body);
+
+    if (variableMatch) {
+      if (variableMatch[3] && Number(variableMatch[3]) !== 1) return null;
+      const rawCoefficient = variableMatch[1];
+      const coefficient =
+        rawCoefficient === "" || rawCoefficient === "." ? 1 : Number(rawCoefficient);
+      if (!Number.isFinite(coefficient)) return null;
+      const variable = variableMatch[2];
+      result.coefficients[variable] = (result.coefficients[variable] ?? 0) + sign * coefficient;
+    } else if (/^\d*\.?\d+$/.test(body)) {
+      const value = Number(body);
+      if (!Number.isFinite(value)) return null;
+      result.constant += sign * value;
+    } else {
+      return null;
+    }
+  }
+
+  if (consumed !== normalized.length) return null;
+  return result;
+}
+
+interface LinearEquation {
+  coefficients: Record<string, number>;
+  constant: number;
+}
+
+function parseLinearEquation(equation: string): LinearEquation | null {
+  const parts = equation.split("=");
+  if (parts.length !== 2) return null;
+
+  const left = parseLinearSide(parts[0]);
+  const right = parseLinearSide(parts[1]);
+  if (!left || !right) return null;
+
+  const coefficients: Record<string, number> = {};
+  const variables = new Set([
+    ...Object.keys(left.coefficients),
+    ...Object.keys(right.coefficients),
+  ]);
+  variables.forEach((variable) => {
+    coefficients[variable] =
+      (left.coefficients[variable] ?? 0) - (right.coefficients[variable] ?? 0);
+  });
+
+  return {
+    coefficients,
+    constant: left.constant - right.constant,
+  };
+}
 
 // =============================================================================
 // MOTOR ALGEBRAICO UNIVERSAL DE RESOLVE
 // =============================================================================
-function solveUniversalAlgebra(input: string): AlgebraResult {
-  const clean = input.replace(/\s+/g, "");
+export function solveUniversalAlgebra(input: string): AlgebraResult {
+  let clean = input.replace(/\s+/g, "");
+  // Una expresión sin igualdad se interpreta como ecuación = 0.
+  if (clean && !clean.includes("=") && !/[,;]/.test(input)) clean += "=0";
   if (!clean) {
     return {
       variableChar: "x",
@@ -82,10 +413,124 @@ function solveUniversalAlgebra(input: string): AlgebraResult {
     const steps: AlgebraStep[] = [];
     let stepId = 1;
 
+    const syntaxError = detectAlgebraSyntaxError(clean);
+    if (syntaxError) {
+      return {
+        variableChar: "x",
+        degree: 0,
+        roots: ["--"],
+        methodName: "Error de Sintaxis",
+        methodDescription: syntaxError,
+        steps,
+        error: syntaxError,
+      };
+    }
+
     // -------------------------------------------------------------------------
     // 1. SISTEMAS DE ECUACIONES (Separadas por comas ',' o ';')
     // -------------------------------------------------------------------------
     const eqList = input.split(/[,;]/).map((s) => s.trim().replace(/\s+/g, "")).filter(Boolean);
+
+    // 1.C: Sistema lineal 2×2 (Regla de Cramer)
+    if (eqList.length === 2) {
+      const firstEquation = parseLinearEquation(eqList[0]);
+      const secondEquation = parseLinearEquation(eqList[1]);
+
+      if (firstEquation && secondEquation) {
+        const variableNames = Array.from(
+          new Set([
+            ...Object.keys(firstEquation.coefficients),
+            ...Object.keys(secondEquation.coefficients),
+          ])
+        );
+
+        if (variableNames.length === 2) {
+          const [firstVariable, secondVariable] = variableNames;
+          const a1 = firstEquation.coefficients[firstVariable] ?? 0;
+          const b1 = firstEquation.coefficients[secondVariable] ?? 0;
+          const c1 = -firstEquation.constant;
+          const a2 = secondEquation.coefficients[firstVariable] ?? 0;
+          const b2 = secondEquation.coefficients[secondVariable] ?? 0;
+          const c2 = -secondEquation.constant;
+          const determinant = a1 * b2 - a2 * b1;
+
+          steps.push({
+            id: stepId++,
+            stage: "Sistema Lineal 2×2",
+            description:
+              "Escribimos ambas ecuaciones en forma estándar y calculamos el determinante principal.",
+            expression: `${a1}${firstVariable} + ${b1}${secondVariable} = ${c1} ; ${a2}${firstVariable} + ${b2}${secondVariable} = ${c2}`,
+            rule: "Forma Estándar",
+          });
+
+          if (Math.abs(determinant) < 1e-9) {
+            return {
+              variableChar: variableNames.join(","),
+              degree: 1,
+              roots: ["Sin solución única (Δ = 0)"],
+              methodName: "Sistema Lineal 2×2",
+              methodDescription:
+                "El determinante es cero: el sistema es dependiente (infinitas soluciones) o incompatible.",
+              steps,
+            };
+          }
+
+          const firstValue = Number(((c1 * b2 - c2 * b1) / determinant).toFixed(6));
+          const secondValue = Number(((a1 * c2 - a2 * c1) / determinant).toFixed(6));
+
+          steps.push({
+            id: stepId++,
+            stage: "Regla de Cramer",
+            description:
+              "Sustituimos la columna de cada incógnita por los términos independientes y dividimos entre Δ.",
+            expression: `Δ = ${determinant} , ${firstVariable} = ${firstValue} , ${secondVariable} = ${secondValue}`,
+            rule: "Sistema Compatible Determinado",
+          });
+
+          return {
+            variableChar: variableNames.join(","),
+            degree: 1,
+            roots: [`${firstVariable} = ${firstValue}`, `${secondVariable} = ${secondValue}`],
+            methodName: "Regla de Cramer (Lineal 2×2)",
+            methodDescription: "Resolución exacta de un sistema 2×2 mediante determinantes.",
+            steps,
+          };
+        }
+
+        if (variableNames.length === 1) {
+          const [variable] = variableNames;
+          const a1 = firstEquation.coefficients[variable] ?? 0;
+          const a2 = secondEquation.coefficients[variable] ?? 0;
+          const c1 = -firstEquation.constant;
+          const c2 = -secondEquation.constant;
+
+          if (Math.abs(a1) > 1e-12 && Math.abs(a2) > 1e-12) {
+            const firstRoot = c1 / a1;
+            const secondRoot = c2 / a2;
+
+            if (Math.abs(firstRoot - secondRoot) < 1e-9) {
+              return {
+                variableChar: variable,
+                degree: 1,
+                roots: [`${variable} = ${Number(firstRoot.toFixed(6))}`],
+                methodName: "Sistema Lineal Compatible",
+                methodDescription: "Ambas ecuaciones conducen al mismo valor de la incógnita.",
+                steps,
+              };
+            }
+
+            return {
+              variableChar: variable,
+              degree: 1,
+              roots: ["Sin solución (ecuaciones incompatibles)"],
+              methodName: "Sistema Lineal Incompatible",
+              methodDescription: "Las ecuaciones exigen valores distintos para la misma incógnita.",
+              steps,
+            };
+          }
+        }
+      }
+    }
 
     if (eqList.length === 3) {
       // 1.A: Sistema Simétrico de Viète (Ejercicio 11)
@@ -480,6 +925,99 @@ function solveUniversalAlgebra(input: string): AlgebraResult {
     }
 
     // -------------------------------------------------------------------------
+    // 5.B ECUACIONES RACIONALES: num(x) / den(x) = k
+    // -------------------------------------------------------------------------
+    if (clean.includes("=")) {
+      const [rawLeft, rawRight] = clean.split("=");
+      const leftText = stripOuterParens(rawLeft ?? "");
+      const fractionMatch = /^(.+)\/(.+)$/.exec(leftText);
+
+      if (fractionMatch && !fractionMatch[1].includes("/") && !fractionMatch[2].includes("/")) {
+        const numerator = parsePolynomialSide(fractionMatch[1], v);
+        const denominator = parsePolynomialSide(fractionMatch[2], v);
+        const rightSide = parsePolynomialSide(rawRight ?? "", v);
+
+        if (numerator && denominator && rightSide) {
+          const equation = subtractPolynomials(numerator, multiplyPolynomials(rightSide, denominator));
+          const candidates = solvePolynomialRoots(equation);
+          const validRoots = candidates.filter(
+            (root) =>
+              Math.abs(root.im) < 1e-6 && Math.abs(evaluatePolynomial(denominator, root.re)) > 1e-9
+          );
+
+          steps.push({
+            id: stepId++,
+            stage: "Ecuación Racional",
+            description:
+              "Multiplicamos ambos miembros por el denominador y registramos la restricción del dominio.",
+            expression: `${fractionMatch[1]} = (${rawRight}) · (${fractionMatch[2]}) ; ${fractionMatch[2]} ≠ 0`,
+            rule: "Eliminación de Denominadores",
+          });
+
+          if (validRoots.length === 0) {
+            return {
+              variableChar: v,
+              degree: equation.length - 1,
+              roots: ["Sin solución válida (restringida por el dominio)"],
+              methodName: "Ecuación Racional",
+              methodDescription:
+                "Las raíces algebraicas anulan el denominador o no existen en los reales.",
+              steps,
+            };
+          }
+
+          return {
+            variableChar: v,
+            degree: equation.length - 1,
+            roots: formatPolynomialRoots(v, validRoots),
+            methodName: "Ecuación Racional",
+            methodDescription:
+              "Resolución por eliminación de denominadores con verificación del dominio.",
+            steps,
+          };
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 5.C POLINOMIOS DE GRADO ≥ 3 (raíces reales y complejas)
+    // -------------------------------------------------------------------------
+    const polynomial = parseEquationPolynomial(clean, v);
+    if (polynomial && polynomial.length - 1 >= 3) {
+      const degree = polynomial.length - 1;
+      const roots = solvePolynomialRoots(polynomial);
+      const formattedRoots = formatPolynomialRoots(v, roots);
+
+      steps.push({
+        id: stepId++,
+        stage: `Polinomio de Grado ${degree}`,
+        description:
+          "Normalizamos la ecuación a la forma P(x) = 0 y calculamos todas sus raíces (reales y complejas) por Durand-Kerner.",
+        expression: polynomial
+          .map((coefficient, exponent) => {
+            if (Math.abs(coefficient) < 1e-12) return "";
+            const variablePart =
+              exponent === 0 ? "" : exponent === 1 ? v : `${v}^${exponent}`;
+            return `${coefficient >= 0 ? "+" : "-"} ${Math.abs(coefficient)}${variablePart}`;
+          })
+          .filter(Boolean)
+          .join(" ")
+          .replace(/^\+ /, "") + " = 0",
+        rule: "Teorema Fundamental del Álgebra",
+      });
+
+      return {
+        variableChar: v,
+        degree,
+        roots: formattedRoots,
+        methodName: `Polinomio de Grado ${degree}`,
+        methodDescription:
+          "Raíces obtenidas numéricamente mediante el método de Durand-Kerner.",
+        steps,
+      };
+    }
+
+    // -------------------------------------------------------------------------
     // 6. CUADRÁTICAS Y LINEALES ESTÁNDAR
     // -------------------------------------------------------------------------
     const extractCoeffs = (polyStr: string) => {
@@ -836,6 +1374,11 @@ export default function AlgebraView({
                       ))}
                     </motion.div>
                   </AnimatePresence>
+                  {calculation.error && (
+                    <p className="mt-2 text-xs font-mono text-red-400">
+                      ⚠ {calculation.error}
+                    </p>
+                  )}
                 </div>
               </div>
 

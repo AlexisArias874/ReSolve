@@ -54,7 +54,26 @@ export interface GeometryResult {
 // =============================================================================
 // MOTOR GEOMÉTRICO UNIVERSAL DE RESOLVE
 // =============================================================================
-function solveUniversalGeometry(input: string): GeometryResult {
+function invalidGeometryMeasure(label: string, expression: string): GeometryResult {
+  return {
+    category: "Geometría",
+    methodName: "Medida inválida",
+    methodDescription: `${label} debe ser un número mayor que cero.`,
+    primaryOutputs: [{ label: "Error", value: "--" }],
+    steps: [
+      {
+        id: 1,
+        stage: "Validación de Medidas",
+        description: `La longitud ${label} no puede ser negativa ni nula en una figura geométrica real.`,
+        expression,
+        rule: "Dominio Geométrico",
+      },
+    ],
+    error: `${label} debe ser mayor que cero.`,
+  };
+}
+
+export function solveUniversalGeometry(input: string): GeometryResult {
   const clean = input.trim();
   if (!clean) {
     return {
@@ -182,19 +201,19 @@ function solveUniversalGeometry(input: string): GeometryResult {
     // 2. DISTANCIA PUNTO A RECTA: punto (x0, y0) recta Ax + By + C = 0
     // -------------------------------------------------------------------------
     const pointLineMatch = clean.match(
-      /punto\s*\(\s*(-?[0-9.]+)\s*,\s*(-?[0-9.]+)\s*\)\s*(?:recta|\,)?\s*([+-]?[0-9.]*)\s*x\s*([+-][0-9.]*)\s*y\s*([+-][0-9.]*)\s*=\s*0/i
+      /punto\s*\(\s*(-?[0-9.]+)\s*,\s*(-?[0-9.]+)\s*\)\s*(?:recta|,)?\s*([+-]?\s*[0-9.]*)\s*x\s*([+-]\s*[0-9.]*)\s*y\s*([+-]\s*[0-9.]*)\s*=\s*0/i
     );
 
     if (pointLineMatch) {
       const x0 = parseFloat(pointLineMatch[1]);
       const y0 = parseFloat(pointLineMatch[2]);
-      const rawA = pointLineMatch[3];
-      const rawB = pointLineMatch[4];
-      const rawC = pointLineMatch[5];
+      const rawA = pointLineMatch[3].replace(/\s+/g, "");
+      const rawB = pointLineMatch[4].replace(/\s+/g, "");
+      const rawC = pointLineMatch[5].replace(/\s+/g, "");
 
-      const A = rawA === "-" ? -1 : rawA ? parseFloat(rawA) : 1;
-      const B = rawB === "-" ? -1 : rawB ? parseFloat(rawB) : 1;
-      const C = parseFloat(rawC);
+      const A = rawA === "-" ? -1 : rawA && rawA !== "+" ? parseFloat(rawA) : 1;
+      const B = rawB === "-" ? -1 : rawB && rawB !== "+" ? parseFloat(rawB) : 1;
+      const C = rawC === "+" || rawC === "-" ? (rawC === "-" ? -1 : 1) : parseFloat(rawC);
 
       steps.push({
         id: stepId++,
@@ -307,9 +326,12 @@ function solveUniversalGeometry(input: string): GeometryResult {
     // 4. FIGURAS 2D (Círculo, Rectángulo, Elipse)
     // -------------------------------------------------------------------------
     // Círculo: circulo r = 5
-    const circleMatch = clean.match(/(?:circulo|circunferencia)\s*(?:r|radio)?\s*=\s*([0-9.]+)/i);
+    const circleMatch = clean.match(
+      /(?:circulo|circunferencia)\s*(?:(?:radio|r)\s*(?:=|de)?\s*)?([+-]?[0-9.]+)/i
+    );
     if (circleMatch) {
       const r = parseFloat(circleMatch[1]);
+      if (!(r > 0)) return invalidGeometryMeasure("el radio", clean);
       const area = Math.PI * r * r;
       const perimeter = 2 * Math.PI * r;
 
@@ -368,9 +390,10 @@ function solveUniversalGeometry(input: string): GeometryResult {
     // 5. CUERPOS 3D (Esfera, Cilindro, Cono)
     // -------------------------------------------------------------------------
     // Esfera: esfera r = 4
-    const sphereMatch = clean.match(/esfera\s*(?:r|radio)?\s*=\s*([0-9.]+)/i);
+    const sphereMatch = clean.match(/esfera\s*(?:r|radio)?\s*=\s*([+-]?[0-9.]+)/i);
     if (sphereMatch) {
       const r = parseFloat(sphereMatch[1]);
+      if (!(r > 0)) return invalidGeometryMeasure("el radio", clean);
       const vol = (4 / 3) * Math.PI * Math.pow(r, 3);
       const areaSup = 4 * Math.PI * r * r;
 
@@ -403,10 +426,12 @@ function solveUniversalGeometry(input: string): GeometryResult {
     }
 
     // Cilindro: cilindro r = 3, h = 8
-    const cylinderMatch = clean.match(/cilindro\s*r\s*=\s*([0-9.]+)\s*,\s*h\s*=\s*([0-9.]+)/i);
+    const cylinderMatch = clean.match(/cilindro\s*r\s*=\s*([+-]?[0-9.]+)\s*,\s*h\s*=\s*([+-]?[0-9.]+)/i);
     if (cylinderMatch) {
       const r = parseFloat(cylinderMatch[1]);
       const h = parseFloat(cylinderMatch[2]);
+      if (!(r > 0)) return invalidGeometryMeasure("el radio", clean);
+      if (!(h > 0)) return invalidGeometryMeasure("la altura", clean);
       const vol = Math.PI * r * r * h;
       const lateral = 2 * Math.PI * r * h;
       const total = 2 * Math.PI * r * (r + h);
@@ -433,10 +458,12 @@ function solveUniversalGeometry(input: string): GeometryResult {
     }
 
     // Cono: cono r = 5, h = 12
-    const coneMatch = clean.match(/cono\s*r\s*=\s*([0-9.]+)\s*,\s*h\s*=\s*([0-9.]+)/i);
+    const coneMatch = clean.match(/cono\s*r\s*=\s*([+-]?[0-9.]+)\s*,\s*h\s*=\s*([+-]?[0-9.]+)/i);
     if (coneMatch) {
       const r = parseFloat(coneMatch[1]);
       const h = parseFloat(coneMatch[2]);
+      if (!(r > 0)) return invalidGeometryMeasure("el radio", clean);
+      if (!(h > 0)) return invalidGeometryMeasure("la altura", clean);
       const g = Math.sqrt(r * r + h * h); // Generatriz
       const vol = (1 / 3) * Math.PI * r * r * h;
       const lateral = Math.PI * r * g;
@@ -481,6 +508,7 @@ function solveUniversalGeometry(input: string): GeometryResult {
       const h = -parseFloat(circleEqMatch[1]);
       const k = -parseFloat(circleEqMatch[2]);
       const rSq = parseFloat(circleEqMatch[3]);
+      if (!(rSq > 0)) return invalidGeometryMeasure("el radio", clean);
       const r = Math.sqrt(rSq);
 
       steps.push({
@@ -768,6 +796,9 @@ export default function GeometryView({
                       ))}
                     </motion.div>
                   </AnimatePresence>
+                  {calculation.error && (
+                    <p className="mt-2 text-xs font-mono text-red-400">⚠ {calculation.error}</p>
+                  )}
                 </div>
               </div>
 

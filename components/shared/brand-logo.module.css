@@ -1,0 +1,105 @@
+/* Aparición suave del wordmark. El canvas de TechText añade su propia
+   introducción por celdas; esta capa evita que el texto “salte” de golpe y
+   espera a que la R termine su ligero descenso. */
+.wordmarkReveal {
+  animation: wordmarkReveal 560ms cubic-bezier(0.22, 1, 0.36, 1) 140ms both;
+}
+
+.wordmarkHide {
+  animation: wordmarkHide 240ms cubic-bezier(0.4, 0, 1, 1) both;
+  pointer-events: none;
+}
+
+@keyframes wordmarkReveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes wordmarkHide {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-3px);
+    filter: blur(2px);
+  }
+}
+
+.mark {
+  position: relative;
+  display: block;
+  flex: none;
+  isolation: isolate;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* Ligero descenso al abrir el wordmark. Solo vertical: la R conserva su
+   posición horizontal tanto en el estado cerrado como en el abierto. */
+.markOpen {
+  transform: translate3d(0, 4px, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wordmarkReveal,
+  .wordmarkHide {
+    animation: none;
+  }
+
+  .mark {
+    transition: none;
+  }
+
+  .markOpen {
+    transform: none;
+  }
+}
+
+/* Amplía el área pulsable sin alterar el tamaño visual del símbolo ni
+   invadir la zona del wordmark, que es un enlace independiente. */
+.mark::before {
+  content: "";
+  position: absolute;
+  inset: 0 -8px -8px;
+  border-radius: 10px;
+}
+
+/* Fallback estático: solo se muestra si WebGL2 no está disponible. */
+.markFallback {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    145deg,
+    #ffffff 0%,
+    #a1a1aa 28%,
+    #f8fafc 48%,
+    #71717a 70%,
+    #e4e4e7 100%
+  );
+  -webkit-mask-image: url("/brand/resolve-mark.png");
+  mask-image: url("/brand/resolve-mark.png");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}

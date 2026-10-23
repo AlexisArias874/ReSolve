@@ -1250,3 +1250,468 @@ html[data-effects="off"]::view-transition-group(*) {
     animation-delay: 0s !important;
   }
 }
+
+/* =============================================================================
+   9. FONDOS AMBIENTALES REACTIVOS AL TEMA
+   -----------------------------------------------------------------------------
+   Los degradados de las ventanas (dashboard, documentación, contribuidores,
+   acceso y verificación) conservan sus valores oscuros originales y reciben
+   una variante por tema para no perder contraste. El tema oscuro no se toca.
+============================================================================= */
+.dash-ambient {
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(63, 63, 70, 0.25), transparent 50%),
+    radial-gradient(circle at 80% 90%, rgba(63, 63, 70, 0.2), transparent 50%);
+}
+
+.fx-overlay-docs {
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(82, 39, 255, 0.10), transparent 50%),
+    linear-gradient(180deg, rgba(9, 9, 11, 0.38), rgba(9, 9, 11, 0.86));
+}
+
+.fx-overlay-contrib {
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(82, 39, 255, 0.12), transparent 45%),
+    radial-gradient(circle at 85% 20%, rgba(255, 159, 252, 0.08), transparent 40%),
+    linear-gradient(180deg, rgba(9, 9, 11, 0.45), rgba(9, 9, 11, 0.92));
+}
+
+.fx-overlay-verify {
+  background-image: radial-gradient(circle at center, transparent 0%, #09090b 90%);
+}
+
+[data-theme="light"] .dash-ambient {
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(100, 116, 139, 0.16), transparent 50%),
+    radial-gradient(circle at 80% 90%, rgba(100, 116, 139, 0.12), transparent 50%);
+}
+
+[data-theme="light"] .fx-overlay-docs {
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(79, 70, 229, 0.12), transparent 50%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.30), rgba(248, 250, 252, 0.82));
+}
+
+[data-theme="light"] .fx-overlay-contrib {
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(79, 70, 229, 0.14), transparent 45%),
+    radial-gradient(circle at 85% 20%, rgba(14, 116, 144, 0.10), transparent 40%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.38), rgba(248, 250, 252, 0.88));
+}
+
+[data-theme="light"] .fx-overlay-verify {
+  background-image: radial-gradient(circle at center, transparent 0%, #f8fafc 90%);
+}
+
+[data-theme="sepia"] .dash-ambient {
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(146, 64, 14, 0.14), transparent 50%),
+    radial-gradient(circle at 80% 90%, rgba(146, 64, 14, 0.10), transparent 50%);
+}
+
+[data-theme="sepia"] .fx-overlay-docs {
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(146, 64, 14, 0.12), transparent 50%),
+    linear-gradient(180deg, rgba(251, 240, 217, 0.32), rgba(251, 240, 217, 0.84));
+}
+
+[data-theme="sepia"] .fx-overlay-contrib {
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(146, 64, 14, 0.14), transparent 45%),
+    radial-gradient(circle at 85% 20%, rgba(180, 83, 9, 0.10), transparent 40%),
+    linear-gradient(180deg, rgba(251, 240, 217, 0.40), rgba(251, 240, 217, 0.90));
+}
+
+[data-theme="sepia"] .fx-overlay-verify {
+  background-image: radial-gradient(circle at center, transparent 0%, #fbf0d9 90%);
+}
+
+[data-theme="matrix"] .dash-ambient {
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(16, 185, 129, 0.14), transparent 50%),
+    radial-gradient(circle at 80% 90%, rgba(16, 185, 129, 0.10), transparent 50%);
+}
+
+[data-theme="matrix"] .fx-overlay-docs {
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(16, 185, 129, 0.12), transparent 50%),
+    linear-gradient(180deg, rgba(2, 8, 4, 0.38), rgba(2, 8, 4, 0.88));
+}
+
+[data-theme="matrix"] .fx-overlay-contrib {
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(16, 185, 129, 0.14), transparent 45%),
+    radial-gradient(circle at 85% 20%, rgba(52, 211, 153, 0.08), transparent 40%),
+    linear-gradient(180deg, rgba(2, 8, 4, 0.45), rgba(2, 8, 4, 0.92));
+}
+
+[data-theme="matrix"] .fx-overlay-verify {
+  background-image: radial-gradient(circle at center, transparent 0%, #020804 90%);
+}
+
+/* --- 9.a Utilidades usadas por las ventanas secundarias ------------------- */
+
+/* Tema claro */
+[data-theme="light"] .text-zinc-50 { color: #0f172a !important; }
+
+[data-theme="light"] .bg-zinc-950\/97 {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .border-zinc-800\/70,
+[data-theme="light"] .border-zinc-700\/60,
+[data-theme="light"] .border-zinc-700\/70 {
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .bg-zinc-900\/35,
+[data-theme="light"] .bg-zinc-900\/45,
+[data-theme="light"] .bg-zinc-900\/55,
+[data-theme="light"] .bg-zinc-900\/75,
+[data-theme="light"] .bg-zinc-900\/85,
+[data-theme="light"] .bg-zinc-900\/95 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="light"] .bg-zinc-950\/30,
+[data-theme="light"] .bg-zinc-950\/20,
+[data-theme="light"] .bg-zinc-950\/10 {
+  background-color: rgba(241, 245, 249, 0.85) !important;
+}
+
+[data-theme="light"] .bg-zinc-800\/70 {
+  background-color: #f1f5f9 !important;
+}
+
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/20 {
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .hover\:border-white\/20:hover {
+  border-color: #94a3b8 !important;
+}
+
+[data-theme="light"] .bg-white\/\[0\.03\],
+[data-theme="light"] .bg-white\/\[0\.04\] {
+  background-color: rgba(15, 23, 42, 0.035) !important;
+}
+
+[data-theme="light"] .hover\:bg-white\/\[0\.07\]:hover {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+[data-theme="light"] .text-violet-100,
+[data-theme="light"] .text-violet-200,
+[data-theme="light"] .text-violet-200\/90,
+[data-theme="light"] .text-violet-300,
+[data-theme="light"] .text-violet-300\/80 {
+  color: #5b21b6 !important;
+}
+
+[data-theme="light"] .text-fuchsia-100,
+[data-theme="light"] .text-fuchsia-200 {
+  color: #86198f !important;
+}
+
+[data-theme="light"] .text-emerald-200 { color: #047857 !important; }
+[data-theme="light"] .text-sky-200 { color: #0369a1 !important; }
+[data-theme="light"] .text-rose-200 { color: #be123c !important; }
+
+[data-theme="light"] .bg-violet-500\/10,
+[data-theme="light"] .bg-violet-500\/15 { background-color: rgba(124, 58, 237, 0.10) !important; }
+[data-theme="light"] .bg-fuchsia-500\/10 { background-color: rgba(162, 28, 175, 0.10) !important; }
+[data-theme="light"] .bg-sky-500\/10 { background-color: rgba(2, 132, 199, 0.12) !important; }
+[data-theme="light"] .bg-emerald-500\/10 { background-color: rgba(5, 150, 105, 0.12) !important; }
+[data-theme="light"] .bg-amber-500\/10 { background-color: rgba(180, 83, 9, 0.12) !important; }
+[data-theme="light"] .bg-rose-500\/10 { background-color: rgba(190, 18, 60, 0.10) !important; }
+[data-theme="light"] .bg-emerald-500\/30 { background-color: rgba(5, 150, 105, 0.18) !important; }
+[data-theme="light"] .bg-amber-500\/10 { background-color: rgba(180, 83, 9, 0.12) !important; }
+
+[data-theme="light"] .border-violet-400\/25,
+[data-theme="light"] .border-violet-400\/40 { border-color: rgba(109, 40, 217, 0.38) !important; }
+[data-theme="light"] .border-fuchsia-400\/40 { border-color: rgba(162, 28, 175, 0.38) !important; }
+[data-theme="light"] .border-emerald-400\/40 { border-color: rgba(5, 150, 105, 0.42) !important; }
+[data-theme="light"] .border-sky-400\/40 { border-color: rgba(2, 132, 199, 0.40) !important; }
+[data-theme="light"] .border-amber-400\/40 { border-color: rgba(180, 83, 9, 0.45) !important; }
+[data-theme="light"] .border-rose-400\/40 { border-color: rgba(190, 18, 60, 0.38) !important; }
+
+[data-theme="light"] .hover\:bg-zinc-900\/60:hover,
+[data-theme="light"] .hover\:bg-zinc-900\/70:hover,
+[data-theme="light"] .hover\:bg-zinc-900\/90:hover {
+  background-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .\[color-scheme\:dark\] { color-scheme: light !important; }
+
+/* Tema sepia */
+[data-theme="sepia"] .text-zinc-50 { color: #2b241c !important; }
+
+[data-theme="sepia"] .bg-zinc-950\/97 {
+  background-color: #fbf0d9 !important;
+  color: #2b241c !important;
+}
+
+[data-theme="sepia"] .border-zinc-800\/70,
+[data-theme="sepia"] .border-zinc-700\/60,
+[data-theme="sepia"] .border-zinc-700\/70 {
+  border-color: #d6be92 !important;
+}
+
+[data-theme="sepia"] .bg-zinc-900\/35,
+[data-theme="sepia"] .bg-zinc-900\/45,
+[data-theme="sepia"] .bg-zinc-900\/55,
+[data-theme="sepia"] .bg-zinc-900\/75,
+[data-theme="sepia"] .bg-zinc-900\/85,
+[data-theme="sepia"] .bg-zinc-900\/95 {
+  background-color: rgba(243, 226, 190, 0.88) !important;
+  box-shadow: 0 4px 20px -2px rgba(43, 36, 28, 0.06) !important;
+}
+
+[data-theme="sepia"] .bg-zinc-950\/30,
+[data-theme="sepia"] .bg-zinc-950\/20,
+[data-theme="sepia"] .bg-zinc-950\/10 {
+  background-color: rgba(235, 215, 174, 0.75) !important;
+}
+
+[data-theme="sepia"] .bg-zinc-800\/70 {
+  background-color: #ebd7ae !important;
+}
+
+[data-theme="sepia"] .border-white\/5,
+[data-theme="sepia"] .border-white\/10,
+[data-theme="sepia"] .border-white\/20 {
+  border-color: #d6be92 !important;
+}
+
+[data-theme="sepia"] .hover\:border-white\/20:hover {
+  border-color: #b89b6c !important;
+}
+
+[data-theme="sepia"] .bg-white\/\[0\.03\],
+[data-theme="sepia"] .bg-white\/\[0\.04\] {
+  background-color: rgba(69, 51, 34, 0.045) !important;
+}
+
+[data-theme="sepia"] .hover\:bg-white\/\[0\.07\]:hover {
+  background-color: rgba(69, 51, 34, 0.07) !important;
+}
+
+[data-theme="sepia"] .text-violet-100,
+[data-theme="sepia"] .text-violet-200,
+[data-theme="sepia"] .text-violet-200\/90,
+[data-theme="sepia"] .text-violet-300,
+[data-theme="sepia"] .text-violet-300\/80 {
+  color: #5b21b6 !important;
+}
+
+[data-theme="sepia"] .text-fuchsia-100,
+[data-theme="sepia"] .text-fuchsia-200 {
+  color: #86198f !important;
+}
+
+[data-theme="sepia"] .text-emerald-200 { color: #065f46 !important; }
+[data-theme="sepia"] .text-sky-200 { color: #075985 !important; }
+[data-theme="sepia"] .text-rose-200 { color: #9f1239 !important; }
+
+[data-theme="sepia"] .bg-violet-500\/10,
+[data-theme="sepia"] .bg-violet-500\/15 { background-color: rgba(124, 58, 237, 0.12) !important; }
+[data-theme="sepia"] .bg-fuchsia-500\/10 { background-color: rgba(162, 28, 175, 0.12) !important; }
+[data-theme="sepia"] .bg-sky-500\/10 { background-color: rgba(2, 132, 199, 0.14) !important; }
+[data-theme="sepia"] .bg-emerald-500\/10 { background-color: rgba(5, 150, 105, 0.14) !important; }
+[data-theme="sepia"] .bg-amber-500\/10 { background-color: rgba(180, 83, 9, 0.14) !important; }
+[data-theme="sepia"] .bg-rose-500\/10 { background-color: rgba(190, 18, 60, 0.12) !important; }
+[data-theme="sepia"] .bg-emerald-500\/30 { background-color: rgba(5, 150, 105, 0.20) !important; }
+
+[data-theme="sepia"] .border-violet-400\/25,
+[data-theme="sepia"] .border-violet-400\/40 { border-color: rgba(109, 40, 217, 0.42) !important; }
+[data-theme="sepia"] .border-fuchsia-400\/40 { border-color: rgba(162, 28, 175, 0.42) !important; }
+[data-theme="sepia"] .border-emerald-400\/40 { border-color: rgba(5, 150, 105, 0.44) !important; }
+[data-theme="sepia"] .border-sky-400\/40 { border-color: rgba(2, 132, 199, 0.44) !important; }
+[data-theme="sepia"] .border-amber-400\/40 { border-color: rgba(180, 83, 9, 0.48) !important; }
+[data-theme="sepia"] .border-rose-400\/40 { border-color: rgba(190, 18, 60, 0.42) !important; }
+
+[data-theme="sepia"] .hover\:bg-zinc-900\/60:hover,
+[data-theme="sepia"] .hover\:bg-zinc-900\/70:hover,
+[data-theme="sepia"] .hover\:bg-zinc-900\/90:hover {
+  background-color: #e2c99a !important;
+}
+
+[data-theme="sepia"] .\[color-scheme\:dark\] { color-scheme: light !important; }
+
+/* Tema matrix */
+[data-theme="matrix"] .text-zinc-50 { color: #a7f3d0 !important; }
+
+[data-theme="matrix"] .bg-zinc-950\/97 {
+  background-color: #020804 !important;
+  color: #ecfdf5 !important;
+}
+
+[data-theme="matrix"] .border-zinc-800\/70,
+[data-theme="matrix"] .border-zinc-700\/60,
+[data-theme="matrix"] .border-zinc-700\/70 {
+  border-color: #059669 !important;
+}
+
+[data-theme="matrix"] .bg-zinc-900\/35,
+[data-theme="matrix"] .bg-zinc-900\/45,
+[data-theme="matrix"] .bg-zinc-900\/55,
+[data-theme="matrix"] .bg-zinc-900\/75,
+[data-theme="matrix"] .bg-zinc-900\/85,
+[data-theme="matrix"] .bg-zinc-900\/95 {
+  background-color: #052411 !important;
+}
+
+[data-theme="matrix"] .bg-zinc-950\/30,
+[data-theme="matrix"] .bg-zinc-950\/20,
+[data-theme="matrix"] .bg-zinc-950\/10 {
+  background-color: rgba(2, 8, 4, 0.55) !important;
+}
+
+[data-theme="matrix"] .bg-zinc-800\/70 {
+  background-color: #064e26 !important;
+}
+
+[data-theme="matrix"] .border-white\/5,
+[data-theme="matrix"] .border-white\/10,
+[data-theme="matrix"] .border-white\/20 {
+  border-color: rgba(16, 185, 129, 0.28) !important;
+}
+
+[data-theme="matrix"] .hover\:border-white\/20:hover {
+  border-color: rgba(52, 211, 153, 0.55) !important;
+}
+
+[data-theme="matrix"] .bg-white\/\[0\.03\],
+[data-theme="matrix"] .bg-white\/\[0\.04\] {
+  background-color: rgba(16, 185, 129, 0.06) !important;
+}
+
+[data-theme="matrix"] .hover\:bg-white\/\[0\.07\]:hover {
+  background-color: rgba(16, 185, 129, 0.10) !important;
+}
+
+[data-theme="matrix"] .text-violet-100,
+[data-theme="matrix"] .text-violet-200,
+[data-theme="matrix"] .text-violet-200\/90,
+[data-theme="matrix"] .text-violet-300,
+[data-theme="matrix"] .text-violet-300\/80 {
+  color: #c4b5fd !important;
+}
+
+[data-theme="matrix"] .text-fuchsia-100,
+[data-theme="matrix"] .text-fuchsia-200 {
+  color: #f0abfc !important;
+}
+
+[data-theme="matrix"] .text-emerald-200 { color: #6ee7b7 !important; }
+[data-theme="matrix"] .text-sky-200 { color: #67e8f9 !important; }
+[data-theme="matrix"] .text-rose-200 { color: #fb7185 !important; }
+
+[data-theme="matrix"] .bg-violet-500\/10,
+[data-theme="matrix"] .bg-violet-500\/15 { background-color: rgba(16, 185, 129, 0.12) !important; }
+[data-theme="matrix"] .bg-fuchsia-500\/10 { background-color: rgba(16, 185, 129, 0.12) !important; }
+[data-theme="matrix"] .bg-sky-500\/10 { background-color: rgba(16, 185, 129, 0.12) !important; }
+[data-theme="matrix"] .bg-emerald-500\/10 { background-color: rgba(16, 185, 129, 0.12) !important; }
+[data-theme="matrix"] .bg-amber-500\/10 { background-color: rgba(16, 185, 129, 0.12) !important; }
+[data-theme="matrix"] .bg-rose-500\/10 { background-color: rgba(16, 185, 129, 0.12) !important; }
+[data-theme="matrix"] .bg-emerald-500\/30 { background-color: rgba(16, 185, 129, 0.24) !important; }
+
+[data-theme="matrix"] .border-violet-400\/25,
+[data-theme="matrix"] .border-violet-400\/40 { border-color: rgba(52, 211, 153, 0.35) !important; }
+[data-theme="matrix"] .border-fuchsia-400\/40 { border-color: rgba(52, 211, 153, 0.35) !important; }
+[data-theme="matrix"] .border-emerald-400\/40 { border-color: rgba(52, 211, 153, 0.45) !important; }
+[data-theme="matrix"] .border-sky-400\/40 { border-color: rgba(52, 211, 153, 0.40) !important; }
+[data-theme="matrix"] .border-amber-400\/40 { border-color: rgba(52, 211, 153, 0.42) !important; }
+[data-theme="matrix"] .border-rose-400\/40 { border-color: rgba(52, 211, 153, 0.40) !important; }
+
+[data-theme="matrix"] .hover\:bg-zinc-900\/60:hover,
+[data-theme="matrix"] .hover\:bg-zinc-900\/70:hover,
+[data-theme="matrix"] .hover\:bg-zinc-900\/90:hover {
+  background-color: #064e26 !important;
+}
+
+/* --- 9.b React Flow (documentación) en temas claros ---------------------- */
+[data-theme="light"] .rf-doc .react-flow__controls,
+[data-theme="sepia"] .rf-doc .react-flow__controls {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+}
+
+[data-theme="light"] .rf-doc .react-flow__controls-button,
+[data-theme="sepia"] .rf-doc .react-flow__controls-button {
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom-color: #e2e8f0;
+  color: #334155;
+}
+
+[data-theme="sepia"] .rf-doc .react-flow__controls-button {
+  background: rgba(251, 240, 217, 0.96);
+  border-bottom-color: #e5dac6;
+  color: #5c4831;
+}
+
+[data-theme="light"] .rf-doc .react-flow__controls-button:hover {
+  background: #f1f5f9;
+}
+
+[data-theme="sepia"] .rf-doc .react-flow__controls-button:hover {
+  background: #ebd7ae;
+}
+
+[data-theme="light"] .rf-doc .react-flow__minimap {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: #cbd5e1;
+}
+
+[data-theme="sepia"] .rf-doc .react-flow__minimap {
+  background: rgba(251, 240, 217, 0.94) !important;
+  border-color: #d6be92;
+}
+
+[data-theme="light"] .rf-doc .react-flow__minimap-mask {
+  fill: rgba(241, 245, 249, 0.65);
+}
+
+[data-theme="sepia"] .rf-doc .react-flow__minimap-mask {
+  fill: rgba(235, 215, 174, 0.65);
+}
+
+[data-theme="matrix"] .rf-doc .react-flow__controls {
+  border-color: #059669;
+}
+
+[data-theme="matrix"] .rf-doc .react-flow__controls-button {
+  background: rgba(5, 36, 17, 0.95);
+  border-bottom-color: #064e26;
+  color: #a7f3d0;
+}
+
+[data-theme="matrix"] .rf-doc .react-flow__controls-button:hover {
+  background: #064e26;
+}
+
+[data-theme="matrix"] .rf-doc .react-flow__minimap {
+  background: rgba(2, 8, 4, 0.88) !important;
+  border-color: #059669;
+}
+
+[data-theme="matrix"] .rf-doc .react-flow__minimap-mask {
+  fill: rgba(2, 8, 4, 0.65);
+}
+
+/* Logos de manuales y diagramas: fondo claro para conservar contraste en temas claros. */
+[data-theme="light"] .doc-icon-tile {
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%) !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="sepia"] .doc-icon-tile {
+  background: linear-gradient(135deg, #fff8e8 0%, #eed9b3 100%) !important;
+  border-color: #d6be92 !important;
+}
+

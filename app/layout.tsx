@@ -34,18 +34,19 @@ export default function RootLayout({
     <html lang="es" className="dark" suppressHydrationWarning>
       <head>
         {/* Inyector instantáneo de tema guardado. El tema es una preferencia de
-            la app: solo se aplica dentro del dashboard. Las páginas públicas
-            (landing, auth, historial) quedan siempre en oscuro. */}
+            la app: se aplica a todas las ventanas salvo la landing page, que
+            permanece siempre en oscuro. Se ejecuta antes del primer pintado
+            para evitar destellos al navegar entre secciones. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               try {
                 const path = location.pathname;
-                const isApp = path === '/dashboard' || path.startsWith('/dashboard/');
+                const isLanding = path === '/';
                 const savedTheme = localStorage.getItem('resolve_theme') || 'dark';
-                document.documentElement.setAttribute('data-theme', isApp ? savedTheme : 'dark');
+                document.documentElement.setAttribute('data-theme', isLanding ? 'dark' : savedTheme);
                 const savedEffects = localStorage.getItem('resolve_effects');
-                const defaultEffects = isApp ? 'off' : 'on';
+                const defaultEffects = isLanding ? 'on' : 'off';
                 document.documentElement.setAttribute(
                   'data-effects',
                   savedEffects === '1' ? 'on' : savedEffects === '0' ? 'off' : defaultEffects

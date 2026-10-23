@@ -184,7 +184,7 @@ function computeSymbolicDerivative(raw: string): { first: string; second: string
 // =============================================================================
 // MOTOR DE RESOLUCIÓN DE DERIVADAS
 // =============================================================================
-function solveDerivatives(rawFunc: string, rawX0: string): DerivativeResult {
+export function solveDerivatives(rawFunc: string, rawX0: string): DerivativeResult {
   const cleanFunc = rawFunc.trim();
   const x0 = parseFloat(rawX0);
 
@@ -219,21 +219,40 @@ function solveDerivatives(rawFunc: string, rawX0: string): DerivativeResult {
 
     // 2. Cálculo numérico de f'(x) y f''(x) mediante diferencias finitas de alta precisión
     const h = 0.0001;
+    const h2 = 0.001;
     const f = (x: number) => evaluateMath(cleanFunc, x);
     const df = (x: number) => (f(x + h) - f(x - h)) / (2 * h);
-    const d2f = (x: number) => (f(x + h) - 2 * f(x) + f(x - h)) / (h * h);
+    const d2f = (x: number) => (f(x + h2) - 2 * f(x) + f(x - h2)) / (h2 * h2);
 
-    const validX0 = !isNaN(x0) ? x0 : 0;
+    const validX0 = !Number.isNaN(x0) ? x0 : 0;
     const y0 = f(validX0);
-    const slope = df(validX0);
-    const d2val = d2f(validX0);
+    const slopeLeft = (f(validX0) - f(validX0 - h)) / h;
+    const slopeRight = (f(validX0 + h) - f(validX0)) / h;
+    const rawSlope = (f(validX0 + h) - f(validX0 - h)) / (2 * h);
+
+    // La derivada exige continuidad y derivadas laterales coincidentes.
+    const neighborhoodFinite =
+      Number.isFinite(y0) &&
+      Number.isFinite(f(validX0 - h)) &&
+      Number.isFinite(f(validX0 + h));
+    const differentiable =
+      neighborhoodFinite &&
+      Math.abs(slopeLeft - slopeRight) <=
+        0.1 * Math.max(1, Math.abs(slopeLeft), Math.abs(slopeRight));
+
+    const slope = differentiable ? rawSlope : NaN;
+    const d2val = differentiable ? d2f(validX0) : NaN;
 
     steps.push({
       id: stepId++,
       stage: "Primera Derivada f'(x) [Razón de Cambio]",
-      description: `Aplicamos la regla de derivación: ${sym.desc}`,
-      expression: `f'(${validX0}) = lim [h → 0] [f(${validX0} + h) - f(${validX0} - h)] / 2h ≈ ${Number(slope.toFixed(4))}`,
-      rule: "Definición Formal de Derivada",
+      description: differentiable
+        ? `Aplicamos la regla de derivación: ${sym.desc}`
+        : "La función no es continua o presenta un punto anguloso en x₀; la derivada no existe allí.",
+      expression: differentiable
+        ? `f'(${validX0}) = lim [h → 0] [f(${validX0} + h) - f(${validX0} - h)] / 2h ≈ ${Number(slope.toFixed(4))}`
+        : `f'(${validX0}) no existe (dominio o derivadas laterales incompatibles)`,
+      rule: differentiable ? "Definición Formal de Derivada" : "Condición de Diferenciabilidad",
     });
 
     // 3. Ecuación de la Recta Tangente en x₀: y - y₀ = m(x - x₀)
@@ -268,15 +287,33 @@ function solveDerivatives(rawFunc: string, rawX0: string): DerivativeResult {
     const criticalPoints: { x: number; y: number; type: string }[] = [];
     const scanStep = 0.08;
     let prevD = df(-8);
+    let prevScanX = -8;
     for (let x = -8; x <= 8; x += scanStep) {
       const currD = df(x);
-      if (!isNaN(prevD) && !isNaN(currD) && prevD * currD < 0) {
-        const rootX = Number(x.toFixed(3));
-        const valY = Number(f(rootX).toFixed(3));
-        const type = prevD > 0 ? "Máximo Local" : "Mínimo Local";
-        criticalPoints.push({ x: rootX, y: valY, type });
+      if (Number.isFinite(prevD) && Number.isFinite(currD) && prevD * currD < 0) {
+        let lo = prevScanX;
+        let hi = x;
+        const loSign = Math.sign(prevD);
+        for (let k = 0; k < 60; k += 1) {
+          const mid = (lo + hi) / 2;
+          const midSign = Math.sign(df(mid));
+          if (midSign === 0) {
+            lo = mid;
+            hi = mid;
+            break;
+          }
+          if (midSign === loSign) lo = mid;
+          else hi = mid;
+        }
+        const rootX = Number(((lo + hi) / 2).toFixed(6));
+        const valueAtRoot = f(rootX);
+        if (Number.isFinite(valueAtRoot)) {
+          const type = prevD > 0 ? "Máximo Local" : "Mínimo Local";
+          criticalPoints.push({ x: rootX, y: Number(valueAtRoot.toFixed(4)), type });
+        }
       }
       prevD = currD;
+      prevScanX = x;
     }
 
     return {

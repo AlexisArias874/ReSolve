@@ -19,7 +19,6 @@ import {
   BarChart,
   Network,
   Sparkles,
-  ArrowLeft,
   BookOpen,
   BookText,
   ListOrdered,
@@ -41,13 +40,15 @@ import {
   Moon,
   Terminal,
   Eye,
-  EyeOff
+  EyeOff,
+  Users
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { AIContextProvider } from "@/lib/context/ai-context";
 import { useHistoryVisibility } from "@/lib/hooks/use-history-visibility";
 import { useEffectsPreference } from "@/lib/hooks/use-effects-preference";
+import { THEME_FX, type ThemeId } from "@/lib/hooks/use-theme";
 import dynamic from "next/dynamic";
 
 // AeroShards (React Bits) — fondo trasero del módulo Matemáticas I.
@@ -109,9 +110,12 @@ import QueueingTheoryView from "@/components/modules/optimization/queueing-theor
 import AIAssistant from "@/components/ai/ai-assistant";
 import GlowWrap from "@/components/effects/glow-wrap";
 import SpecularButton from "@/components/effects/specular-button";
-
-export type ModuleId = "omni" | "mat1" | "mat2" | "mat3" | "mat4" | "mat5" | "mat6";
-export type ViewMode = "calc" | "steps" | "theory";
+import {
+  MODULE_CATALOG,
+  SUBTOPICS_BY_MODULE,
+  type ModuleId,
+  type ViewMode,
+} from "@/lib/platform/catalog";
 
 interface ModuleConfig {
   id: ModuleId;
@@ -120,59 +124,20 @@ interface ModuleConfig {
   icon: React.ElementType;
 }
 
-const MODULES: ModuleConfig[] = [
-  { id: "mat1", label: "Matemáticas I", desc: "Básicas y Cálculo", icon: Calculator },
-  { id: "mat2", label: "Lógica", desc: "Proposiciones y Tablas", icon: Binary },
-  { id: "mat3", label: "Financieras", desc: "Interés y Anualidades", icon: Wallet },
-  { id: "mat4", label: "Computacionales", desc: "Matrices y Métodos", icon: FunctionSquare },
-  { id: "mat5", label: "Estadística", desc: "Probabilidad y Series", icon: BarChart },
-  { id: "mat6", label: "Optimización", desc: "Simplex y Colas", icon: Network },
-];
-
-const SUBTOPICS_BY_MODULE: Record<ModuleId, { id: string; label: string; desc: string }[]> = {
-  mat1: [
-    { id: "aritmetica", label: "Aritmética", desc: "Jerarquía, Fracciones y Operaciones Básicas" },
-    { id: "algebra", label: "Álgebra", desc: "Ecuaciones Cuadráticas, Factores y Polinomios" },
-    { id: "geometria", label: "Geometría", desc: "Analítica 2D, Planimetría y Cuerpos 3D" },
-    { id: "funciones", label: "Funciones", desc: "Graficador Interactivo, Análisis y Tangentes" },
-    { id: "limites", label: "Límites", desc: "Indeterminaciones, Racionalización y L'Hôpital" },
-    { id: "derivadas", label: "Derivadas", desc: "Reglas de Derivación, Cadena y Optimización" },
-    { id: "integrales", label: "Integrales", desc: "Definidas, Indefinidas y Área bajo la Curva" },
-  ],
-  mat2: [
-    { id: "proposiciones", label: "Proposiciones", desc: "Tablas de Verdad, Tautologías y Conectores" },
-    { id: "equivalencias", label: "Equivalencias", desc: "Leyes de De Morgan y Simplificación Lógica" },
-    { id: "inferencias", label: "Inferencias", desc: "Modus Ponens, Tollens y Silogismos Válidos" },
-  ],
-  mat3: [
-    { id: "interes-simple", label: "Interés Simple", desc: "Capital, Tasa, Tiempo y Despeje de Variables" },
-    { id: "interes-compuesto", label: "Interés Compuesto", desc: "Capitalización, Tasa Efectiva y Valor Futuro" },
-    { id: "anualidades", label: "Anualidades", desc: "Ordinarias, Anticipadas y Valor Presente" },
-    { id: "amortizacion", label: "Amortización", desc: "Tablas de Pago, Capital, Interés y Saldos" },
-  ],
-  mat4: [
-    { id: "matrices", label: "Matrices", desc: "Operaciones Básicas, Multiplicación e Inversa" },
-    { id: "determinantes", label: "Determinantes", desc: "Cofactores, Sarrus y Regla de Cramer" },
-    { id: "sistemas-gauss", label: "Sistemas Lineales", desc: "Eliminación Gaussiana y Gauss-Jordan" },
-    { id: "raices-metodos", label: "Raíces Numéricas", desc: "Bisección, Newton-Raphson y Secante" },
-    { id: "interpolacion", label: "Interpolación", desc: "Polinomios de Lagrange y Newton" },
-    { id: "errores", label: "Teoría de Errores", desc: "Error Absoluto, Relativo y Truncamiento" },
-  ],
-  mat5: [
-    { id: "descriptiva", label: "Estadística Descriptiva", desc: "Media, Mediana, Moda, Varianza y Desviación" },
-    { id: "tablas-frecuencia", label: "Tablas de Frecuencia", desc: "Frecuencia Absoluta, Relativa y Acumulada" },
-    { id: "probabilidad", label: "Probabilidad", desc: "Combinatoria, Permutaciones y Teorema de Bayes" },
-    { id: "distribuciones", label: "Distribuciones", desc: "Binomial, Poisson y Normal Estándar" },
-    { id: "regresion", label: "Regresión Lineal", desc: "Ajuste por Mínimos Cuadrados y Correlación" },
-  ],
-  mat6: [
-    { id: "prog-lineal", label: "Programación Lineal", desc: "Método Gráfico y Regiones Factibles" },
-    { id: "simplex", label: "Método Simplex", desc: "Tablas Simplex, Variables Holgura y Gran M" },
-    { id: "asignacion", label: "Asignación", desc: "Método Húngaro de Minimización y Maximización" },
-    { id: "teoria-colas", label: "Teoría de Colas", desc: "Modelos M/M/1, Tasas de Llegada y Espera" },
-  ],
-  omni: []
+const MODULE_ICONS: Record<ModuleId, React.ElementType> = {
+  omni: Zap,
+  mat1: Calculator,
+  mat2: Binary,
+  mat3: Wallet,
+  mat4: FunctionSquare,
+  mat5: BarChart,
+  mat6: Network,
 };
+
+const MODULES: ModuleConfig[] = MODULE_CATALOG.map((module) => ({
+  ...module,
+  icon: MODULE_ICONS[module.id],
+}));
 
 // Adelanta la descarga de la documentación (React Flow y el fondo WebGL) al
 // pasar el cursor o enfocar el enlace, para que el cambio de página sea casi
@@ -301,6 +266,8 @@ function DashboardContent() {
   const [currentTheme, setCurrentTheme] = useState<string>("dark");
   // El botón de restaurar usa un acabado claro/oscuro según el tema activo.
   const isLightTheme = currentTheme === "light" || currentTheme === "sepia";
+  // Paleta de los fondos animados: cada tema recibe colores con contraste.
+  const themeFx = THEME_FX[currentTheme as ThemeId] ?? THEME_FX.dark;
 
   useEffect(() => {
     const saved = localStorage.getItem("resolve_theme") || document.documentElement.getAttribute("data-theme") || "dark";
@@ -468,7 +435,7 @@ function DashboardContent() {
       <div className="relative flex h-[100dvh] w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans print:h-auto print:w-full print:overflow-visible print:bg-white print:text-black">
       {/* Fondo ambiental */}
       <div className="pointer-events-none absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(63,63,70,0.25),transparent_50%),radial-gradient(circle_at_80%_90%,rgba(63,63,70,0.2),transparent_50%)]" />
+        <div className="dash-ambient absolute inset-0" />
         <div className="absolute inset-0 bg-zinc-950/40" />
         <TechBackdrop />
         {/* Fondo común a todos los módulos: la cinta de cristales AeroShards
@@ -484,8 +451,9 @@ function DashboardContent() {
             transition={{ duration: 0.5 }}
           >
             <AeroShards
-              shardColor="#896ABD"
-              accentColor="#A855F7"
+              shardColor={themeFx.aero.shard}
+              accentColor={themeFx.aero.accent}
+              lightMode={themeFx.aero.light}
               placement="full"
               material="glass"
               markers="plus"
@@ -525,18 +493,10 @@ function DashboardContent() {
       >
         <div className="flex flex-col min-h-0 flex-1">
           <div className="p-5 border-b border-shell-hairline shrink-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors mb-3 tracking-wide"
-                >
-                  <ArrowLeft size={12} /> Volver a Inicio
-                </Link>
-                <h1 className="leading-none">
-                  <BrandLogo size="lg" />
-                </h1>
-              </div>
+            <div className="relative flex items-center justify-center">
+              <h1 className="leading-none">
+                <BrandLogo size="lg" align="center" />
+              </h1>
               <button
                 onClick={() => {
                   closeMobileNav();
@@ -544,14 +504,14 @@ function DashboardContent() {
                 }}
                 title="Ocultar menú lateral"
                 aria-label="Ocultar menú lateral"
-                className="p-2 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-shell-hover transition-colors shrink-0"
+                className="absolute right-0 top-0 p-2 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-shell-hover transition-colors shrink-0"
               >
                 <PanelLeftClose size={16} />
               </button>
             </div>
           </div>
 
-          <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
+          <nav className="flex flex-1 flex-col p-3 space-y-1 overflow-y-auto overflow-x-hidden no-scrollbar">
             <div className="px-3 pt-2 pb-1">
               <GlowWrap radius={16}>
               <button
@@ -572,24 +532,6 @@ function DashboardContent() {
                 </div>
                 <span className="type-nav-label truncate text-center">Calculadora Universal</span>
               </button>
-              </GlowWrap>
-            </div>
-
-            <div className="px-3 pt-2 pb-1">
-              <GlowWrap radius={16}>
-              <Link
-                href="/documentacion"
-                onClick={closeMobileNav}
-                onMouseEnter={preloadDocs}
-                onFocus={preloadDocs}
-                transitionTypes={["nav-forward"]}
-                className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 px-3.5 py-2.5 text-left text-zinc-300 transition-all hover:border-zinc-700 hover:text-zinc-100 outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
-              >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10 text-sky-400">
-                  <BookText size={15} />
-                </div>
-                <span className="type-nav-label truncate text-center">Documentación</span>
-              </Link>
               </GlowWrap>
             </div>
 
@@ -637,6 +579,52 @@ function DashboardContent() {
                 </GlowWrap>
               );
             })}
+
+            <p className="mt-auto px-3 pt-4 pb-2 text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-mono">
+              Recursos
+            </p>
+
+            <GlowWrap radius={12}>
+              <Link
+                href="/documentacion"
+                onClick={closeMobileNav}
+                onMouseEnter={preloadDocs}
+                onFocus={preloadDocs}
+                transitionTypes={["nav-forward"]}
+                className="group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-zinc-400 transition-all outline-none hover:bg-shell-hover hover:text-zinc-100 focus-visible:ring-2 focus-visible:ring-sky-400/40"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10 text-sky-400">
+                  <BookText size={15} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block type-nav-label truncate">Documentación</span>
+                  <span className="block type-nav-desc truncate text-zinc-500">
+                    Guías y funcionamiento
+                  </span>
+                </div>
+                <ChevronRight size={14} className="shrink-0 text-zinc-600 group-hover:text-zinc-300" />
+              </Link>
+            </GlowWrap>
+
+            <GlowWrap radius={12}>
+              <Link
+                href="/contribuidores"
+                onClick={closeMobileNav}
+                transitionTypes={["nav-forward"]}
+                className="group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-zinc-400 transition-all outline-none hover:bg-shell-hover hover:text-zinc-100 focus-visible:ring-2 focus-visible:ring-violet-400/40"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-violet-500/20 bg-violet-500/10 text-violet-400">
+                  <Users size={15} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block type-nav-label truncate">Contribuidores</span>
+                  <span className="block type-nav-desc truncate text-zinc-500">
+                    Equipo y aportaciones
+                  </span>
+                </div>
+                <ChevronRight size={14} className="shrink-0 text-zinc-600 group-hover:text-zinc-300" />
+              </Link>
+            </GlowWrap>
           </nav>
         </div>
 

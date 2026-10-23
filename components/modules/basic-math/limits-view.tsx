@@ -127,7 +127,7 @@ function derivativeNumeric(expr: string, x: number): number {
 // =============================================================================
 // MOTOR DE RESOLUCIÓN DE LÍMITES DE RESOLVE
 // =============================================================================
-function solveLimitAnalytical(
+export function solveLimitAnalytical(
   rawFunc: string,
   rawPoint: string,
   side: "both" | "left" | "right"
@@ -182,8 +182,8 @@ function solveLimitAnalytical(
       }
 
       let resStr = "";
-      if (isNaN(numVal)) {
-        resStr = "Indeterminado / Divergente";
+      if (!Number.isFinite(numVal)) {
+        resStr = "No definido (revisa la expresión)";
       } else if (Math.abs(numVal) > 1e4) {
         resStr = numVal > 0 ? "+∞" : "-∞";
       } else {
@@ -225,11 +225,15 @@ function solveLimitAnalytical(
       rule: "Propiedad de Continuidad",
     });
 
-    // Evaluación directa
+    // Evaluación directa y laterales de referencia
     const directVal = evaluateExpr(cleanFunc, c);
+    const eps1 = 0.000001;
+    const vLeft = evaluateExpr(cleanFunc, c - eps1);
+    const vRight = evaluateExpr(cleanFunc, c + eps1);
+    const requestedSideProbe = side === "left" ? vLeft : side === "right" ? vRight : null;
 
-    // 2.A: Determinada Inmediata (sin división por cero)
-    if (!isNaN(directVal)) {
+    // 2.A: Determinada Inmediata (función continua y definida en el lado pedido)
+    if (Number.isFinite(directVal) && (requestedSideProbe === null || Number.isFinite(requestedSideProbe))) {
       steps.push({
         id: stepId++,
         stage: "Límite Determinado (Función Continua)",
@@ -250,15 +254,21 @@ function solveLimitAnalytical(
     }
 
     // 2.B: Indeterminación detectada. Evaluamos laterales numéricos
-    const eps1 = 0.0001;
-    const vLeft = evaluateExpr(cleanFunc, c - eps1);
-    const vRight = evaluateExpr(cleanFunc, c + eps1);
+    const leftFinite = Number.isFinite(vLeft);
+    const rightFinite = Number.isFinite(vRight);
+    const isLeftInf = leftFinite && Math.abs(vLeft) > 1e3;
+    const isRightInf = rightFinite && Math.abs(vRight) > 1e3;
 
-    const isLeftInf = Math.abs(vLeft) > 1e3 || isNaN(vLeft);
-    const isRightInf = Math.abs(vRight) > 1e3 || isNaN(vRight);
-
-    let leftStr = isLeftInf ? (vLeft > 0 ? "+∞" : "-∞") : Number(vLeft.toFixed(4)).toString();
-    let rightStr = isRightInf ? (vRight > 0 ? "+∞" : "-∞") : Number(vRight.toFixed(4)).toString();
+    let leftStr = !leftFinite
+      ? "No definido"
+      : isLeftInf
+        ? (vLeft > 0 ? "+∞" : "-∞")
+        : Number(vLeft.toFixed(6)).toString();
+    let rightStr = !rightFinite
+      ? "No definido"
+      : isRightInf
+        ? (vRight > 0 ? "+∞" : "-∞")
+        : Number(vRight.toFixed(6)).toString();
 
     // 2.C: Indeterminación 0/0 -> Factorización, Racionalización o L'Hôpital
     const epsSmall = 0.000001;
@@ -315,8 +325,10 @@ function solveLimitAnalytical(
       finalLimit = rightStr;
     } else {
       // Límites laterales iguales
-      if (!isLeftInf && !isRightInf && Math.abs(vLeft - vRight) < 0.05) {
-        finalLimit = Number(((vLeft + vRight) / 2).toFixed(4)).toString();
+      if (!leftFinite && !rightFinite) {
+        finalLimit = "No definido (revisa la expresión)";
+      } else if (!isLeftInf && !isRightInf && leftFinite && rightFinite && Math.abs(vLeft - vRight) < 0.05) {
+        finalLimit = Number(((vLeft + vRight) / 2).toFixed(6)).toString();
       } else if (isLeftInf && isRightInf && leftStr === rightStr) {
         finalLimit = leftStr;
       } else {

@@ -69,7 +69,7 @@ function DiagramCard({ def, index, onOpen }: { def: DiagramDef; index: number; o
       className="group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/75 p-5 text-left backdrop-blur-sm transition-colors hover:border-zinc-600/80 hover:bg-zinc-900/90 sm:p-6"
     >
       <div className="mb-5 flex items-start justify-between">
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-700/60 bg-gradient-to-br from-zinc-800/80 to-zinc-900/40 sm:h-16 sm:w-16">
+        <div className="doc-icon-tile relative flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-700/60 bg-gradient-to-br from-zinc-800/80 to-zinc-900/40 sm:h-16 sm:w-16">
           <Icon size={24} className="text-zinc-300" />
         </div>
         <span className="font-mono text-xs text-zinc-600">
@@ -157,14 +157,11 @@ export default function DocsView() {
 
   return (
     <main className="mx-auto w-full max-w-[1600px] px-4 py-10 sm:px-6">
-      {/* Hero */}
+      {/* Encabezado de sección */}
       <div className="mb-8">
-        <span className="text-[11px] font-mono uppercase tracking-[0.25em] text-amber-400/90">
-          ReSolve · Documentación
-        </span>
-        <h1 className="mt-3 font-serif text-4xl leading-tight text-zinc-100 sm:text-5xl">
+        <h2 className="font-serif text-2xl leading-tight text-zinc-100 sm:text-3xl">
           Diagramas del proyecto
-        </h1>
+        </h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
           Explora de forma interactiva la arquitectura, el modelo de datos, los diagramas UML y la
           planificación de ReSolve. Acerca, arrastra y abre cada diagrama a pantalla completa.

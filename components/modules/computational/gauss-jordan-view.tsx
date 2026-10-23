@@ -142,6 +142,9 @@ interface GaussJordanSnapshot {
   matrix: number[][];
 }
 
+const MIN_VARS = 2;
+const MAX_VARS = 12;
+
 export default function GaussJordanView({
   viewMode,
   initialExpression = "",
@@ -150,6 +153,7 @@ export default function GaussJordanView({
   initialExpression?: string;
 }) {
   const [numVars, setNumVars] = useState<number>(3);
+  const [customVars, setCustomVars] = useState<string>("3");
   const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
   const [method, setMethod] = useState<"gauss_jordan" | "gaussian_elim">("gauss_jordan");
 
@@ -170,28 +174,40 @@ export default function GaussJordanView({
   const varNames = useMemo(() => {
     if (numVars === 2) return ["x", "y"];
     if (numVars === 3) return ["x", "y", "z"];
-    return ["x₁", "x₂", "x₃", "x₄"];
+    return Array.from({ length: numVars }, (_, i) => `x${toSubscript(i + 1)}`);
   }, [numVars]);
 
   // Cambiar orden del sistema redimensionando la matriz
   const handleSetNumVars = (newN: number) => {
-    setNumVars(newN);
+    const size = Math.max(MIN_VARS, Math.min(MAX_VARS, Math.round(newN)));
+    setNumVars(size);
+    setCustomVars(String(size));
     setMatrix((prev) => {
       const next: number[][] = [];
-      for (let r = 0; r < newN; r++) {
+      for (let r = 0; r < size; r++) {
         const row: number[] = [];
-        for (let c = 0; c <= newN; c++) {
+        for (let c = 0; c <= size; c++) {
           if (prev[r]?.[c] !== undefined) {
             row.push(prev[r][c]);
           } else {
             // Diagonal principal = 1, término independiente = 1, resto = 0
-            row.push(r === c ? 1 : c === newN ? (r + 1) * 2 : 0);
+            row.push(r === c ? 1 : c === size ? (r + 1) * 2 : 0);
           }
         }
         next.push(row);
       }
       return next;
     });
+  };
+
+  /** Aplica el orden N×N escrito manualmente. */
+  const applyCustomVars = () => {
+    const parsed = parseInt(customVars, 10);
+    if (Number.isNaN(parsed)) {
+      setCustomVars(String(numVars));
+      return;
+    }
+    handleSetNumVars(parsed);
   };
 
   const updateCell = (r: number, c: number, val: number) => {
@@ -367,7 +383,9 @@ export default function GaussJordanView({
     steps.push({
       stage: `${stepId++}. Vector Solución Único Hallado`,
       desc: "Todas las incógnitas se han despejado directamente en la matriz identidad reducida",
-      math: `X = \\begin{bmatrix} ${solutions.map((s) => s.varName).join(" \\\\ ")} \\end{bmatrix} = \\begin{bmatrix} ${solutions.map((s) => s.value).join(" \\\\ ")} \\end{bmatrix}`,
+      math: `X = \\begin{bmatrix} ${solutions
+        .map((s, i) => (numVars <= 3 ? s.varName : `x_{${i + 1}}`))
+        .join(" \\\\ ")} \\end{bmatrix} = \\begin{bmatrix} ${solutions.map((s) => s.value).join(" \\\\ ")} \\end{bmatrix}`,
     });
 
     return {
@@ -398,8 +416,10 @@ export default function GaussJordanView({
       try {
         const parsed = JSON.parse(injectedExpression);
         if (Array.isArray(parsed) && Array.isArray(parsed[0])) {
-          setNumVars(parsed.length);
-          setMatrix(parsed);
+          const n = Math.max(MIN_VARS, Math.min(MAX_VARS, parsed.length));
+          setNumVars(n);
+          setCustomVars(String(n));
+          setMatrix(parsed.slice(0, n).map((row: number[]) => row.slice(0, n + 1)));
         }
       } catch {
         // Silencioso
@@ -430,7 +450,10 @@ export default function GaussJordanView({
   const restoreHistory = (item: HistoryItem) => {
     const snap = readHistoryPayload<GaussJordanSnapshot>(item);
     if (!snap) return;
-    if (snap.numVars !== undefined) setNumVars(snap.numVars);
+    if (snap.numVars !== undefined) {
+      setNumVars(snap.numVars);
+      setCustomVars(String(snap.numVars));
+    }
     if (Array.isArray(snap.matrix)) setMatrix(snap.matrix);
     if (snap.method) setMethod(snap.method);
   };
@@ -491,9 +514,9 @@ export default function GaussJordanView({
 
                 {/* Controles: Orden del Sistema y Método */}
                 <div className="flex flex-wrap items-center justify-between gap-3 p-2 bg-zinc-950/80 border border-zinc-800/80 rounded-2xl text-xs font-mono">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-zinc-500 text-[10px] uppercase px-1">Variables:</span>
-                    {[2, 3, 4].map((n) => (
+                    {[2, 3, 4, 5].map((n) => (
                       <button
                         key={n}
                         type="button"
@@ -507,6 +530,21 @@ export default function GaussJordanView({
                         {n}×{n}
                       </button>
                     ))}
+                    <label className="flex items-center gap-1 text-[10px] text-zinc-500" title={`Orden N×N personalizado (${MIN_VARS}–${MAX_VARS})`}>
+                      <span>N</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={customVars}
+                        aria-label="Orden N del sistema"
+                        onChange={(e) => setCustomVars(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
+                        onBlur={applyCustomVars}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") applyCustomVars();
+                        }}
+                        className="w-9 h-6 bg-zinc-900 border border-zinc-700 rounded-lg text-center text-zinc-200 focus:outline-none focus:border-zinc-500"
+                      />
+                    </label>
                   </div>
 
                   <div className="flex items-center gap-1.5">
@@ -538,44 +576,45 @@ export default function GaussJordanView({
 
                 {/* Celdas de la Matriz Aumentada con Divisor de Términos Independientes */}
                 <div className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex flex-col items-center justify-center">
-                  <div className="relative py-2 flex items-center justify-center">
+                  <div className="relative py-2 flex items-center justify-center w-full">
                     {/* Corchete izquierdo */}
                     <div className="border-l-2 border-t-2 border-b-2 border-zinc-600 rounded-l-md w-2.5 self-stretch" />
 
-                    {/* Bloque de Coeficientes A */}
-                    <div
-                      className="grid gap-2 p-2 max-w-full overflow-x-auto"
-                      style={{ gridTemplateColumns: `repeat(${numVars}, minmax(44px, 58px))` }}
-                    >
-                      {matrix.map((row, rIdx) =>
-                        row.slice(0, numVars).map((val, cIdx) => (
-                          <input
-                            key={`a-${rIdx}-${cIdx}`}
-                            type="number"
-                            value={val}
-                            aria-label={`Coeficiente a${rIdx + 1}${cIdx + 1}`}
-                            onChange={(e) => updateCell(rIdx, cIdx, parseFloat(e.target.value))}
-                            className="h-11 bg-zinc-900 border border-zinc-800/60 rounded-xl font-mono text-sm text-center text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors"
-                          />
-                        ))
-                      )}
-                    </div>
-
-                    {/* Línea divisoria vertical de la aumentación [A | B] */}
-                    <div className="w-[2px] bg-amber-400/60 self-stretch my-2 mx-1 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.3)]" />
-
-                    {/* Bloque de Términos Independientes B */}
-                    <div className="grid gap-2 p-2" style={{ gridTemplateColumns: "minmax(48px, 64px)" }}>
-                      {matrix.map((row, rIdx) => (
-                        <input
-                          key={`b-${rIdx}`}
-                          type="number"
-                          value={row[numVars]}
-                          aria-label={`Término independiente b${rIdx + 1}`}
-                          onChange={(e) => updateCell(rIdx, numVars, parseFloat(e.target.value))}
-                          className="h-11 bg-amber-950/20 border border-amber-500/40 rounded-xl font-mono text-sm text-center text-amber-300 font-bold focus:outline-none focus:border-amber-400 transition-colors"
-                        />
-                      ))}
+                    {/* Matriz aumentada completa [A | B] que se ajusta al ancho disponible */}
+                    <div className="w-full max-w-full max-h-[420px] overflow-y-auto custom-scrollbar p-1.5">
+                      <div
+                        className="grid gap-2 mx-auto w-full"
+                        style={{
+                          gridTemplateColumns: `repeat(${numVars + 1}, minmax(0, 1fr))`,
+                          maxWidth: `${Math.min((numVars + 1) * 58, 620)}px`,
+                        }}
+                      >
+                        {matrix.map((row, rIdx) =>
+                          row.slice(0, numVars + 1).map((val, cIdx) => {
+                            const isIndependent = cIdx === numVars;
+                            return (
+                              <input
+                                key={`m-${rIdx}-${cIdx}`}
+                                type="number"
+                                value={val}
+                                aria-label={
+                                  isIndependent
+                                    ? `Término independiente b${rIdx + 1}`
+                                    : `Coeficiente a${rIdx + 1}${cIdx + 1}`
+                                }
+                                onChange={(e) => updateCell(rIdx, cIdx, parseFloat(e.target.value))}
+                                className={`w-full min-w-0 aspect-square rounded-xl font-mono text-center focus:outline-none transition-colors ${
+                                  isIndependent
+                                    ? "bg-amber-950/20 border border-amber-500/40 border-l-[3px] border-l-amber-400/70 text-amber-300 font-bold focus:border-amber-400"
+                                    : "bg-zinc-900 border border-zinc-800/60 text-zinc-100 focus:border-zinc-500"
+                                } ${
+                                  numVars > 8 ? "text-[10px] px-0" : numVars > 5 ? "text-xs px-0.5" : "text-sm px-1"
+                                }`}
+                              />
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
 
                     {/* Corchete derecho */}
@@ -664,7 +703,10 @@ export default function GaussJordanView({
 
                       {/* Valores numéricos de cada variable */}
                       {calculation.systemType === "unique" && (
-                        <div className="grid grid-cols-2 gap-2 pt-2">
+                        <div
+                          className="grid gap-2 pt-2 max-h-[260px] overflow-y-auto custom-scrollbar"
+                          style={{ gridTemplateColumns: `repeat(${Math.min(numVars, 3)}, minmax(0, 1fr))` }}
+                        >
                           {calculation.solutions.map((sol) => (
                             <div key={sol.varName} className="p-3 rounded-xl bg-zinc-950/80 border border-zinc-800/60 text-center">
                               <span className="text-[11px] font-mono text-zinc-500 block">{sol.varName} =</span>
@@ -997,6 +1039,7 @@ export default function GaussJordanView({
                       key={ex.category}
                       onClick={() => {
                         setNumVars(ex.n);
+                        setCustomVars(String(ex.n));
                         setMatrix(ex.matrix);
                         setMethod(ex.method);
                         setIsHelpOpen(false);

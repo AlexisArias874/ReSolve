@@ -211,6 +211,14 @@ export function evaluateUniversalMathRaw(
 
     if (s === "gauss" || s.includes("campana")) s = "exp(-x^2)";
 
+    // Protegemos la notación científica (1e3, 2.5e-4) para que la
+    // multiplicación implícita y la constante e no la destruyan.
+    const scientific: string[] = [];
+    s = s.replace(/\d+(?:\.\d+)?e[+-]?\d+/g, (literal) => {
+      scientific.push(literal);
+      return `__sci${scientific.length - 1}__`;
+    });
+
     // Alias e^... a exp(...)
     s = s.replace(/e\s*\^\s*\(([^()]+)\)/g, "exp($1)");
     s = s.replace(/e\s*\^\s*([a-zA-Z0-9_.]+)/g, "exp($1)");
@@ -241,6 +249,9 @@ export function evaluateUniversalMathRaw(
     s = s.replace(/exp/g, "Math.exp");
     s = s.replace(/\bpi\b/g, "Math.PI");
     s = s.replace(/\be\b/g, "Math.E");
+
+    // Restauramos los literales científicos protegidos.
+    s = s.replace(/__sci(\d+)__/g, (_, index: string) => scientific[Number(index)] ?? "NaN");
 
     // Variables dinámicas (x, y, z, t, a, b, c...)
     const varKeys = Object.keys(vars);

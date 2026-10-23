@@ -6,8 +6,11 @@ import { MailCheck, ArrowRight, Loader2, AlertCircle, CheckCircle2, ExternalLink
 import { createClient } from "@/lib/supabase/client";
 import CodeSlots, { type CodeSlotsStatus } from "@/components/effects/code-slots";
 import BorderGlow from "@/components/effects/border-glow";
+import { THEME_FX, useTheme } from "@/lib/hooks/use-theme";
 
 function VerifyContent() {
+  const theme = useTheme();
+  const fx = THEME_FX[theme].verify;
   const searchParams = useSearchParams();
   const router = useRouter();
   const emailParam = searchParams.get("email") || "";
@@ -93,14 +96,14 @@ function VerifyContent() {
   return (
     <BorderGlow
       edgeSensitivity={30}
-      glowColor="40 80 80"
-      backgroundColor="#120F17"
+      glowColor={fx.glow}
+      backgroundColor={fx.background}
       borderRadius={28}
       glowRadius={40}
       glowIntensity={1}
       coneSpread={25}
       animated={false}
-      colors={["#c084fc", "#f472b6", "#38bdf8"]}
+      colors={fx.colors}
       className="w-full max-w-md"
     >
       <div className="w-full p-8 text-center">
@@ -152,10 +155,10 @@ function VerifyContent() {
                   setStatus("idle");
                 }}
                 onComplete={(next) => void verifyCode(next)}
-                accentColor="#f5f5f5"
-                inkColor="#f5f5f5"
-                slotColor="#27272a"
-                digitColor="#18181b"
+                accentColor={fx.accent}
+                inkColor={fx.ink}
+                slotColor={fx.slot}
+                digitColor={fx.digit}
                 dangerColor="#ff3b30"
                 slotSize={44}
                 gap={8}
@@ -197,7 +200,7 @@ function VerifyContent() {
 export default function VerifyPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center p-6 select-none relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#09090b_90%)]" />
+      <div className="fx-overlay-verify absolute inset-0" />
       <div className="relative z-10">
         <Suspense fallback={<div className="text-zinc-500 text-xs">Cargando verificación...</div>}>
           <VerifyContent />

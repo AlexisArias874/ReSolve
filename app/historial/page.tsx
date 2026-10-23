@@ -219,11 +219,6 @@ export default function GlobalHistoryPage() {
               displaySocials={false}
               displayItemNumbering
               logoUrl="/logo.svg"
-              menuButtonColor="#a1a1aa"
-              openMenuButtonColor="#f4f4f5"
-              changeMenuColorOnOpen
-              accentColor="#B497CF"
-              colors={["#120F17", "#2A1740", "#5227FF"]}
               triggerLabel="Filtrar"
               triggerClassName="dash-control flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-mono"
             />

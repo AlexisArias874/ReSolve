@@ -2,11 +2,11 @@
 
 import { useSyncExternalStore } from "react";
 
-// Preferencia global de animaciones decorativas (fondos). Cada página decide
-// su valor por defecto: la landing y el acceso las muestran, el dashboard las
-// mantiene apagadas. Si el usuario usa el switch, su elección se guarda y
-// prevalece sobre el valor por defecto. El logo TechText no pasa por esta
-// preferencia: su animación es siempre activa.
+// Preferencia global de animaciones decorativas (fondos del dashboard). La
+// landing y las pantallas de acceso ya no dependen de esta preferencia: sus
+// efectos son permanentes. Si el usuario usa el switch, su elección se guarda
+// y prevalece sobre el valor por defecto. El logo TechText tampoco pasa por
+// esta preferencia: su animación es siempre activa.
 const STORAGE_KEY = "resolve_effects";
 const listeners = new Set<() => void>();
 

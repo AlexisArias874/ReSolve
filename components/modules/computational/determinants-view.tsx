@@ -111,11 +111,41 @@ function getSubmatrix(m: number[][], rowToRemove: number, colToRemove: number): 
     .map((row) => row.filter((_, c) => c !== colToRemove));
 }
 
-// Determinante recursivo exacto
+// Determinante por eliminación gaussiana O(n³) para órdenes grandes
+function determinantGauss(m: number[][]): number {
+  const n = m.length;
+  if (n === 0) return 1;
+  const a = m.map((row) => [...row]);
+  let det = 1;
+
+  for (let col = 0; col < n; col++) {
+    let pivotRow = col;
+    for (let r = col + 1; r < n; r++) {
+      if (Math.abs(a[r][col]) > Math.abs(a[pivotRow][col])) pivotRow = r;
+    }
+    if (Math.abs(a[pivotRow][col]) < 1e-12) return 0;
+    if (pivotRow !== col) {
+      [a[col], a[pivotRow]] = [a[pivotRow], a[col]];
+      det = -det;
+    }
+    det *= a[col][col];
+    for (let r = col + 1; r < n; r++) {
+      const factor = a[r][col] / a[col][col];
+      for (let c = col; c < n; c++) {
+        a[r][c] -= factor * a[col][c];
+      }
+    }
+  }
+  return det;
+}
+
+// Determinante recursivo exacto (órdenes pequeños) con respaldo O(n³)
 function calculateDeterminant(m: number[][]): number {
   const n = m.length;
+  if (n === 0) return 1;
   if (n === 1) return m[0][0];
   if (n === 2) return m[0][0] * m[1][1] - m[0][1] * m[1][0];
+  if (n > 4) return determinantGauss(m);
 
   let det = 0;
   for (let c = 0; c < n; c++) {
@@ -126,6 +156,9 @@ function calculateDeterminant(m: number[][]): number {
   return det;
 }
 
+const MIN_SIZE = 2;
+const MAX_SIZE = 12;
+
 export default function DeterminantsView({
   viewMode,
   initialExpression = "",
@@ -134,6 +167,7 @@ export default function DeterminantsView({
   initialExpression?: string;
 }) {
   const [matrixSize, setMatrixSize] = useState<number>(3);
+  const [customSize, setCustomSize] = useState<string>("3");
   const { isHistoryHidden, setIsHistoryHidden } = useHistoryVisibility();
   const [matrix, setMatrix] = useState<number[][]>([
     [1, 2, 3],
@@ -151,12 +185,14 @@ export default function DeterminantsView({
 
   // Redimensionar matriz dinámicamente preservando celdas
   const handleSetSize = (newSize: number) => {
-    setMatrixSize(newSize);
+    const size = Math.max(MIN_SIZE, Math.min(MAX_SIZE, Math.round(newSize)));
+    setMatrixSize(size);
+    setCustomSize(String(size));
     setMatrix((prev) => {
       const next: number[][] = [];
-      for (let r = 0; r < newSize; r++) {
+      for (let r = 0; r < size; r++) {
         const row: number[] = [];
-        for (let c = 0; c < newSize; c++) {
+        for (let c = 0; c < size; c++) {
           row.push(prev[r]?.[c] !== undefined ? prev[r][c] : r === c ? 1 : 0);
         }
         next.push(row);
@@ -165,9 +201,19 @@ export default function DeterminantsView({
     });
 
     // Si es distinto de 3x3, Sarrus no aplica
-    if (newSize !== 3 && method === "sarrus") {
+    if (size !== 3 && method === "sarrus") {
       setMethod("cofactors");
     }
+  };
+
+  /** Aplica el orden N×N escrito manualmente. */
+  const applyCustomSize = () => {
+    const parsed = parseInt(customSize, 10);
+    if (Number.isNaN(parsed)) {
+      setCustomSize(String(matrixSize));
+      return;
+    }
+    handleSetSize(parsed);
   };
 
   const updateCell = (r: number, c: number, val: number) => {
@@ -341,7 +387,7 @@ export default function DeterminantsView({
           ? `Área del paralelogramo 2D = ${Math.abs(roundedDet)} u²`
           : n === 3
           ? `Volumen del paralelepípedo 3D = ${Math.abs(roundedDet)} u³`
-          : `Hipervolumen 4D = ${Math.abs(roundedDet)} u⁴`,
+          : `Hipervolumen ${n}D = ${Math.abs(roundedDet)} u${toSup(n)}`,
       orientation:
         detValue > 0
           ? "Orientación positiva (Mano Derecha / Winding CW)"
@@ -369,8 +415,10 @@ export default function DeterminantsView({
       try {
         const parsed = JSON.parse(injectedExpression);
         if (Array.isArray(parsed) && Array.isArray(parsed[0])) {
-          setMatrixSize(parsed.length);
-          setMatrix(parsed);
+          const n = Math.max(MIN_SIZE, Math.min(MAX_SIZE, parsed.length));
+          setMatrixSize(n);
+          setCustomSize(String(n));
+          setMatrix(parsed.slice(0, n).map((row: number[]) => row.slice(0, n)));
         }
       } catch {
         // Silencioso
@@ -401,7 +449,10 @@ export default function DeterminantsView({
   const restoreHistory = (item: HistoryItem) => {
     const snap = readHistoryPayload<DeterminantsSnapshot>(item);
     if (!snap) return;
-    if (snap.matrixSize !== undefined) setMatrixSize(snap.matrixSize);
+    if (snap.matrixSize !== undefined) {
+      setMatrixSize(snap.matrixSize);
+      setCustomSize(String(snap.matrixSize));
+    }
     if (Array.isArray(snap.matrix)) setMatrix(snap.matrix);
     if (snap.method) setMethod(snap.method);
   };
@@ -461,9 +512,9 @@ export default function DeterminantsView({
 
                 {/* Selectores de Dimensión y Método */}
                 <div className="flex flex-wrap items-center justify-between gap-3 p-2 bg-zinc-950/80 border border-zinc-800/80 rounded-2xl text-xs font-mono">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-zinc-500 text-[10px] uppercase px-1">Orden:</span>
-                    {[2, 3, 4].map((size) => (
+                    {[2, 3, 4, 5].map((size) => (
                       <button
                         key={size}
                         type="button"
@@ -477,6 +528,21 @@ export default function DeterminantsView({
                         {size}×{size}
                       </button>
                     ))}
+                    <label className="flex items-center gap-1 text-[10px] text-zinc-500" title={`Orden N×N personalizado (${MIN_SIZE}–${MAX_SIZE})`}>
+                      <span>N</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={customSize}
+                        aria-label="Orden N de la matriz"
+                        onChange={(e) => setCustomSize(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
+                        onBlur={applyCustomSize}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") applyCustomSize();
+                        }}
+                        className="w-9 h-6 bg-zinc-900 border border-zinc-700 rounded-lg text-center text-zinc-200 focus:outline-none focus:border-zinc-500"
+                      />
+                    </label>
                   </div>
 
                   <div className="flex items-center gap-1.5">
@@ -521,25 +587,32 @@ export default function DeterminantsView({
 
                 {/* Cuadrícula Visual con Corchetes de Determinante */}
                 <div className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex flex-col items-center justify-center">
-                  <div className="relative py-2 flex items-center justify-center">
+                  <div className="relative py-2 flex items-center justify-center w-full">
                     {/* Barra vertical de determinante | ... | */}
                     <div className="border-l-2 border-zinc-500 w-2 self-stretch" />
-                    <div
-                      className="grid gap-2.5 p-2 max-w-full overflow-x-auto"
-                      style={{ gridTemplateColumns: `repeat(${matrixSize}, minmax(48px, 64px))` }}
-                    >
-                      {matrix.map((row, rIdx) =>
-                        row.map((val, cIdx) => (
-                          <input
-                            key={`${rIdx}-${cIdx}`}
-                            type="number"
-                            value={val}
-                            aria-label={`Elemento a${rIdx + 1}${cIdx + 1} de la matriz A`}
-                            onChange={(e) => updateCell(rIdx, cIdx, parseFloat(e.target.value))}
-                            className="h-12 bg-zinc-900 border border-zinc-800/60 rounded-xl font-mono text-sm text-center text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors"
-                          />
-                        ))
-                      )}
+                    <div className="w-full max-w-full max-h-[420px] overflow-y-auto custom-scrollbar p-2">
+                      <div
+                        className="grid gap-2.5 mx-auto w-full"
+                        style={{
+                          gridTemplateColumns: `repeat(${matrixSize}, minmax(0, 1fr))`,
+                          maxWidth: `${Math.min(matrixSize * 64, 420)}px`,
+                        }}
+                      >
+                        {matrix.map((row, rIdx) =>
+                          row.map((val, cIdx) => (
+                            <input
+                              key={`${rIdx}-${cIdx}`}
+                              type="number"
+                              value={val}
+                              aria-label={`Elemento a${rIdx + 1}${cIdx + 1} de la matriz A`}
+                              onChange={(e) => updateCell(rIdx, cIdx, parseFloat(e.target.value))}
+                              className={`w-full min-w-0 aspect-square bg-zinc-900 border border-zinc-800/60 rounded-xl font-mono text-center text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors ${
+                                matrixSize > 8 ? "text-[10px] px-0" : matrixSize > 5 ? "text-xs px-0.5" : "text-sm px-1"
+                              }`}
+                            />
+                          ))
+                        )}
+                      </div>
                     </div>
                     <div className="border-r-2 border-zinc-500 w-2 self-stretch" />
                   </div>
@@ -971,6 +1044,7 @@ export default function DeterminantsView({
                       key={ex.category}
                       onClick={() => {
                         setMatrixSize(ex.matrix.length);
+                        setCustomSize(String(ex.matrix.length));
                         setMatrix(ex.matrix);
                         setMethod(ex.method);
                         setIsHelpOpen(false);

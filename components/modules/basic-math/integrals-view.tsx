@@ -91,6 +91,7 @@ function evaluateMath(expr: string, x: number): number {
     s = s.replace(/e\s*\^\s*\(([^()]+)\)/g, "exp($1)");
     s = s.replace(/e\s*\^\s*([a-zA-Z0-9_.]+)/g, "exp($1)");
     s = s.replace(/([0-9])([x(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "$1*$2");
+    s = s.replace(/([0-9])(pi)/g, "$1*$2");
     s = s.replace(/\)([\d\w(]|sin|cos|tan|exp|ln|sqrt|abs)/g, ")*$1");
     s = s.replace(/x([0-9(]|sin|cos|tan|exp|ln|sqrt|abs)/g, "x*$1");
     s = s.replace(
@@ -117,30 +118,170 @@ function evaluateMath(expr: string, x: number): number {
   }
 }
 
-// Identificador simbólico de antiderivada
-function computeSymbolicAntiderivative(raw: string): { formula: string; rule: string; desc: string } {
-  const s = raw.toLowerCase().replace(/\s+/g, "");
+// Límites de integración: aceptan números, π, e y expresiones como pi/2 o 2*pi.
+function parseIntegrationBound(raw: string): number {
+  const text = raw.trim();
+  if (!text) return NaN;
+  const direct = Number(text);
+  if (Number.isFinite(direct)) return direct;
+  return evaluateMath(text, 0);
+}
 
-  if (s === "cos(x)") {
-    return { formula: "sin(x) + C", rule: "Integral Trigonométrica Directa", desc: "∫ cos(x) dx = sin(x) + C" };
+// Identificador simbólico de antiderivada
+function formatIntegralCoefficient(value: number): string {
+  if (!Number.isFinite(value)) return "1";
+  const rounded = Number(value.toFixed(6));
+  return String(rounded);
+}
+
+function splitAdditiveTerms(expression: string): string[] {
+  const terms: string[] = [];
+  let depth = 0;
+  let start = 0;
+
+  for (let i = 0; i < expression.length; i += 1) {
+    const character = expression[i];
+    if (character === "(") depth += 1;
+    else if (character === ")") depth -= 1;
+    else if (
+      depth === 0 &&
+      (character === "+" || character === "-") &&
+      i > 0 &&
+      !"^*/+-(".includes(expression[i - 1])
+    ) {
+      terms.push(expression.slice(start, i));
+      start = i;
+    }
   }
-  if (s === "sin(x)") {
-    return { formula: "-cos(x) + C", rule: "Integral Trigonométrica Directa", desc: "∫ sin(x) dx = -cos(x) + C" };
+  terms.push(expression.slice(start));
+  return terms.filter(Boolean);
+}
+
+function integrateSingleTerm(term: string): { coefficient: number; body: string } | null {
+  const text = term.replace(/\s+/g, "").replace(/\*/g, "");
+  if (!text) return null;
+
+  const signed = /^([+-]?)(.+)$/.exec(text);
+  if (!signed) return null;
+  const sign = signed[1] === "-" ? -1 : 1;
+  const body = signed[2];
+
+  const constant = /^\d*\.?\d+$/.exec(body);
+  if (constant) {
+    return { coefficient: sign * Number(body), body: "x" };
   }
-  if (s === "exp(x)" || s === "e^x") {
-    return { formula: "exp(x) + C", rule: "Integral Exponencial Estándar", desc: "∫ eˣ dx = eˣ + C" };
+
+  const power = /^(\d*\.?\d*)x(?:\^([+-]?\d*\.?\d+))?$/.exec(body);
+  if (power) {
+    const rawCoefficient = power[1];
+    const coefficient = rawCoefficient === "" || rawCoefficient === "." ? 1 : Number(rawCoefficient);
+    const exponent = power[2] === undefined ? 1 : Number(power[2]);
+    if (!Number.isFinite(coefficient) || !Number.isFinite(exponent)) return null;
+
+    if (Math.abs(exponent + 1) < 1e-12) {
+      return { coefficient: sign * coefficient, body: "ln|x|" };
+    }
+
+    const newExponent = exponent + 1;
+    const newCoefficient = (sign * coefficient) / newExponent;
+    const variablePart =
+      Math.abs(newExponent - 1) < 1e-12 ? "x" : `x^${formatIntegralCoefficient(newExponent)}`;
+    return { coefficient: newCoefficient, body: variablePart };
   }
-  if (s === "1/x") {
-    return { formula: "ln|x| + C", rule: "Integral Logarítmica Fundamental", desc: "∫ (1/x) dx = ln|x| + C" };
+
+  const exponential = /^exp\(([^()]*)\)$/.exec(body);
+  if (exponential) {
+    const argument = exponential[1];
+    if (argument.includes("^2")) return null;
+
+    const linear = /^([+-]?\d*\.?\d*)x$/.exec(argument);
+    if (!linear) return null;
+    const rawRate = linear[1];
+    const rate = rawRate === "" || rawRate === "+" ? 1 : rawRate === "-" ? -1 : Number(rawRate);
+    if (!Number.isFinite(rate) || Math.abs(rate) < 1e-12) return null;
+
+    return {
+      coefficient: sign / rate,
+      body: rate === 1 ? "exp(x)" : `exp(${formatIntegralCoefficient(rate)}x)`,
+    };
   }
-  if (s === "sqrt(x)") {
-    return { formula: "(2/3)·x^(3/2) + C", rule: "Regla de la Potencia Fraccionaria", desc: "∫ x^(1/2) dx = (2/3)·x^(3/2) + C" };
+
+  const circular = /^(sin|cos)\(([^()]*)\)$/.exec(body);
+  if (circular) {
+    const fn = circular[1];
+    const argument = circular[2];
+    const linear = /^([+-]?\d*\.?\d*)x$/.exec(argument);
+    if (!linear) return null;
+    const rawRate = linear[1];
+    const rate = rawRate === "" || rawRate === "+" ? 1 : rawRate === "-" ? -1 : Number(rawRate);
+    if (!Number.isFinite(rate) || Math.abs(rate) < 1e-12) return null;
+
+    const coefficient = sign / rate;
+    if (fn === "sin") {
+      return {
+        coefficient: -coefficient,
+        body: rate === 1 ? "cos(x)" : `cos(${formatIntegralCoefficient(rate)}x)`,
+      };
+    }
+    return {
+      coefficient,
+      body: rate === 1 ? "sin(x)" : `sin(${formatIntegralCoefficient(rate)}x)`,
+    };
   }
+
+  if (body === "sqrt(x)") {
+    return {
+      coefficient: (sign * 2) / 3,
+      body: "x^(3/2)",
+    };
+  }
+
+  const reciprocal = /^(\d*\.?\d*)\/x$/.exec(body);
+  if (reciprocal) {
+    const rawCoefficient = reciprocal[1];
+    const coefficient =
+      rawCoefficient === "" || rawCoefficient === "." ? 1 : Number(rawCoefficient);
+    if (!Number.isFinite(coefficient)) return null;
+    return { coefficient: sign * coefficient, body: "ln|x|" };
+  }
+
+  return null;
+}
+
+export function computeSymbolicAntiderivative(raw: string): { formula: string; rule: string; desc: string } {
+  let s = raw.toLowerCase().replace(/\s+/g, "");
+  if (s === "e^x" || s === "e^(x)") s = "exp(x)";
+
   if (s.includes("exp(-x^2)")) {
     return { formula: "(√π / 2) · erf(x) + C", rule: "Integral Especial de Gauss", desc: "No posee primitiva elemental; se expresa mediante la función error erf(x)." };
   }
 
-  // Polinomios o regla general de potencias
+  const terms = splitAdditiveTerms(s);
+  const integrated = terms.map(integrateSingleTerm);
+
+  if (integrated.length > 0 && integrated.every((term) => term !== null)) {
+    const parts: string[] = [];
+    for (const term of integrated) {
+      if (!term || Math.abs(term.coefficient) < 1e-12) continue;
+      const absolute = Math.abs(term.coefficient);
+      const coefficientText =
+        Math.abs(absolute - 1) < 1e-12 ? "" : formatIntegralCoefficient(absolute);
+      const bodyText = term.body
+        ? `${coefficientText}${coefficientText ? "*" : ""}${term.body}`
+        : formatIntegralCoefficient(absolute);
+      parts.push(`${term.coefficient < 0 ? "-" : "+"}${bodyText}`);
+    }
+
+    if (parts.length > 0) {
+      const formula = parts.join(" ").replace(/^\+/, "") + " + C";
+      return {
+        formula,
+        rule: "Integración Término a Término",
+        desc: "Aplicamos linealidad de la integral y la regla de la potencia (o la primitiva directa de cada término).",
+      };
+    }
+  }
+
   return {
     formula: "F(x) + C",
     rule: "Regla de la Potencia Término a Término",
@@ -151,15 +292,15 @@ function computeSymbolicAntiderivative(raw: string): { formula: string; rule: st
 // =============================================================================
 // MOTOR DE RESOLUCIÓN DE INTEGRALES
 // =============================================================================
-function solveIntegrals(
+export function solveIntegrals(
   rawFunc: string,
   rawA: string,
   rawB: string,
   isDefinite: boolean
 ): IntegralResult {
   const cleanFunc = rawFunc.trim();
-  const a = parseFloat(rawA);
-  const b = parseFloat(rawB);
+  const a = parseIntegrationBound(rawA);
+  const b = parseIntegrationBound(rawB);
 
   if (!cleanFunc) {
     return {
@@ -270,7 +411,7 @@ function solveIntegrals(
       detectedTechnique: "Error",
       techniqueExplanation: err instanceof Error ? err.message : "Error al integrar",
       steps: [],
-      error: "No se pudo integrar la función en este intervalo.",
+      error: err instanceof Error ? err.message : "No se pudo integrar la función en este intervalo.",
     };
   }
 }

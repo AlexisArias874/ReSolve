@@ -43,6 +43,8 @@ export interface TechTextProps {
   letterSpacing?: number;
   color?: string;
   accentColor?: string;
+  /** Colores de relleno por carácter. Ej. { R: '#000000', S: '#000000' }. */
+  letterColors?: Record<string, string>;
   align?: 'left' | 'center' | 'right';
   reach?: number;
   softness?: number;
@@ -106,6 +108,7 @@ const TechText = ({
   letterSpacing = -0.05,
   color = 'currentColor',
   accentColor = 'currentColor',
+  letterColors = {},
   align = 'center',
   reach = 200,
   softness = 0.7,
@@ -142,6 +145,7 @@ const TechText = ({
       letterSpacing,
       color,
       accentColor,
+      letterColors,
       align,
       reach,
       softness,
@@ -196,6 +200,7 @@ const TechText = ({
     let introducing = false;
     let fontsReady = !document.fonts;
     let guideAlpha = 0;
+    let paletteTimer: number | undefined;
     const kicks: Kick[] = [];
     const press = { x: 0, y: 0, time: 0, index: -1 };
     const pointer = { x: 0, y: 0, inside: false };
@@ -229,7 +234,14 @@ const TechText = ({
       target.textBaseline = 'alphabetic';
     };
 
-    const sprite = (s: Settings, view: Word, glyph: Shape, stroke: boolean, ink: string): Art => {
+    const sprite = (
+      s: Settings,
+      view: Word,
+      glyph: Shape,
+      stroke: boolean,
+      ink: string,
+      outline?: string
+    ): Art => {
       const pad = Math.ceil(s.strokeWidth * 2 + 4);
       const left = glyph.box.x1 - pad;
       const top = glyph.box.y1 - pad;
@@ -255,6 +267,12 @@ const TechText = ({
         c.fillText(glyph.char, glyph.x, view.baseline);
         c.globalCompositeOperation = 'source-over';
       } else {
+        if (outline) {
+          c.lineJoin = 'round';
+          c.lineWidth = Math.max(1, s.strokeWidth);
+          c.strokeStyle = outline;
+          c.strokeText(glyph.char, glyph.x, view.baseline);
+        }
         c.fillStyle = ink;
         c.fillText(glyph.char, glyph.x, view.baseline);
       }
@@ -270,6 +288,7 @@ const TechText = ({
         s.letterSpacing,
         s.align,
         ink,
+        JSON.stringify(s.letterColors),
         s.dashLength,
         s.dashGap,
         s.strokeWidth,
@@ -355,6 +374,7 @@ const TechText = ({
           }
         };
         const kept = previous[glyphs.length];
+        const fillInk = s.letterColors[char] ?? ink;
         glyphs.push({
           ...base,
           offset: kept?.char === char ? kept.offset : { x: 0, y: 0 },
@@ -364,7 +384,7 @@ const TechText = ({
           cells: null,
           assembled: 0,
           index: i,
-          fill: sprite(s, next, base, false, ink),
+          fill: sprite(s, next, base, false, fillInk, fillInk === ink ? undefined : ink),
           dashes: sprite(s, next, base, true, ink)
         });
       });
@@ -1034,12 +1054,31 @@ const TechText = ({
       wake();
     });
     intersectionObserver.observe(container);
-    const themeObserver = new MutationObserver(wake);
+
+    // El cambio de tema anima `color` durante ~200 ms. Un solo wake leería el
+    // color intermedio y el canvas quedaría con el tono anterior. Repetimos la
+    // lectura durante la transición para terminar siempre con el color final.
+    const settlePalette = () => {
+      wake();
+      if (paletteTimer) window.clearTimeout(paletteTimer);
+      let remaining = 8;
+      const step = () => {
+        paletteTimer = undefined;
+        if (!alive) return;
+        wake();
+        remaining -= 1;
+        if (remaining > 0) paletteTimer = window.setTimeout(step, 60);
+      };
+      paletteTimer = window.setTimeout(step, 40);
+    };
+
+    const themeObserver = new MutationObserver(settlePalette);
     for (const node of [document.documentElement, document.body]) {
       if (node) themeObserver.observe(node, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
     }
     const schemeQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
-    schemeQuery?.addEventListener?.('change', wake);
+    schemeQuery?.addEventListener?.('change', settlePalette);
+    window.addEventListener('themechange', settlePalette);
     if (document.fonts) document.fonts.ready.then(fontsLoaded, fontsLoaded);
 
     resize();
@@ -1047,11 +1086,13 @@ const TechText = ({
     return () => {
       alive = false;
       cancelAnimationFrame(raf);
+      if (paletteTimer) window.clearTimeout(paletteTimer);
       wakeRef.current = () => {};
       resizeObserver.disconnect();
       intersectionObserver.disconnect();
       themeObserver.disconnect();
-      schemeQuery?.removeEventListener?.('change', wake);
+      schemeQuery?.removeEventListener?.('change', settlePalette);
+      window.removeEventListener('themechange', settlePalette);
       container.style.cursor = '';
       container.removeEventListener('pointermove', onMove);
       container.removeEventListener('pointerenter', onMove);
