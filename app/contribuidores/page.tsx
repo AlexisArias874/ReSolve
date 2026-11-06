@@ -99,7 +99,7 @@ const CONTRIBUTORS: Contributor[] = [
     accent: "#c084fc",
   },
   {
-    name: "Palma Lascano Jesús Alejandro",
+    name: "Palma Lazcano Jesús Alejandro",
     role: "Documentación / Manuales",
     contribution:
       "Redactó la documentación, los manuales de uso y los diagramas del proyecto.",
